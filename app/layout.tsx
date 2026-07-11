@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./portal.css";
 
 export const metadata: Metadata = {
   title: "YehaoProxy｜全球企业级代理 IP",
