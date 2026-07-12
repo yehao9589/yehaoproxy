@@ -1,0 +1,1 @@
+import { redirect } from "next/navigation";import { getCurrentCustomer } from "../../../lib/auth";import WalletClient from "./WalletClient";export const dynamic="force-dynamic";export default async function Page(){if(!await getCurrentCustomer())redirect("/login");return <WalletClient/>}

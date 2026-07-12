@@ -1,0 +1,1 @@
+.create-button{margin-bottom:12px}.crow,.logrow{display:grid;grid-template-columns:repeat(7,1fr);min-width:850px;padding:13px 16px;border-top:1px solid #edf1f4;font-size:10px;align-items:center}.logrow{grid-template-columns:1.2fr 1.1fr .6fr 1.2fr 1fr 1fr}.crow.head,.logrow.head{background:#f7f9fb;color:#758698;font-weight:700}

@@ -1,0 +1,1 @@
+import { NextResponse } from "next/server";import { getCurrentCustomer } from "../../../../lib/auth";export async function GET(){const c=await getCurrentCustomer();if(!c)return NextResponse.json({error:"未登录"},{status:401});return NextResponse.json({id:c.id,email:c.email,name:c.name,role:c.role,status:c.status})}

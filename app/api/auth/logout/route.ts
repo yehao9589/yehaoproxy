@@ -1,0 +1,2 @@
+import { NextResponse } from "next/server";import { eq } from "drizzle-orm";import { getDb } from "../../../../db";import { authSessions } from "../../../../db/schema";import { sha256 } from "../../../../lib/auth";
+export async function POST(req:Request){const token=req.headers.get("cookie")?.match(/(?:^|; )yh_session=([^;]+)/)?.[1];if(token)await getDb().delete(authSessions).where(eq(authSessions.tokenHash,await sha256(decodeURIComponent(token))));const res=NextResponse.json({ok:true});res.cookies.set("yh_session","",{httpOnly:true,path:"/",maxAge:0});return res}

@@ -1,0 +1,1 @@
+import { redirect } from "next/navigation";import { getCurrentCustomer } from "../../../lib/auth";import CouponClient from "./CouponClient";export const dynamic="force-dynamic";export default async function Page(){const u=await getCurrentCustomer();if(!u)redirect("/login");if(u.role!=="admin")redirect("/dashboard");return <CouponClient/>}
