@@ -1,0 +1,20 @@
+/* Unified admin action system */
+.admin-pro button,.admin-pro a.primary,.modal button,.customer-drawer button,.order-workspace button{box-sizing:border-box;min-height:36px;border:1px solid #d8e0eb;border-radius:8px;padding:8px 14px;background:#fff;color:#334155;font:600 13px/1.15 inherit;letter-spacing:0;cursor:pointer;transition:background-color .16s,border-color .16s,color .16s,box-shadow .16s,transform .08s}
+.admin-pro button:hover,.modal button:hover,.customer-drawer button:hover,.order-workspace button:hover{border-color:#b9c6d8;background:#f8fafc;color:#0f172a}
+.admin-pro button:active,.modal button:active,.customer-drawer button:active,.order-workspace button:active{transform:translateY(1px)}
+.admin-pro button:focus-visible,.modal button:focus-visible,.customer-drawer button:focus-visible,.order-workspace button:focus-visible{outline:0;box-shadow:0 0 0 3px rgba(37,99,235,.16)}
+.admin-pro button:disabled,.modal button:disabled,.customer-drawer button:disabled,.order-workspace button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.admin-pro button.primary,.admin-pro .primary,.modal button.primary,.customer-drawer button.primary,.order-workspace button.primary{border-color:#2563eb;background:#2563eb;color:#fff;box-shadow:0 1px 2px rgba(37,99,235,.18)}
+.admin-pro button.primary:hover,.admin-pro .primary:hover,.modal button.primary:hover,.customer-drawer button.primary:hover,.order-workspace button.primary:hover{border-color:#1d4ed8;background:#1d4ed8;color:#fff}
+.admin-pro button.danger,.admin-pro .danger,.modal button.danger,.customer-drawer button.danger,.order-workspace button.danger,.inline-confirm button.danger{border-color:#fecaca!important;background:#fff!important;color:#dc2626!important;box-shadow:none!important}
+.admin-pro button.danger:hover,.admin-pro .danger:hover,.modal button.danger:hover,.customer-drawer button.danger:hover,.order-workspace button.danger:hover,.inline-confirm button.danger:hover{border-color:#dc2626!important;background:#fef2f2!important;color:#b91c1c!important}
+.admin-pro .live-actions,.order-detail-actions,.order-toolbar,.order-savebar>div,.credit-modal-actions,.modal footer{display:flex;align-items:center;gap:8px}
+.admin-pro .live-actions button,.admin-table button,.business-table button{min-height:32px;padding:6px 11px;border-radius:7px;font-size:12px;white-space:nowrap}
+.admin-pro aside nav button{width:100%;min-height:42px;border-color:transparent;border-radius:8px;padding:10px 12px;background:transparent;color:inherit;box-shadow:none;text-align:left}
+.admin-pro aside nav button:hover{border-color:transparent;background:rgba(255,255,255,.07);color:inherit}.admin-pro aside nav button.on{border-color:transparent;background:#2563eb;color:#fff}
+.admin-pro .order-number-link{min-height:auto!important;border:0!important;border-radius:0!important;padding:0!important;background:transparent!important;color:#2563eb!important;box-shadow:none!important}
+.admin-pro .order-workspace-head>div:last-child>button,.customer-drawer>header>button,.profile-header-actions>button:last-child{display:grid;place-items:center;width:36px;min-width:36px;padding:0;border-color:transparent;background:transparent;font-size:20px;color:#64748b}
+.inline-confirm{align-items:center!important;padding:16px!important;border:1px solid #fecaca!important;border-radius:12px!important;background:#fff!important}.inline-confirm b{color:#7f1d1d;font-size:14px}.inline-confirm button{min-width:82px}
+.order-savebar{border-top:1px solid #e2e8f0}.order-savebar>div:last-child .primary{min-width:110px}.order-savebar>div:first-child .danger{min-width:82px}
+.module-toolbar>button,.module-toolbar>div>button{min-height:36px}.module-toolbar>div>button.on{border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8;box-shadow:none}
+@media(max-width:700px){.admin-pro button,.modal button,.customer-drawer button,.order-workspace button{padding:8px 11px}.inline-confirm{flex-wrap:wrap}.inline-confirm b{width:100%;flex-basis:100%}}

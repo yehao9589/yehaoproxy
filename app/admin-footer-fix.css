@@ -1,0 +1,41 @@
+.admin-pro .setting-card footer,
+.admin-pro .modal footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 0;
+  position: static;
+  background: transparent;
+  color: inherit;
+}
+
+.admin-pro .module-toolbar button.primary,
+.admin-pro .import-actions button.primary {
+  width: auto;
+  height: auto;
+  min-width: 112px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: #1266e3;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  box-shadow: 0 5px 14px #1266e32b;
+}
+
+.admin-pro .module-toolbar button.primary:hover,
+.admin-pro .import-actions button.primary:hover {
+  background: #0e58c7;
+}
+
+.admin-pro .import-actions button.primary:disabled {
+  background: #9fb7d4;
+  color: #f7fbff;
+  box-shadow: none;
+}

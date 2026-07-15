@@ -1,0 +1,4 @@
+CREATE TABLE `currencies` (`code` text PRIMARY KEY NOT NULL,`name` text NOT NULL,`symbol` text NOT NULL,`rate` real NOT NULL,`enabled` integer DEFAULT true NOT NULL,`is_default` integer DEFAULT false NOT NULL,`decimal_places` integer DEFAULT 2 NOT NULL,`sort_order` integer DEFAULT 100 NOT NULL,`updated_at` integer NOT NULL);
+CREATE TABLE `system_options` (`key` text PRIMARY KEY NOT NULL,`value` text NOT NULL,`updated_at` integer NOT NULL);
+INSERT INTO `currencies` VALUES ('USD','美元','$',1,1,1,2,10,unixepoch()),('CNY','人民币','¥',7.20,1,0,2,20,unixepoch()),('EUR','欧元','€',0.92,1,0,2,30,unixepoch()),('GBP','英镑','£',0.79,0,0,2,40,unixepoch()),('JPY','日元','¥',157.00,0,0,0,50,unixepoch()),('USDT','泰达币','₮',1,0,0,2,60,unixepoch());
+INSERT INTO `system_options` VALUES ('currency_switch_enabled','true',unixepoch()),('exchange_rate_mode','manual',unixepoch());

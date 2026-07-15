@@ -1,0 +1,2 @@
+import{NextResponse}from"next/server";import{asc,eq}from"drizzle-orm";import{getDb}from"../../../db";import{productOffers}from"../../../db/schema";
+export async function GET(req:Request){const product=new URL(req.url).searchParams.get("product"),db=getDb(),items=await db.select().from(productOffers).where(product?eq(productOffers.product,product):eq(productOffers.enabled,true)).orderBy(asc(productOffers.sortOrder));return NextResponse.json({items:items.filter(x=>x.enabled)})}
