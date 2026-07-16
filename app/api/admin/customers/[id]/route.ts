@@ -17,4 +17,28 @@ export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){
   const balance=wallet?.balance||0,creditLimit=wallet?.creditLimit||0,creditUsed=Math.max(0,-balance);return NextResponse.json({customer:{id:customer.id,email:customer.email,name:customer.name,status:customer.status,emailVerified:customer.emailVerified,createdAt:customer.createdAt},summary:{totalSpent:Number(totalSpent.toFixed(2)),orderCount:orderRows.length,activeAssets:assets.filter(x=>x.status==="active").length,totalAssets:assets.length,balance,frozen:wallet?.frozen||0,creditLimit,creditUsed,availableCredit:Math.max(0,creditLimit-creditUsed),openTickets:ticketRows.filter(x=>!["resolved","closed"].includes(x.status)).length},orders:orderRows,assets,transactions,tickets:ticketRows,logs,notifications:notificationRows});
 }
 
-export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){const admin=await requireAdminApi();if(!admin)return NextResponse.json({error:"无管理员权限"},{status:403});const{id}=await params,b=await req.json().catch(()=>null),[target]=await getDb().select().from(customers).where(eq(customers.id,id)).limit(1);if(!target)return NextResponse.json({error:"客户不存在"},{status:404});if(target.id===admin.id&&b.status==="suspended")return NextResponse.json({error:"不能停用当前管理员账号"},{status:409});const updates:{status?:"active"|"suspended";role?:"customer"|"admin"}={};if(["active","suspended"].includes(b.status))updates.status=b.status;if(["customer","admin"].includes(b.role))updates.role=b.role;if(!Object.keys(updates).length)return NextResponse.json({error:"没有可修改内容"},{status:400});await getDb().update(customers).set(updates).where(eq(customers.id,id));await audit({id:admin.id,role:admin.role},"customer.update","customer",id,updates,req);return NextResponse.json({ok:true})}
+export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
+  const admin=await requireAdminApi();
+  if(!admin)return NextResponse.json({error:"无管理员权限"},{status:403});
+  const{id}=await params,b=await req.json().catch(()=>null),db=getDb();
+  const[target]=await db.select().from(customers).where(eq(customers.id,id)).limit(1);
+  if(!target)return NextResponse.json({error:"客户不存在"},{status:404});
+  if(target.id===admin.id&&b.status==="suspended")return NextResponse.json({error:"不能停用当前管理员账号"},{status:409});
+  const updates:{status?:"active"|"suspended";role?:"customer"|"admin";name?:string|null;email?:string;emailVerified?:boolean}={};
+  if(["active","suspended"].includes(b.status))updates.status=b.status;
+  if(["customer","admin"].includes(b.role))updates.role=b.role;
+  if(b.name!==undefined)updates.name=String(b.name).trim().slice(0,80)||null;
+  if(b.email!==undefined){
+    const email=String(b.email).trim().toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return NextResponse.json({error:"邮箱格式不正确"},{status:400});
+    const[duplicate]=await db.select({id:customers.id}).from(customers).where(eq(customers.email,email)).limit(1);
+    if(duplicate&&duplicate.id!==id)return NextResponse.json({error:"该邮箱已被其他客户使用"},{status:409});
+    updates.email=email;
+  }
+  if(b.emailVerified!==undefined)updates.emailVerified=b.emailVerified===true||b.emailVerified==="true";
+  if(!Object.keys(updates).length)return NextResponse.json({error:"没有可修改内容"},{status:400});
+  if(updates.email&&updates.email!==target.email)await db.update(orders).set({customerEmail:updates.email}).where(eq(orders.customerEmail,target.email));
+  await db.update(customers).set(updates).where(eq(customers.id,id));
+  await audit({id:admin.id,role:admin.role},"customer.update","customer",id,updates,req);
+  return NextResponse.json({ok:true,email:updates.email});
+}

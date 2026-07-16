@@ -4,36 +4,37 @@
   z-index: 3;
   display: flex;
   flex-direction: row;
-  align-items: stretch;
-  gap: 0;
+  align-items: center;
+  gap: 4px;
   width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 0 22px;
+  padding: 10px 22px 8px;
   white-space: nowrap;
   background: #fff;
   scrollbar-width: thin;
 }
 
 .customer-drawer > nav.customer-record-tabs button {
-  flex: 0 0 auto;
+  flex: 0 0 auto !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 96px;
-  height: 52px;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 34px;
   margin: 0;
-  padding: 0 14px;
+  padding: 0 9px !important;
   border: 0;
   border-bottom: 2px solid transparent;
-  border-radius: 0;
+  border-radius: 6px 6px 0 0;
   background: transparent;
   color: #607286;
   white-space: nowrap;
 }
 
 .customer-drawer > nav.customer-record-tabs button.on {
-  background: transparent;
+  background: #f5f8fd;
   color: #1266e3;
   border-bottom-color: #1266e3;
   font-weight: 700;

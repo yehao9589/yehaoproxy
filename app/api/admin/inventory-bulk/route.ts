@@ -12,7 +12,8 @@ export async function POST(req:Request){
   if(!Number.isFinite(Number(b.salePrice))||Number(b.salePrice)<=0)return NextResponse.json({error:"销售价格无效"},{status:400});
   const parsed=[] as Array<{host:string;port:number;username:string|null;password:string|null;fingerprint:string}>;const seen=new Set<string>();let batchDuplicates=0;
   for(let i=0;i<lines.length;i++){
-    const delimiter=lines[i].includes("|")?"|":lines[i].includes(",")?",":";",[host,port,user,password,...extra]=lines[i].split(delimiter).map(x=>x.trim());
+    const delimiter=lines[i].includes("|")?"|":lines[i].includes(",")?",":":";
+    const [host,port,user,password,...extra]=lines[i].split(delimiter).map(x=>x.trim());
     if(!host||extra.length||!Number.isInteger(Number(port))||Number(port)<1||Number(port)>65535)return NextResponse.json({error:`第 ${i+1} 行格式错误`},{status:400});
     const fingerprint=await inventoryFingerprint(host,Number(port),user||null);if(seen.has(fingerprint)){batchDuplicates++;continue}seen.add(fingerprint);parsed.push({host,port:Number(port),username:user||null,password:password||null,fingerprint});
   }

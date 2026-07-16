@@ -1,1 +1,40 @@
-"use client";import{useEffect,useState}from"react";type O={id:string;product:string;region:string;quantity:number;amount:number;status:string;createdAt:string};const labels:Record<string,string>={pending:"待支付",paid:"已付款，可到我的代理提取",provisioning:"等待管理员手动开通",active:"已提取完成",refunded:"已退款",failed:"已取消"};export default function OrderClient(){const[items,setItems]=useState<O[]>([]),[message,setMessage]=useState(""),[paying,setPaying]=useState<string|null>(null);async function load(){const r=await fetch("/api/orders"),d=await r.json();r.ok?setItems(d.items):setMessage(d.error)}useEffect(()=>{void load()},[]);async function pay(id:string){setPaying(id);setMessage("");const r=await fetch(`/api/orders/${id}/pay-wallet`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({couponCode:""})}),d=await r.json();setPaying(null);if(!r.ok)return setMessage(d.error+(d.balance!==undefined?`，当前余额 $${d.balance}`:""));setMessage("支付成功，请进入“我的代理”提取 IP。");void load()}return <div className="customer-page"><header><a href="/dashboard">← 返回客户中心</a><h1>订单管理</h1><a className="primary" href="/#pricing">＋ 购买地区额度</a></header>{message&&<div className={message.startsWith("支付成功")?"auth-success":"live-error"}>{message}</div>}<div className="standalone-table"><div className="orow head"><span>订单号</span><span>产品</span><span>地区额度</span><span>金额</span><span>创建时间</span><span>状态</span><span>操作</span></div>{items.length===0?<div className="empty">暂无订单</div>:items.map(o=><div className="orow" key={o.id}><span className="mono">{o.id}</span><span>{o.product}</span><span>{o.region} × {o.quantity}</span><span>${o.amount.toFixed(2)}</span><span>{new Date(o.createdAt).toLocaleString()}</span><span>{labels[o.status]||o.status}</span><span>{o.status==="pending"&&<button className="primary" disabled={paying===o.id} onClick={()=>pay(o.id)}>{paying===o.id?"正在支付…":"余额支付"}</button>}{o.status==="paid"&&<small>请到“我的代理”提取</small>}{o.status==="provisioning"&&<small>等待管理员处理</small>}</span></div>)}</div></div>}
+"use client";
+import {useEffect,useState} from "react";
+
+type O={id:string;product:string;region:string;quantity:number;durationDays:number;amount:number;status:string;createdAt:string};
+const labels:Record<string,string>={pending:"待支付",paid:"已付款",provisioning:"开通处理中",active:"已提取完成",refunded:"已退款",failed:"已取消"};
+
+export default function OrderClient(){
+  const[items,setItems]=useState<O[]>([]);
+  const[message,setMessage]=useState("");
+  const[paidOrder,setPaidOrder]=useState<O|null>(null);
+  const[paying,setPaying]=useState<string|null>(null);
+  async function load(){const r=await fetch("/api/orders"),d=await r.json();r.ok?setItems(d.items):setMessage(d.error)}
+  useEffect(()=>{void load()},[]);
+  async function pay(order:O){
+    setPaying(order.id);setMessage("");
+    const r=await fetch(`/api/orders/${order.id}/pay-wallet`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({couponCode:""})}),d=await r.json();
+    setPaying(null);
+    if(!r.ok)return setMessage(d.error+(d.balance!==undefined?`，当前余额 $${d.balance}`:""));
+    setPaidOrder({...order,status:"paid",amount:d.paid??order.amount});
+    await load();
+  }
+  return <div className="customer-page order-customer-page">
+    <header><a href="/dashboard">← 返回客户中心</a><h1>订单管理</h1><a className="primary" href="/#pricing">＋ 购买地区额度</a></header>
+    {message&&<div className="live-error">{message}</div>}
+    {paidOrder&&<section className="payment-success-card"><i>✓</i><div><small>PAYMENT SUCCESSFUL</small><h2>支付成功</h2><p>订单 <b>{paidOrder.id}</b> 已获得 {paidOrder.region} 地区 {paidOrder.quantity} 条代理额度，有效期将在提取 IP 后开始计算。</p></div><div><a href="/dashboard/proxies" className="primary">立即提取 IP</a><button onClick={()=>setPaidOrder(null)}>稍后处理</button></div></section>}
+    <div className="standalone-table order-customer-table">
+      <div className="orow head"><span>订单号</span><span>产品</span><span>地区额度</span><span>金额</span><span>创建时间</span><span>状态</span><span>操作</span></div>
+      {items.length===0?<div className="empty">暂无订单</div>:items.map(o=><div className="orow" key={o.id}>
+        <span className="mono">{o.id}</span><span>{o.product}</span><span><b>{o.region} × {o.quantity}</b><small>{o.durationDays} 天，提取后计时</small></span><span>${o.amount.toFixed(2)}</span><span>{new Date(o.createdAt).toLocaleString()}</span><span><em className={`customer-order-status ${o.status}`}>{labels[o.status]||o.status}</em></span>
+        <span className="customer-order-actions">
+          {o.status==="pending"&&<button className="primary" disabled={paying===o.id} onClick={()=>pay(o)}>{paying===o.id?"正在支付…":"余额支付"}</button>}
+          {o.status==="paid"&&<a className="primary" href="/dashboard/proxies">提取 IP</a>}
+          {o.status==="provisioning"&&<a href="/dashboard/proxies">查看开通进度</a>}
+          {o.status==="active"&&<a href="/dashboard/proxies">查看代理</a>}
+          {["refunded","failed"].includes(o.status)&&<a href="/#pricing">重新购买</a>}
+        </span>
+      </div>)}
+    </div>
+  </div>;
+}

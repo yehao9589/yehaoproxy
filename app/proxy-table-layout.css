@@ -1,0 +1,101 @@
+.managed-proxy-table .orow {
+  grid-template-columns: 30px 34px 1.05fr .62fr .66fr .8fr .88fr .78fr 122px 184px;
+  column-gap: 6px;
+  min-width: 1160px;
+  padding: 10px 11px;
+}
+
+.managed-proxy-table .orow > span:first-child {
+  display: grid;
+  place-items: center;
+}
+
+.managed-proxy-table input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+}
+
+.proxy-sequence {
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.proxy-row-actions {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.proxy-row-actions > button {
+  padding: 5px 7px !important;
+  border: 0 !important;
+  border-radius: 5px !important;
+  background: transparent !important;
+  color: #52677c !important;
+  font-size: 9px !important;
+}
+
+.proxy-row-actions > button:hover {
+  background: #eff6ff !important;
+  color: #2563eb !important;
+}
+
+.proxy-auto-renew-cell {
+  display: flex !important;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.proxy-auto-renew-cell > small {
+  color: #94a3b8;
+  font-size: 8px;
+}
+
+.proxy-auto-renew-cell .auto-renew-switch {
+  min-width: 60px !important;
+  gap: 4px !important;
+  padding: 3px 0 !important;
+}
+
+.proxy-auto-renew-cell .auto-renew-switch > span {
+  display: none;
+}
+
+.proxy-row-actions .auto-renew-switch {
+  min-width: 120px !important;
+  flex: 0 0 auto;
+}
+
+.proxy-row-actions .proxy-qr-button {
+  flex: 0 0 auto;
+  margin-left: 0 !important;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0 !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  color: #64748b !important;
+}
+
+.proxy-row-actions .proxy-qr-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.proxy-row-actions .proxy-qr-button:hover {
+  border-color: #bfdbfe !important;
+  background: #eff6ff !important;
+  color: #2563eb !important;
+}
