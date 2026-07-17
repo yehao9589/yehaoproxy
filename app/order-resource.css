@@ -1,12 +1,8 @@
-/* The order owns the only visible expiry/renewal controls. Allocation copies are internal. */
 .order-workspace .resource-table > div {
-  grid-template-columns: minmax(220px, 1.5fr) minmax(90px, .7fr) auto;
+  grid-template-columns: minmax(170px,1.25fr) minmax(100px,.8fr) minmax(70px,.5fr) minmax(150px,1fr) minmax(78px,.6fr) auto;
   align-items: center;
 }
-.order-workspace .resource-table > div > span:nth-child(3),
-.order-workspace .resource-table > div > span:nth-child(4) {
-  display: none;
-}
+.order-workspace .resource-region,.order-workspace .resource-expiry{display:flex;flex-direction:column;gap:3px}.order-workspace .resource-region small,.order-workspace .resource-expiry small{color:#8291a3;font-size:11px}.order-workspace .resource-region b,.order-workspace .resource-expiry b{font-size:12px;font-weight:600;color:#334155}
 .order-workspace .resource-edit-button {
   justify-self: end;
 }

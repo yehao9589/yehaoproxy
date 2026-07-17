@@ -11,6 +11,13 @@ function formatMinute(value:string|null){
   });
 }
 
+function renderMinute(target:Element,value:string|null){
+  if(!value){target.textContent="长期";(target as HTMLElement).dataset.expiryValue="长期";return}
+  const text=formatMinute(value),parts=text.split(/\s+/),date=document.createElement("span"),time=document.createElement("span");
+  date.textContent=parts[0]||text;time.textContent=parts.slice(1).join(" ")||"00:00";
+  target.replaceChildren(date,time);(target as HTMLElement).dataset.expiryValue=value;
+}
+
 export default function DashboardExpiryEnhancer(){
   useEffect(()=>{
     if(!location.pathname.startsWith("/dashboard"))return;
@@ -24,8 +31,7 @@ export default function DashboardExpiryEnhancer(){
         const item=items.find(x=>`${x.host}:${x.port}`===address);
         if(!item)return;
         const expiry=row.querySelector(".proxy-expiry")||(row.classList.contains("proxy-row")?row.children[5]:row.children[4]);
-        const formatted=formatMinute(item.expiresAt);
-        if(expiry&&expiry.textContent!==formatted)expiry.textContent=formatted;
+        if(expiry&&(expiry as HTMLElement).dataset.expiryValue!==(item.expiresAt||"长期"))renderMinute(expiry,item.expiresAt);
       });
     };
     fetch("/api/proxies").then(r=>r.json()).then(data=>{items=data.items||[];render()}).catch(()=>{});

@@ -21,6 +21,14 @@ export default function AutoRenewSwitchEnhancer(){
         track.appendChild(document.createElement("b"));
         label.textContent=enabled?"已开启":"未开启";
         button.append(track,label);
+        const cell=button.parentElement,small=cell?.querySelector("small");
+        if(cell&&small&&!cell.querySelector("select")){
+          const days=Number(small.textContent?.match(/\d+/)?.[0]||30),select=document.createElement("select");
+          select.setAttribute("aria-label","默认续费时长");
+          [7,30,90].forEach(value=>{const option=document.createElement("option");option.value=String(value);option.textContent=`${value} 天`;option.selected=value===days;select.appendChild(option)});
+          select.onchange=async()=>{const row=cell.closest(".orow"),address=row?.querySelector<HTMLElement>(".mono")?.dataset.address||row?.querySelector<HTMLElement>(".mono")?.textContent?.trim()||"",split=address.lastIndexOf(":"),host=address.slice(0,split),port=Number(address.slice(split+1));select.disabled=true;const response=await fetch("/api/proxies/by-address",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({host,port,renewalDays:Number(select.value)})});select.disabled=false;if(!response.ok){const data=await response.json().catch(()=>({}));alert(data.error||"续费时长保存失败")}};
+          small.replaceWith(select);
+        }
       });
     }
     const observer=new MutationObserver(records=>{if(records.some(x=>x.addedNodes.length||x.removedNodes.length))enhance()});

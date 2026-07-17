@@ -1,0 +1,24 @@
+.unified-console{grid-template-columns:185px minmax(0,1fr)}
+.unified-console .console-side{padding:20px 10px}
+.unified-console .console-side .brand{margin:0 8px 22px;font-size:15px}
+.unified-console .console-menu button{padding:9px 10px;font-size:10px;gap:7px}
+.unified-console .console-menu button i{width:18px;font-size:14px}
+.unified-console .console-content{max-width:none;padding:20px}
+.unified-console .console-top{padding:0 20px}
+
+.managed-proxy-table .orow{grid-template-columns:28px 30px minmax(135px,1.2fr) minmax(78px,.72fr) minmax(82px,.76fr) minmax(88px,.82fr) minmax(82px,.74fr) minmax(90px,.88fr) minmax(105px,.92fr) minmax(86px,.78fr);column-gap:6px;min-width:900px;padding:9px 10px;font-size:10.5px}
+.managed-proxy-table .proxy-copy-value{display:block!important;width:100%!important;min-width:0!important;min-height:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#334155!important;font:inherit!important;line-height:1.35!important;text-align:left!important;cursor:pointer!important;overflow:hidden;box-shadow:none!important}.managed-proxy-table .proxy-copy-value>span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.managed-proxy-table .proxy-copy-value:hover{background:transparent!important;color:#2563eb!important}.managed-proxy-table .proxy-copy-value.copied{background:transparent!important;color:#059669!important}
+.managed-proxy-table .proxy-region-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.25;min-width:0}.managed-proxy-table .proxy-region-cell b{font-size:10.5px;color:#263b52;font-weight:600}.managed-proxy-table .proxy-region-cell small{font-size:9px;color:#7b8da1;white-space:nowrap}
+.managed-proxy-table .orow:not(.head)>span:nth-child(4)>span,.managed-proxy-table .orow:not(.head)>span:nth-child(5)>span{overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:anywhere;line-height:1.35}.managed-proxy-table .orow:not(.head)>span:nth-child(3)>span{overflow:visible;text-overflow:clip;white-space:nowrap}
+.managed-proxy-table .proxy-expiry{display:flex;flex-direction:column;align-items:flex-start;gap:1px;white-space:nowrap;line-height:1.25}.managed-proxy-table .proxy-expiry>span:last-child{color:#8493a3;font-size:9px}
+.managed-proxy-table .proxy-note-cell{gap:3px}
+.managed-proxy-table .proxy-note-cell>button{width:18px!important;height:18px!important;min-width:18px!important;font-size:12px!important}
+.managed-proxy-table .proxy-auto-renew-cell{gap:3px}
+.managed-proxy-table .proxy-auto-renew-cell>select{width:46px;padding:3px 1px}
+.managed-proxy-table .auto-renew-switch>i{width:30px;height:17px}
+.managed-proxy-table .auto-renew-switch>i>b{width:13px;height:13px}
+.managed-proxy-table .auto-renew-switch.on>i>b{transform:translateX(13px)}
+.managed-proxy-table .proxy-row-actions{gap:0 2px}
+.managed-proxy-table .proxy-row-actions>button{min-width:0!important;min-height:20px!important;height:20px!important;padding:0 2px!important;border-radius:4px!important;font-size:9px!important;line-height:20px!important}
+
+@media(max-width:1100px) and (min-width:761px){.unified-console{grid-template-columns:150px minmax(0,1fr)}.unified-console .console-content{padding:10px}.unified-console .console-top{padding:0 12px}.unified-console .console-menu button{padding:8px 6px}.managed-proxy-table .orow{min-width:880px}}

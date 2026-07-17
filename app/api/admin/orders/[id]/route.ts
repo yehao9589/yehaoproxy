@@ -11,8 +11,10 @@ export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){
   if(!order)return NextResponse.json({error:"订单不存在"},{status:404});
   const[customer]=await db.select({id:customers.id,email:customers.email,name:customers.name,status:customers.status}).from(customers).where(eq(customers.email,order.customerEmail)).limit(1);
   const allocations=await db.select().from(proxyAllocations).where(eq(proxyAllocations.orderId,id));
+  const allocatedStock=await db.select({host:inventory.host,port:inventory.port,country:inventory.country,city:inventory.city}).from(inventory).where(eq(inventory.reservedByOrderId,id));
+  const allocationDetails=allocations.map(x=>{const stock=allocatedStock.find(s=>s.host===x.host&&s.port===x.port);return{...x,country:stock?.country||order.region,city:stock?.city||null}});
   const payments=await db.select().from(paymentTransactions).where(eq(paymentTransactions.orderId,id));
-  return NextResponse.json({order,customer:customer||null,allocations,payments});
+  return NextResponse.json({order,customer:customer||null,allocations:allocationDetails,payments});
 }
 
 export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){

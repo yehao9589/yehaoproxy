@@ -30,6 +30,8 @@ import "./admin-button-system.css";
 import "./order-resource.css";
 import "./proxy-qr.css";
 import "./customer-orders.css";
+import "./order-coupon.css";
+import "./coupon-editor.css";
 import "./manual-allocation.css";
 import "./proxy-batch.css";
 import "./proxy-copy.css";
@@ -37,6 +39,7 @@ import "./auto-renew-switch.css";
 import "./proxy-table-layout.css";
 import "./proxy-usage.css";
 import "./proxy-usage-detail.css";
+import "./dashboard-compact.css";
 import CreditEnhancer from "./CreditEnhancer";
 import AdjustmentEnhancer from "./AdjustmentEnhancer";
 import CurrencyEnhancer from "./CurrencyEnhancer";
@@ -48,6 +51,9 @@ import ManualAllocationEnhancer from "./ManualAllocationEnhancer";
 import ProxyOverviewCopyEnhancer from "./ProxyOverviewCopyEnhancer";
 import AutoRenewSwitchEnhancer from "./AutoRenewSwitchEnhancer";
 import ResourceExpiryEnhancer from "./ResourceExpiryEnhancer";
+import OverviewLinkEnhancer from "./OverviewLinkEnhancer";
+import CustomerLogChineseEnhancer from "./CustomerLogChineseEnhancer";
+import ProxyBatchExportEnhancer from "./ProxyBatchExportEnhancer";
 
 export const metadata: Metadata = {
   title: "YehaoProxy｜全球企业级代理 IP",
@@ -55,5 +61,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="zh-CN"><body>{children}<CreditEnhancer/><AdjustmentEnhancer/><CurrencyEnhancer/><OrderResourceEnhancer/><CustomerRecordEnhancer/><DashboardExpiryEnhancer/><ProxyQrEnhancer/><ManualAllocationEnhancer/><ProxyOverviewCopyEnhancer/><AutoRenewSwitchEnhancer/><ResourceExpiryEnhancer/></body></html>;
+  return <html lang="zh-CN"><body>{children}<CreditEnhancer/><AdjustmentEnhancer/><CurrencyEnhancer/><OrderResourceEnhancer/><CustomerRecordEnhancer/><DashboardExpiryEnhancer/><ProxyQrEnhancer/><ManualAllocationEnhancer/><ProxyOverviewCopyEnhancer/><AutoRenewSwitchEnhancer/><ResourceExpiryEnhancer/><OverviewLinkEnhancer/><CustomerLogChineseEnhancer/><ProxyBatchExportEnhancer/></body></html>;
 }
