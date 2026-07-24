@@ -1,6 +1,7 @@
 "use client";
 
-import {useState} from "react";
+import {useEffect, useState} from "react";
+import {createPortal} from "react-dom";
 
 type Customer = {id: string; email: string; name: string | null; role?: string};
 
@@ -12,6 +13,23 @@ export default function CustomerPasswordTool() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
+  const [portalTarget, setPortalTarget] = useState<Element | null>(null);
+
+  useEffect(() => {
+    const sync = () => setPortalTarget(document.querySelector(".customer-drawer .profile-header-actions"));
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.body, {childList: true, subtree: true});
+    return () => observer.disconnect();
+  }, []);
+
+  function showForCurrentCustomer() {
+    const profileText = document.querySelector(".customer-drawer .customer-profile p")?.textContent || "";
+    setEmail(profileText.split("·")[0]?.trim() || "");
+    setMessage("");
+    setSuccess(false);
+    setOpen(true);
+  }
 
   function close() {
     if (saving) return;
@@ -58,16 +76,13 @@ export default function CustomerPasswordTool() {
   }
 
   return <>
-    <div className="customer-password-toolbar">
-      <button onClick={() => setOpen(true)}>🔐 修改客户密码</button>
-      <span>管理员可按客户登录邮箱重置密码</span>
-    </div>
+    {portalTarget && createPortal(<button className="customer-password-entry" onClick={showForCurrentCustomer}>修改密码</button>, portalTarget)}
     {open && <div className="modal customer-password-modal">
       <form onSubmit={submit}>
         <div><h2>修改客户密码</h2><button type="button" onClick={close}>×</button></div>
         <p className="modal-note">修改后，该客户当前所有登录会话都会失效，需要使用新密码重新登录。</p>
         <div className="form-grid">
-          <label>客户登录邮箱<input type="email" value={email} onChange={event => setEmail(event.target.value)} required placeholder="customer@example.com"/></label>
+          <label>客户登录邮箱<input type="email" value={email} readOnly required/></label>
           <label>新密码<input type="password" value={password} onChange={event => setPassword(event.target.value)} minLength={8} maxLength={128} autoComplete="new-password" required placeholder="至少 8 位，包含字母和数字"/></label>
           <label>确认新密码<input type="password" value={confirm} onChange={event => setConfirm(event.target.value)} minLength={8} maxLength={128} autoComplete="new-password" required placeholder="再次输入新密码"/></label>
         </div>
