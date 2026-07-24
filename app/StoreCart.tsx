@@ -15,6 +15,7 @@ export default function StoreCart({inline = false}: {inline?: boolean}) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [authRequired, setAuthRequired] = useState(false);
 
   useEffect(() => {
     try {
@@ -60,7 +61,8 @@ export default function StoreCart({inline = false}: {inline?: boolean}) {
     const data = await response.json();
     setSubmitting(false);
     if (response.status === 401) {
-      location.href = `/login?next=${encodeURIComponent("/#products")}`;
+      setAuthRequired(true);
+      setMessage("结算前请先登录或注册账户");
       return;
     }
     if (!response.ok) return setMessage(data.error || "结算失败");
@@ -72,6 +74,7 @@ export default function StoreCart({inline = false}: {inline?: boolean}) {
   const cartPanel = <aside className={`cart-drawer ${inline ? "inline" : ""}`}>
     <header><div><span>SHOPPING CART</span><h2>购物车</h2></div>{!inline && <button onClick={() => setOpen(false)}>×</button>}</header>
     {message && <div className={message === "已加入购物车" ? "cart-ok" : "cart-error"}>{message}</div>}
+    {authRequired && <div className="cart-auth-guide"><p>登录后购物车商品会继续保留，可直接回来完成结算。</p><div><a className="primary" href={`/login?next=${encodeURIComponent("/#products")}`}>去登录</a><a href={`/register?next=${encodeURIComponent("/#products")}`}>免费注册</a></div></div>}
     <div className="cart-items">{items.length === 0 ? <div className="cart-empty"><span>🛒</span><b>购物车还是空的</b><small>选择商品、地区和数量后加入购物车</small></div> : items.map((item, index) => <article key={`${item.product}-${item.region}-${item.durationDays}`}><div><b>{item.productName}</b><small>{item.regionName} · {item.durationDays} 天</small></div><div className="cart-qty"><button onClick={() => update(index, item.quantity - 1)}>−</button><b>{item.quantity}</b><button onClick={() => update(index, item.quantity + 1)}>＋</button></div><button className="cart-remove" onClick={() => remove(index)}>删除</button></article>)}</div>
     <footer><div><span>共 {count} 件商品</span><b>参考 ${estimate.toFixed(2)}</b></div><button className="primary" disabled={!items.length || submitting} onClick={checkout}>{submitting ? "正在创建订单…" : `结算购物车（${items.length} 项）`}</button><small>结算后将按购物车项目分别生成待支付订单</small></footer>
   </aside>;
