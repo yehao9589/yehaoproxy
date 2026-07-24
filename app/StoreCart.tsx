@@ -68,7 +68,7 @@ export default function StoreCart({inline = false}: {inline?: boolean}) {
     if (!response.ok) return setMessage(data.error || "结算失败");
     localStorage.removeItem(STORAGE_KEY);
     setItems([]);
-    location.href = "/dashboard/orders";
+    location.href = "/dashboard?tab=orders";
   }
 
   const cartPanel = <aside className={`cart-drawer ${inline ? "inline" : ""}`}>

@@ -13,7 +13,7 @@ export default function DashboardRecentOrdersEnhancer() {
       if (title && !title.querySelector(".recent-orders-all")) {
         const link = document.createElement("a");
         link.className = "recent-orders-all";
-        link.href = "/dashboard/orders";
+        link.href = "/dashboard?tab=orders";
         link.textContent = "查看全部订单 →";
         title.appendChild(link);
       }
@@ -23,7 +23,7 @@ export default function DashboardRecentOrdersEnhancer() {
         const id = number.textContent?.trim();
         if (!id) return;
         const link = document.createElement("a");
-        link.href = `/dashboard/orders?order=${encodeURIComponent(id)}`;
+        link.href = `/dashboard?tab=orders&order=${encodeURIComponent(id)}`;
         link.textContent = id;
         link.title = "查看订单详情";
         number.textContent = "";

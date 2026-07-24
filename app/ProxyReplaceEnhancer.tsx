@@ -22,11 +22,11 @@ export default function ProxyReplaceEnhancer() {
         if (buttons[3].textContent !== "续费") buttons[3].textContent = "续费";
         const item = eligibility.get(address);
         if (!item) return;
-        buttons[2].disabled = !item.replaceEligible;
-        buttons[2].classList.toggle("replace-expired", !item.replaceEligible);
+        buttons[2].disabled = false;
+        buttons[2].classList.remove("replace-expired");
         buttons[2].title = item.replaceEligible
           ? `提取后 3 天内可申请更换，截止 ${new Date(item.replaceEligibleUntil!).toLocaleString("zh-CN", { hour12: false })}`
-          : "已超过提取后 3 天的更换期限";
+          : "已超过免费期，可按后台设置的价格付费更换";
       });
     }
 

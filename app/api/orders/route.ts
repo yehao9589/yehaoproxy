@@ -1,4 +1,85 @@
-import{NextResponse}from"next/server";import{and,desc,eq}from"drizzle-orm";import{env}from"cloudflare:workers";import{getCurrentCustomer}from"../../../lib/auth";import{getDb}from"../../../db";import{orders,productOffers}from"../../../db/schema";
-const DURATIONS=new Set([7,30,90]);
-export async function POST(req:Request){const user=await getCurrentCustomer();if(!user)return NextResponse.json({error:"请先登录"},{status:401});const b=await req.json().catch(()=>null),product=String(b?.product||""),region=String(b?.region||"").toUpperCase(),quantity=Number(b?.quantity),durationDays=Number(b?.durationDays);if(!product||!region||!Number.isInteger(quantity)||quantity<1||quantity>500||!DURATIONS.has(durationDays))return NextResponse.json({error:"订单参数无效"},{status:400});const db=getDb(),[offer]=await db.select().from(productOffers).where(and(eq(productOffers.product,product),eq(productOffers.region,region),eq(productOffers.enabled,true))).limit(1);if(!offer)return NextResponse.json({error:"该商品地区暂未开放销售"},{status:404});const available=Math.max(0,offer.saleStock-offer.sold);if(available<quantity)return NextResponse.json({error:"商城可售额度不足",available},{status:409});const unit=durationDays===7?offer.price7:durationDays===90?offer.price90:offer.price30,amount=Number((unit*quantity).toFixed(2)),now=Math.floor(Date.now()/1000),id=`YH-${crypto.randomUUID().slice(0,8).toUpperCase()}`,d1=(env as unknown as{DB:D1Database}).DB;const result=await d1.batch([d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'USD','pending',?,?)").bind(id,user.email,product,region,quantity,durationDays,amount,now,now),d1.prepare("UPDATE product_offers SET sold=sold+?,updated_at=? WHERE id=? AND enabled=1 AND sale_stock-sold>=?").bind(quantity,now,offer.id,quantity)]);if(!result[1].success||Number(result[1].meta?.changes)!==1){await d1.prepare("DELETE FROM orders WHERE id=?").bind(id).run();return NextResponse.json({error:"商城可售额度刚刚发生变化，请重试"},{status:409})}return NextResponse.json({id,status:"pending",amount,currency:"USD",entitlement:quantity,message:"付款后获得对应地区的待提取额度"},{status:201})}
-export async function GET(){const user=await getCurrentCustomer();if(!user)return NextResponse.json({error:"请先登录"},{status:401});return NextResponse.json({items:await getDb().select().from(orders).where(eq(orders.customerEmail,user.email)).orderBy(desc(orders.createdAt)).limit(100)})}
+import { env } from "cloudflare:workers";
+import { and, desc, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { getDb } from "../../../db";
+import { orders, productOffers } from "../../../db/schema";
+import { getCurrentCustomer } from "../../../lib/auth";
+
+const durations = new Set([7, 30, 90]);
+
+export async function POST(req: Request) {
+  const user = await getCurrentCustomer();
+  if (!user) return NextResponse.json({ error: "请先登录" }, { status: 401 });
+  const body = await req.json().catch(() => null);
+  const product = String(body?.product || "");
+  const region = String(body?.region || "").toUpperCase();
+  const quantity = Number(body?.quantity);
+  const durationDays = Number(body?.durationDays);
+  if (
+    !product ||
+    !region ||
+    !Number.isInteger(quantity) ||
+    quantity < 1 ||
+    quantity > 500 ||
+    !durations.has(durationDays)
+  ) return NextResponse.json({ error: "订单参数无效" }, { status: 400 });
+
+  const db = getDb();
+  const [offer] = await db
+    .select()
+    .from(productOffers)
+    .where(and(
+      eq(productOffers.product, product),
+      eq(productOffers.region, region),
+      eq(productOffers.enabled, true),
+    ))
+    .limit(1);
+  if (!offer) return NextResponse.json({ error: "该商品地区暂未开放销售" }, { status: 404 });
+  const available = Math.max(0, offer.saleStock - offer.sold);
+  if (available < quantity) {
+    return NextResponse.json({ error: "商城可售额度不足", available }, { status: 409 });
+  }
+
+  const unit = durationDays === 7 ? offer.price7 : durationDays === 90 ? offer.price90 : offer.price30;
+  const amount = Number((unit * quantity).toFixed(2));
+  const now = Math.floor(Date.now() / 1000);
+  const id = `YH-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  const d1 = (env as unknown as { DB: D1Database }).DB;
+  const result = await d1.batch([
+    d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'USD','pending',?,?)")
+      .bind(id, user.email, product, region, quantity, durationDays, amount, now, now),
+    d1.prepare("UPDATE product_offers SET sold=sold+?,updated_at=? WHERE id=? AND enabled=1 AND sale_stock-sold>=?")
+      .bind(quantity, now, offer.id, quantity),
+  ]);
+  if (!result[1].success || Number(result[1].meta?.changes) !== 1) {
+    await d1.prepare("DELETE FROM orders WHERE id=?").bind(id).run();
+    return NextResponse.json({ error: "商城可售额度刚刚发生变化，请重试" }, { status: 409 });
+  }
+  return NextResponse.json({
+    id,
+    status: "pending",
+    amount,
+    currency: "USD",
+    entitlement: quantity,
+    message: "付款后获得对应商品的服务额度",
+  }, { status: 201 });
+}
+
+export async function GET() {
+  const user = await getCurrentCustomer();
+  if (!user) return NextResponse.json({ error: "请先登录" }, { status: 401 });
+  const rows = await getDb()
+    .select()
+    .from(orders)
+    .where(eq(orders.customerEmail, user.email))
+    .orderBy(desc(orders.createdAt))
+    .limit(100);
+  return NextResponse.json({
+    items: rows.map(({ adminNote, ...order }) => ({
+      ...order,
+      subscriptionUrl: order.product === "computer-node"
+        ? adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1] || null
+        : null,
+    })),
+  });
+}

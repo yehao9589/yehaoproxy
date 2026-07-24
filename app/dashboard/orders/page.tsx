@@ -1,1 +1,1 @@
-import { redirect } from "next/navigation";import { getCurrentCustomer } from "../../../lib/auth";import OrderClient from "./OrderClient";export const dynamic="force-dynamic";export default async function Page(){if(!await getCurrentCustomer())redirect("/login");return <OrderClient/>}
+import {redirect}from "next/navigation";export const dynamic="force-dynamic";export default async function Page({searchParams}:{searchParams:Promise<{order?:string}>}){const{order}=await searchParams;redirect(`/dashboard?tab=orders${order?`&order=${encodeURIComponent(order)}`:""}`)}

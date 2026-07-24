@@ -1,1 +1,1 @@
-import {redirect} from "next/navigation";import {getCurrentCustomer} from "../../../lib/auth";import ProxiesClient from "./ProxiesClient";export const dynamic="force-dynamic";export default async function Page(){if(!await getCurrentCustomer())redirect("/login");return <ProxiesClient/>}
+import {redirect}from "next/navigation";export const dynamic="force-dynamic";export default function Page(){redirect("/dashboard?tab=proxies")}

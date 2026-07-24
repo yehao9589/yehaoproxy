@@ -1,1 +1,1 @@
-import {redirect} from "next/navigation";import {getCurrentCustomer} from "../../../lib/auth";import WhitelistClient from "./WhitelistClient";export const dynamic="force-dynamic";export default async function Page(){if(!await getCurrentCustomer())redirect("/login");return <WhitelistClient/>}
+import {redirect}from "next/navigation";export const dynamic="force-dynamic";export default function Page(){redirect("/dashboard?tab=whitelist")}

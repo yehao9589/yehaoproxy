@@ -19,6 +19,7 @@ type RequestItem = {
 type Detail = {
   request: RequestItem;
   customer: { id: string; name: string | null; email: string } | null;
+  nodeOrder: { id: string; product: string; region: string; status: string; expiresAt: string | null } | null;
   asset: {
     id: string;
     orderId: string;
@@ -74,6 +75,7 @@ export default function RequestsClient() {
     setDetail({
       request: item,
       customer: data.customer || null,
+      nodeOrder: (data.orders || []).find((order: { id: string }) => order.id === item.allocationId) || null,
       asset: (data.assets || []).find((asset: { id: string }) => asset.id === item.allocationId) || null,
     });
   }
@@ -111,7 +113,7 @@ export default function RequestsClient() {
         <span><button className="aftersales-link mono" onClick={() => void open(item)}>{item.id}</button></span>
         <span><button className="aftersales-link" onClick={() => openCustomer(item.customerId)}>{item.customerId}</button></span>
         <span><button className="aftersales-link mono" onClick={() => void open(item)}>{item.allocationId}</button></span>
-        <span>{item.type === "renew" ? "续费" : "更换"}</span>
+        <span>{item.type === "renew" ? "续费" : item.type === "reset_traffic" ? "流量重置" : "更换"}</span>
         <span>{item.reason || `${item.durationDays || 0} 天`}</span>
         <span><b className={`aftersales-status ${item.status}`}>{statusLabels[item.status] || "未知状态"}</b></span>
         <span className="live-actions"><button onClick={() => void open(item)}>查看详情</button>{item.status === "pending" && <><button className="primary" onClick={() => void action(item.id, "approve")}>批准</button><button className="danger-outline" onClick={() => void action(item.id, "reject")}>拒绝</button></>}</span>
@@ -119,7 +121,7 @@ export default function RequestsClient() {
     </div>
     {loading && <div className="customer-drawer-mask"><div className="customer-drawer loading">正在加载售后详情…</div></div>}
     {detail && <div className="aftersales-detail-mask" onClick={() => setDetail(null)}><section className="aftersales-detail" onClick={(event) => event.stopPropagation()}>
-      <header><div><small>售后申请详情</small><h2>{detail.request.type === "renew" ? "代理续费" : "代理更换"}</h2><p>{detail.request.id}</p></div><button onClick={() => setDetail(null)}>×</button></header>
+      <header><div><small>售后申请详情</small><h2>{detail.request.type === "renew" ? "代理续费" : detail.request.type === "reset_traffic" ? "节点流量重置" : "代理更换"}</h2><p>{detail.request.id}</p></div><button onClick={() => setDetail(null)}>×</button></header>
       <div className="aftersales-detail-body">
         <section><h3>客户与申请</h3><div className="aftersales-detail-grid">
           <div><span>客户</span><button className="aftersales-link" onClick={() => openCustomer(detail.request.customerId)}>{detail.customer?.name || detail.customer?.email || detail.request.customerId}</button></div>
@@ -127,7 +129,7 @@ export default function RequestsClient() {
           <div><span>申请时间</span><b>{date(detail.request.createdAt)}</b></div>
           <div><span>申请状态</span><b className={`aftersales-status ${detail.request.status}`}>{statusLabels[detail.request.status] || "未知状态"}</b></div>
         </div></section>
-        <section><h3>续费的代理资源</h3>{detail.asset ? <div className="aftersales-detail-grid">
+        <section><h3>{detail.request.type === "reset_traffic" ? "需要重置的节点服务" : detail.request.type === "replace" ? "需要更换的代理资源" : "续费的代理资源"}</h3>{detail.request.type === "reset_traffic" ? (detail.nodeOrder ? <div className="aftersales-detail-grid"><div><span>节点订单</span><b className="mono">{detail.nodeOrder.id}</b></div><div><span>节点类型</span><b>{detail.nodeOrder.product}</b></div><div><span>服务范围</span><b>{detail.nodeOrder.region}</b></div><div><span>服务状态</span><b>{detail.nodeOrder.status}</b></div><div><span>当前到期时间</span><b>{date(detail.nodeOrder.expiresAt)}</b></div><div><span>重置费用</span><strong>¥{detail.request.amount?.toFixed(2) || "0.00"}</strong></div></div> : <div className="empty-inline">未找到对应节点订单</div>) : detail.asset ? <div className="aftersales-detail-grid">
           <div><span>代理地址</span><b className="mono">{detail.asset.host}:{detail.asset.port}</b></div>
           <div><span>账号</span><b>{detail.asset.username || "未设置"}</b></div>
           <div><span>产品 / 地区</span><b>{detail.asset.product} · {detail.asset.region}</b></div>
@@ -137,14 +139,15 @@ export default function RequestsClient() {
           <div><span>当前到期时间</span><b>{date(detail.asset.expiresAt)}</b></div>
           <div><span>资源状态</span><b>{detail.asset.status === "active" ? "使用中" : detail.asset.status}</b></div>
         </div> : <div className="empty-inline">未找到对应的代理资源，资源可能已删除。</div>}</section>
-        <section><h3>续费信息</h3><div className="aftersales-detail-grid renewal-focus">
+        {detail.request.type === "renew" && <section><h3>续费信息</h3><div className="aftersales-detail-grid renewal-focus">
           <div><span>续费时长</span><strong>{detail.request.durationDays || 0} 天</strong></div>
           <div><span>续费金额</span><strong>{detail.request.amount == null ? "待管理员核价" : `¥${detail.request.amount.toFixed(2)}`}</strong></div>
           <div><span>续费后到期时间</span><strong>{nextExpiry ? date(nextExpiry.toISOString()) : "需先设置当前到期时间"}</strong></div>
           <div><span>自动续费</span><strong>{detail.asset?.autoRenew ? "已开启" : "未开启"}</strong></div>
-        </div></section>
+        </div></section>}
+        {detail.request.type === "replace" && <section><h3>更换申请</h3><div className="aftersales-detail-grid renewal-focus"><div><span>已付费用</span><strong>¥{detail.request.amount?.toFixed(2) || "0.00"}</strong></div><div><span>更换原因</span><strong>{detail.request.reason || "未填写"}</strong></div></div></section>}
       </div>
-      <footer><button onClick={() => setDetail(null)}>关闭</button>{detail.request.status === "pending" && <><button className="danger-outline" onClick={() => void action(detail.request.id, "reject")}>拒绝申请</button><button className="primary" onClick={() => void action(detail.request.id, "approve")}>批准并执行续费</button></>}</footer>
+      <footer><button onClick={() => setDetail(null)}>关闭</button>{detail.request.status === "pending" && <><button className="danger-outline" onClick={() => void action(detail.request.id, "reject")}>拒绝申请</button><button className="primary" onClick={() => void action(detail.request.id, "approve")}>{detail.request.type === "reset_traffic" ? "确认已重置流量" : detail.request.type === "replace" ? "确认并更换 IP" : "批准并执行续费"}</button></>}</footer>
     </section></div>}
   </div>;
 }

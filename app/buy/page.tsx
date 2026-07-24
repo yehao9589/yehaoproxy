@@ -41,7 +41,7 @@ export default function Buy() {
       setError(data.error + (data.available !== undefined ? `（当前可售 ${data.available} 份）` : ""));
       return;
     }
-    location.href = "/dashboard/orders";
+    location.href = "/dashboard?tab=orders";
   }
 
   return <main className="auth-page">

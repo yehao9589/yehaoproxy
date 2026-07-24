@@ -14,7 +14,9 @@ export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){
   const allocatedStock=await db.select({host:inventory.host,port:inventory.port,country:inventory.country,city:inventory.city}).from(inventory).where(eq(inventory.reservedByOrderId,id));
   const allocationDetails=allocations.map(x=>{const stock=allocatedStock.find(s=>s.host===x.host&&s.port===x.port);return{...x,country:stock?.country||order.region,city:stock?.city||null}});
   const payments=await db.select().from(paymentTransactions).where(eq(paymentTransactions.orderId,id));
-  return NextResponse.json({order,customer:customer||null,allocations:allocationDetails,payments});
+  const subscriptionUrl=order.adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1]||null;
+  const visibleOrder={...order,adminNote:order.adminNote?.replace(/\n?\[SUBSCRIPTION_URL\][^\n]*/g,"").trim()||null,subscriptionUrl};
+  return NextResponse.json({order:visibleOrder,customer:customer||null,allocations:allocationDetails,payments});
 }
 
 export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
@@ -23,7 +25,20 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   const[order]=await db.select().from(orders).where(eq(orders.id,id)).limit(1);
   if(!order)return NextResponse.json({error:"订单不存在"},{status:404});
   const now=new Date();
+  if(action==="deliver-subscription"){
+    if(order.product!=="computer-node")return NextResponse.json({error:"只有电脑节点订单可以发放订阅地址"},{status:400});
+    if(!["paid","provisioning","active"].includes(order.status))return NextResponse.json({error:"当前订单状态不能发放订阅地址"},{status:409});
+    const subscriptionUrl=String(b?.subscriptionUrl||"").trim();
+    try{const parsed=new URL(subscriptionUrl);if(!["http:","https:"].includes(parsed.protocol))throw new Error()}catch{return NextResponse.json({error:"请输入有效的 HTTP 或 HTTPS 订阅地址"},{status:400})}
+    const cleanNote=String(order.adminNote||"").replace(/\n?\[SUBSCRIPTION_URL\][^\n]*/g,"").trim();
+    const adminNote=`${cleanNote}${cleanNote?"\n":""}[SUBSCRIPTION_URL]${subscriptionUrl}`;
+    const expiresAt=order.expiresAt||new Date(now.getTime()+order.durationDays*86400000);
+    await db.update(orders).set({adminNote,status:"active",expiresAt,updatedAt:now}).where(eq(orders.id,id));
+    return NextResponse.json({ok:true,status:"active",subscriptionUrl,expiresAt});
+  }
   if(action==="service-update"){
+    const existingSubscription=order.adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1];
+    if(existingSubscription)b.adminNote=`${String(b?.adminNote||"").replace(/\n?\[SUBSCRIPTION_URL\][^\n]*/g,"").trim()}${b?.adminNote?"\n":""}[SUBSCRIPTION_URL]${existingSubscription}`;
     const paymentMethod=String(b?.paymentMethod||"balance"),expiresAt=b?.expiresAt?new Date(String(b.expiresAt)):null,renewalAmount=b?.renewalAmount===""||b?.renewalAmount==null?null:Number(b.renewalAmount),autoRenew=b?.autoRenew===true||b?.autoRenew==="true"||b?.autoRenew==="on",adminNote=String(b?.adminNote||"").slice(0,1000),nextStatus=String(b?.status||order.status);
     if(!["balance","manual","alipay","wechat","paypal","usdt","bank"].includes(paymentMethod)||expiresAt&&Number.isNaN(expiresAt.getTime())||renewalAmount!==null&&(!Number.isFinite(renewalAmount)||renewalAmount<0)||!["pending","paid","provisioning","active","refunded","failed"].includes(nextStatus))return NextResponse.json({error:"服务或财务信息无效"},{status:400});
     await db.update(orders).set({paymentMethod,expiresAt,renewalAmount,autoRenew,adminNote,status:nextStatus as typeof order.status,updatedAt:now}).where(eq(orders.id,id));

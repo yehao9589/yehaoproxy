@@ -1,2 +1,265 @@
-import{NextResponse}from"next/server";import{and,eq}from"drizzle-orm";import{getCurrentCustomer}from"../../../../../lib/auth";import{audit}from"../../../../../lib/audit";import{getDb}from"../../../../../db";import{couponRedemptions,coupons,orders,wallets,walletTransactions}from"../../../../../db/schema";
-export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){const user=await getCurrentCustomer();if(!user)return NextResponse.json({error:"请先登录"},{status:401});const{id}=await params,b=await req.json().catch(()=>null),couponCode=String(b?.couponCode||"").trim().toUpperCase(),db=getDb(),[order]=await db.select().from(orders).where(and(eq(orders.id,id),eq(orders.customerEmail,user.email))).limit(1);if(!order)return NextResponse.json({error:"订单不存在"},{status:404});if(order.status!=="pending")return NextResponse.json({error:"订单状态不能支付"},{status:409});let discount=0,coupon:null|typeof coupons.$inferSelect=null;if(couponCode){[coupon]=await db.select().from(coupons).where(eq(coupons.code,couponCode)).limit(1);const now=new Date();if(!coupon||!coupon.enabled||(coupon.startsAt&&coupon.startsAt>now)||(coupon.expiresAt&&coupon.expiresAt<now)||(coupon.totalLimit!==null&&coupon.usedCount>=coupon.totalLimit)||order.amount<coupon.minAmount)return NextResponse.json({error:"优惠码不可用"},{status:400});discount=coupon.type==="fixed"?coupon.value:order.amount*coupon.value/100;if(coupon.maxDiscount!==null)discount=Math.min(discount,coupon.maxDiscount);discount=Math.min(order.amount,Number(discount.toFixed(2)))}const payable=Number((order.amount-discount).toFixed(2));let[wallet]=await db.select().from(wallets).where(eq(wallets.customerId,user.id)).limit(1);if(!wallet){await db.insert(wallets).values({customerId:user.id,balance:0,frozen:0,creditLimit:0,currency:"USD",updatedAt:new Date()});[wallet]=await db.select().from(wallets).where(eq(wallets.customerId,user.id)).limit(1)}const spendingPower=Math.max(0,wallet.balance)+Math.max(0,wallet.creditLimit-Math.max(0,-wallet.balance));if(spendingPower<payable)return NextResponse.json({error:"余额和可用信用额不足",balance:wallet.balance,creditLimit:wallet.creditLimit,availableCredit:Math.max(0,wallet.creditLimit-Math.max(0,-wallet.balance)),payable},{status:409});const next=Number((wallet.balance-payable).toFixed(2)),now=new Date(),txId=`WT-${crypto.randomUUID()}`;await db.update(wallets).set({balance:next,updatedAt:now}).where(eq(wallets.customerId,user.id));await db.insert(walletTransactions).values({id:txId,customerId:user.id,type:"purchase",amount:-payable,balanceAfter:next,referenceType:"order",referenceId:id,note:`订单 ${id}`,createdAt:now});if(coupon){await db.insert(couponRedemptions).values({id:crypto.randomUUID(),couponId:coupon.id,customerId:user.id,orderId:id,discount,createdAt:now});await db.update(coupons).set({usedCount:coupon.usedCount+1}).where(eq(coupons.id,coupon.id))}await db.update(orders).set({status:"paid",amount:payable,paymentReference:txId,updatedAt:now}).where(eq(orders.id,id));await audit({id:user.id,role:user.role},"order.wallet_credit_pay","order",id,{payable,discount,balanceAfter:next,creditUsed:Math.max(0,-next),txId},req);return NextResponse.json({ok:true,status:"paid",paid:payable,discount,balance:next,creditUsed:Math.max(0,-next),availableCredit:Math.max(0,wallet.creditLimit-Math.max(0,-next))})}
+import { and, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { getDb } from "../../../../../db";
+import {
+  couponRedemptions,
+  coupons,
+  orders,
+  proxyAllocations,
+  serviceRequests,
+  wallets,
+  walletTransactions,
+} from "../../../../../db/schema";
+import { audit } from "../../../../../lib/audit";
+import { getCurrentCustomer } from "../../../../../lib/auth";
+
+const nodeProducts = new Set(["soft-router", "computer-node"]);
+
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const user = await getCurrentCustomer();
+  if (!user) {
+    return NextResponse.json({ error: "请先登录" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const body = await req.json().catch(() => null);
+  const couponCode = String(body?.couponCode || "")
+    .trim()
+    .toUpperCase();
+  const db = getDb();
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(and(eq(orders.id, id), eq(orders.customerEmail, user.email)))
+    .limit(1);
+
+  if (!order) {
+    return NextResponse.json({ error: "订单不存在" }, { status: 404 });
+  }
+  if (order.status !== "pending") {
+    return NextResponse.json({ error: "订单状态不能支付" }, { status: 409 });
+  }
+
+  let discount = 0;
+  let coupon: null | typeof coupons.$inferSelect = null;
+  if (couponCode) {
+    [coupon] = await db
+      .select()
+      .from(coupons)
+      .where(eq(coupons.code, couponCode))
+      .limit(1);
+    const currentTime = new Date();
+    if (
+      !coupon ||
+      !coupon.enabled ||
+      (coupon.startsAt && coupon.startsAt > currentTime) ||
+      (coupon.expiresAt && coupon.expiresAt < currentTime) ||
+      (coupon.totalLimit !== null && coupon.usedCount >= coupon.totalLimit) ||
+      order.amount < coupon.minAmount
+    ) {
+      return NextResponse.json({ error: "优惠码不可用" }, { status: 400 });
+    }
+    discount =
+      coupon.type === "fixed"
+        ? coupon.value
+        : (order.amount * coupon.value) / 100;
+    if (coupon.maxDiscount !== null) {
+      discount = Math.min(discount, coupon.maxDiscount);
+    }
+    discount = Math.min(order.amount, Number(discount.toFixed(2)));
+  }
+
+  const payable = Number((order.amount - discount).toFixed(2));
+  let [wallet] = await db
+    .select()
+    .from(wallets)
+    .where(eq(wallets.customerId, user.id))
+    .limit(1);
+  if (!wallet) {
+    await db.insert(wallets).values({
+      customerId: user.id,
+      balance: 0,
+      frozen: 0,
+      creditLimit: 0,
+      currency: "USD",
+      updatedAt: new Date(),
+    });
+    [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.customerId, user.id))
+      .limit(1);
+  }
+
+  const availableCredit = Math.max(
+    0,
+    wallet.creditLimit - Math.max(0, -wallet.balance),
+  );
+  const spendingPower = Math.max(0, wallet.balance) + availableCredit;
+  if (spendingPower < payable) {
+    return NextResponse.json(
+      {
+        error: "余额和可用信用额不足",
+        balance: wallet.balance,
+        creditLimit: wallet.creditLimit,
+        availableCredit,
+        payable,
+      },
+      { status: 409 },
+    );
+  }
+
+  const nextBalance = Number((wallet.balance - payable).toFixed(2));
+  const now = new Date();
+  const txId = `WT-${crypto.randomUUID()}`;
+  const renewalSourceId = order.adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1];
+  const replacementAllocationId = order.adminNote?.match(/\[REPLACE_ALLOCATION\]([^\n]+)/)?.[1];
+  const nextStatus = renewalSourceId
+    ? "active"
+    : nodeProducts.has(order.product) || order.product === "node-traffic-reset" || order.product === "ip-replacement"
+      ? "provisioning"
+      : "paid";
+
+  await db
+    .update(wallets)
+    .set({ balance: nextBalance, updatedAt: now })
+    .where(eq(wallets.customerId, user.id));
+  await db.insert(walletTransactions).values({
+    id: txId,
+    customerId: user.id,
+    type: "purchase",
+    amount: -payable,
+    balanceAfter: nextBalance,
+    referenceType: "order",
+    referenceId: id,
+    note: `订单 ${id}`,
+    createdAt: now,
+  });
+  if (coupon) {
+    await db.insert(couponRedemptions).values({
+      id: crypto.randomUUID(),
+      couponId: coupon.id,
+      customerId: user.id,
+      orderId: id,
+      discount,
+      createdAt: now,
+    });
+    await db
+      .update(coupons)
+      .set({ usedCount: coupon.usedCount + 1 })
+      .where(eq(coupons.id, coupon.id));
+  }
+  await db
+    .update(orders)
+    .set({
+      status: nextStatus,
+      amount: payable,
+      paymentReference: txId,
+      updatedAt: now,
+    })
+    .where(eq(orders.id, id));
+  if (order.product === "node-traffic-reset") {
+    const sourceOrderId = order.adminNote?.match(/\[RESET_OF\]([^\n]+)/)?.[1] || "未知节点";
+    const requestId = `AS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+    await db.insert(serviceRequests).values({
+      id: requestId,
+      customerId: user.id,
+      allocationId: sourceOrderId,
+      type: "reset_traffic",
+      durationDays: null,
+      reason: `已付款重置订单 ${id}`,
+      amount: payable,
+      status: "pending",
+      adminNote: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+  if (renewalSourceId) {
+    const [sourceOrder] = await db
+      .select()
+      .from(orders)
+      .where(and(
+        eq(orders.id, renewalSourceId),
+        eq(orders.customerEmail, user.email),
+      ))
+      .limit(1);
+    if (!sourceOrder) {
+      return NextResponse.json({ error: "续费对应的原服务不存在" }, { status: 409 });
+    }
+    const base = sourceOrder.expiresAt && sourceOrder.expiresAt > now
+      ? sourceOrder.expiresAt
+      : now;
+    const expiresAt = new Date(base.getTime() + order.durationDays * 86400000);
+    await db.update(orders).set({
+      status: "active",
+      expiresAt,
+      updatedAt: now,
+    }).where(eq(orders.id, sourceOrder.id));
+    await db.insert(serviceRequests).values({
+      id: `RN-V-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+      customerId: user.id,
+      allocationId: sourceOrder.id,
+      type: "renew",
+      durationDays: order.durationDays,
+      reason: `节点续费订单 ${id} 已自动生效`,
+      amount: payable,
+      status: "completed",
+      adminNote: `系统自动续费，待后台核验；新到期时间 ${expiresAt.toLocaleString("zh-CN", { hour12: false })}`,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+  if (replacementAllocationId) {
+    const reason = order.adminNote?.match(/\[REPLACE_REASON\]([^\n]+)/)?.[1] || "客户付费申请更换 IP";
+    const [allocation] = await db.select().from(proxyAllocations).where(eq(proxyAllocations.id, replacementAllocationId)).limit(1);
+    if (!allocation || allocation.status !== "active") {
+      return NextResponse.json({ error: "更换对应的代理资源不存在或已失效" }, { status: 409 });
+    }
+    await db.insert(serviceRequests).values({
+      id: `SR-${crypto.randomUUID().slice(0, 10)}`,
+      customerId: user.id,
+      allocationId: replacementAllocationId,
+      type: "replace",
+      durationDays: null,
+      reason: `${reason}（已付款订单 ${id}）`,
+      amount: payable,
+      status: "pending",
+      adminNote: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  await audit(
+    { id: user.id, role: user.role },
+    "order.wallet_credit_pay",
+    "order",
+    id,
+    {
+      payable,
+      discount,
+      balanceAfter: nextBalance,
+      creditUsed: Math.max(0, -nextBalance),
+      txId,
+      status: nextStatus,
+    },
+    req,
+  );
+
+  return NextResponse.json({
+    ok: true,
+    status: nextStatus,
+    paid: payable,
+    discount,
+    balance: nextBalance,
+    creditUsed: Math.max(0, -nextBalance),
+    availableCredit: Math.max(
+      0,
+      wallet.creditLimit - Math.max(0, -nextBalance),
+    ),
+  });
+}
