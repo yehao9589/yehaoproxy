@@ -41,7 +41,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   if(password&&(password.length<8||password.length>128||!/[A-Za-z]/.test(password)||!/[0-9]/.test(password)))return NextResponse.json({error:"新密码需为 8–128 位，并同时包含字母和数字"},{status:400});
   if(!Object.keys(updates).length&&!password)return NextResponse.json({error:"没有可修改内容"},{status:400});
   if(updates.email&&updates.email!==target.email)await db.update(orders).set({customerEmail:updates.email}).where(eq(orders.customerEmail,target.email));
-  await db.update(customers).set(updates).where(eq(customers.id,id));
+  if(Object.keys(updates).length)await db.update(customers).set(updates).where(eq(customers.id,id));
   if(password){
     await db.update(customers).set({passwordHash:await hashPassword(password)}).where(eq(customers.id,id));
     await db.delete(authSessions).where(eq(authSessions.customerId,id));
