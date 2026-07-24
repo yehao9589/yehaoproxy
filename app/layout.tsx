@@ -54,6 +54,9 @@ import ResourceExpiryEnhancer from "./ResourceExpiryEnhancer";
 import OverviewLinkEnhancer from "./OverviewLinkEnhancer";
 import CustomerLogChineseEnhancer from "./CustomerLogChineseEnhancer";
 import ProxyBatchExportEnhancer from "./ProxyBatchExportEnhancer";
+import OverviewStatusEnhancer from "./OverviewStatusEnhancer";
+import OrderCenterLinkEnhancer from "./OrderCenterLinkEnhancer";
+import ProxyReplaceEnhancer from "./ProxyReplaceEnhancer";
 
 export const metadata: Metadata = {
   title: "YehaoProxy｜全球企业级代理 IP",
@@ -61,5 +64,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="zh-CN"><body>{children}<CreditEnhancer/><AdjustmentEnhancer/><CurrencyEnhancer/><OrderResourceEnhancer/><CustomerRecordEnhancer/><DashboardExpiryEnhancer/><ProxyQrEnhancer/><ManualAllocationEnhancer/><ProxyOverviewCopyEnhancer/><AutoRenewSwitchEnhancer/><ResourceExpiryEnhancer/><OverviewLinkEnhancer/><CustomerLogChineseEnhancer/><ProxyBatchExportEnhancer/></body></html>;
+  return <html lang="zh-CN"><body>{children}<CreditEnhancer/><AdjustmentEnhancer/><CurrencyEnhancer/><OrderResourceEnhancer/><CustomerRecordEnhancer/><DashboardExpiryEnhancer/><ProxyQrEnhancer/><ManualAllocationEnhancer/><ProxyOverviewCopyEnhancer/><AutoRenewSwitchEnhancer/><ResourceExpiryEnhancer/><OverviewLinkEnhancer/><CustomerLogChineseEnhancer/><ProxyBatchExportEnhancer/><OverviewStatusEnhancer/><OrderCenterLinkEnhancer/><ProxyReplaceEnhancer/></body></html>;
 }

@@ -101,3 +101,4 @@
   background: #eff6ff !important;
   color: #2563eb !important;
 }
+.proxy-row-actions button.replace-expired{cursor:not-allowed!important;opacity:.45!important;background:#f1f5f9!important;color:#8492a3!important}

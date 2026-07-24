@@ -1,0 +1,25 @@
+.offer-success{display:flex;align-items:center;gap:9px;margin-bottom:14px;padding:12px 15px;border:1px solid #bcebd5;border-radius:9px;background:#ecfbf4;color:#11825a;font-size:12px;box-shadow:0 6px 20px #14936312}
+.offer-success span{width:20px;height:20px;display:grid;place-items:center;border-radius:50%;background:#18a873;color:#fff;font-weight:800}
+.offer-category-tabs{display:flex;gap:7px;padding:13px 18px;border-top:1px solid #edf1f4;border-bottom:1px solid #e5ebf1;background:#f8fafc}
+.offer-category-tabs button{border:1px solid transparent;border-radius:7px;background:transparent;color:#64768a;padding:8px 13px;font-size:11px}
+.offer-category-tabs button b{margin-left:5px;color:#99a7b5;font-size:9px}
+.offer-category-tabs button.on{border-color:#c8ddf7;background:#fff;color:#1266e3;box-shadow:0 2px 8px #173b6410}
+.offer-table .brow{grid-template-columns:1.55fr repeat(3,.72fr) .72fr .55fr 1.2fr;min-width:960px;transition:background .15s}
+.offer-table .brow.is-dirty{background:#fffdf5}
+.offer-identity{display:flex!important;flex-direction:column;align-items:flex-start!important;gap:3px}
+.offer-identity em{padding:2px 6px;border-radius:4px;background:#eaf3ff;color:#1266e3;font-size:8px;font-style:normal}
+.offer-identity b{font-size:11px}
+.offer-identity small{color:#8493a2}
+.offer-input,.offer-money{width:88px;height:32px;border:1px solid #dce5ed;border-radius:6px;background:#fff}
+.offer-input{padding:0 8px;color:#22374d}
+.offer-money{display:flex;align-items:center;overflow:hidden}
+.offer-money:focus-within,.offer-input:focus{outline:none;border-color:#6aa9f5;box-shadow:0 0 0 3px #1266e312}
+.offer-money i{padding-left:8px;color:#93a2b1;font-style:normal}
+.offer-money input{width:100%;min-width:0;height:100%;padding:0 6px;border:0;outline:0;color:#22374d}
+.offer-row-actions{display:flex!important;align-items:center;gap:6px}
+.offer-row-actions button{height:30px;border-radius:6px;padding:0 9px;font-size:9px;font-weight:700;white-space:nowrap}
+.offer-save{border:0;background:#1266e3;color:#fff}
+.offer-save:disabled{background:#edf1f5;color:#91a0af;cursor:default}
+.offer-on{border:1px solid #aee7ce;background:#eaf9f2;color:#13875d}
+.offer-off{border:1px solid #dce3ea;background:#f3f5f7;color:#738395}
+.offer-empty{padding:45px 20px;text-align:center;color:#8493a3;font-size:11px}
