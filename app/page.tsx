@@ -72,12 +72,14 @@ export default function Home() {
     <span id="pricing" className="store-anchor"/>
     <section id="products" className="section unified-store-section">
       <div className="section-head"><div><span className="kicker">产品商城</span><h2>选择商品，直接完成购买配置</h2></div><p>商品、地区、周期和数量集中在同一个界面，无需上下滚动。</p></div>
+      <div className="store-category-tabs store-category-top">
+        <button className={category==="proxy"?"on":""} onClick={()=>chooseCategory("proxy")}><span>◫</span><b>代理 IP</b><small>静态住宅、动态住宅、数据中心</small></button>
+        <button className={category==="node"?"on":""} onClick={()=>chooseCategory("node")}><span>▣</span><b>节点服务</b><small>软路由中转、电脑节点</small></button>
+      </div>
+      <div className="store-commerce-grid">
       <div className="unified-store">
         <aside className="unified-product-panel">
-          <div className="store-category-tabs compact">
-            <button className={category==="proxy"?"on":""} onClick={()=>chooseCategory("proxy")}><span>◫</span><b>代理 IP</b><small>三种代理产品</small></button>
-            <button className={category==="node"?"on":""} onClick={()=>chooseCategory("node")}><span>▣</span><b>节点服务</b><small>两种节点产品</small></button>
-          </div>
+          <div className="product-panel-title"><span>商品列表</span><b>{category==="proxy"?"代理 IP":"节点服务"}</b></div>
           <div className="unified-product-list">{visibleProducts.map(item=>{const enabled=productEnabled(item.id);return <button key={item.id} disabled={!enabled} className={`${product===item.id?"active":""} ${!enabled?"unavailable":""}`} onClick={()=>setProduct(item.id)}><span>{item.category==="node"?"▣":"◫"}</span><div><b>{item.name}</b><small>{enabled?item.desc:"后台已关闭售卖"}</small></div><i>{!enabled?"停售":product===item.id?"✓":"›"}</i></button>})}</div>
           <div className="store-service-note"><span>✓</span><p><b>统一售后保障</b><small>订单、续费和售后申请均可在客户中心查看。</small></p></div>
         </aside>
@@ -93,11 +95,12 @@ export default function Home() {
           <footer className="unified-checkout-bar"><div><span>当前配置</span><b>{currentProduct.name}{!isNode&&` · ${regions[selected].country}`} · {duration} 天 × {quantity}</b></div><div className="unified-price"><span>参考金额</span><b>${total.toFixed(2)}</b></div>{currentEnabled?<button className="primary add-cart-button" onClick={addToCart}>＋ 加入购物车</button>:<button className="store-disabled-buy" disabled>暂停销售</button>}</footer>
         </div>
       </div>
+      <StoreCart inline/>
+      </div>
     </section>
 
     <section id="why" className="section dark"><div className="center"><span className="kicker">为什么选择 YehaoProxy</span><h2>一站式管理网络资源</h2></div><div className="why-grid">{[["多品类资源","代理 IP、软路由中转和电脑节点统一选购。"],["全球地区覆盖","按国家和城市配置适合业务的地区资源。"],["完整客户控制台","订单、资产、余额和售后统一管理。"],["专业客户支持","续费、更换和人工开通流程全程可追踪。"]].map(item => <div key={item[0]}><i>✓</i><h3>{item[0]}</h3><p>{item[1]}</p></div>)}</div></section>
     <section id="faq" className="section faq"><div><span className="kicker">常见问题</span><h2>购买前需要了解什么？</h2><p>完成订单并确认付款后，代理额度或节点服务会进入客户中心。</p><a className="primary" href="/dashboard/support">联系技术支持</a></div><div>{["节点服务如何开通？","支持哪些使用周期？","是否提供售后服务？"].map((question,index) => <details key={question} open={index===0}><summary>{question}<b>＋</b></summary><p>{index===0?"付款后由管理员按照订单地区与配置完成节点开通。":"具体规则会显示在客户中心与售后系统中。"}</p></details>)}</div></section>
     <footer><a className="brand" href="#"><span>Y</span> YehaoProxy</a><p>可靠的全球代理与节点服务，让每一次连接都更简单。</p><small>© 2026 YehaoProxy. All rights reserved.</small></footer>
-    <StoreCart/>
   </main>;
 }

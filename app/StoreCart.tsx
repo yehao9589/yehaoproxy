@@ -10,7 +10,7 @@ export function addStoreCartItem(item: CartItem) {
   window.dispatchEvent(new CustomEvent<CartItem>("store-cart-add", {detail: item}));
 }
 
-export default function StoreCart() {
+export default function StoreCart({inline = false}: {inline?: boolean}) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
@@ -69,15 +69,19 @@ export default function StoreCart() {
     location.href = "/dashboard/orders";
   }
 
+  const cartPanel = <aside className={`cart-drawer ${inline ? "inline" : ""}`}>
+    <header><div><span>SHOPPING CART</span><h2>购物车</h2></div>{!inline && <button onClick={() => setOpen(false)}>×</button>}</header>
+    {message && <div className={message === "已加入购物车" ? "cart-ok" : "cart-error"}>{message}</div>}
+    <div className="cart-items">{items.length === 0 ? <div className="cart-empty"><span>🛒</span><b>购物车还是空的</b><small>选择商品、地区和数量后加入购物车</small></div> : items.map((item, index) => <article key={`${item.product}-${item.region}-${item.durationDays}`}><div><b>{item.productName}</b><small>{item.regionName} · {item.durationDays} 天</small></div><div className="cart-qty"><button onClick={() => update(index, item.quantity - 1)}>−</button><b>{item.quantity}</b><button onClick={() => update(index, item.quantity + 1)}>＋</button></div><button className="cart-remove" onClick={() => remove(index)}>删除</button></article>)}</div>
+    <footer><div><span>共 {count} 件商品</span><b>参考 ${estimate.toFixed(2)}</b></div><button className="primary" disabled={!items.length || submitting} onClick={checkout}>{submitting ? "正在创建订单…" : `结算购物车（${items.length} 项）`}</button><small>结算后将按购物车项目分别生成待支付订单</small></footer>
+  </aside>;
+
+  if (inline) return <div className="inline-cart-shell">{cartPanel}</div>;
+
   return <>
     <button className="floating-cart" onClick={() => setOpen(true)} aria-label="打开购物车"><span>🛒</span><b>购物车</b>{count > 0 && <em>{count}</em>}</button>
     {open && <div className="cart-mask" onMouseDown={event => {if (event.target === event.currentTarget) setOpen(false)}}>
-      <aside className="cart-drawer">
-        <header><div><span>SHOPPING CART</span><h2>购物车</h2></div><button onClick={() => setOpen(false)}>×</button></header>
-        {message && <div className={message === "已加入购物车" ? "cart-ok" : "cart-error"}>{message}</div>}
-        <div className="cart-items">{items.length === 0 ? <div className="cart-empty"><span>🛒</span><b>购物车还是空的</b><small>选择商品、地区和数量后加入购物车</small></div> : items.map((item, index) => <article key={`${item.product}-${item.region}-${item.durationDays}`}><div><b>{item.productName}</b><small>{item.regionName} · {item.durationDays} 天</small></div><div className="cart-qty"><button onClick={() => update(index, item.quantity - 1)}>−</button><b>{item.quantity}</b><button onClick={() => update(index, item.quantity + 1)}>＋</button></div><button className="cart-remove" onClick={() => remove(index)}>删除</button></article>)}</div>
-        <footer><div><span>共 {count} 件商品</span><b>参考 ${estimate.toFixed(2)}</b></div><button className="primary" disabled={!items.length || submitting} onClick={checkout}>{submitting ? "正在创建订单…" : `结算购物车（${items.length} 项）`}</button><small>结算后将按购物车项目分别生成待支付订单</small></footer>
-      </aside>
+      {cartPanel}
     </div>}
   </>;
 }
