@@ -70,5 +70,6 @@
 .unified-checkout-bar{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:20px;margin-top:22px;padding:16px 0 0;border-top:1px solid #e6ecf2;background:transparent}
 .unified-checkout-bar>div{display:flex;flex-direction:column;gap:4px}.unified-checkout-bar span{font-size:8px;color:#8292a2}.unified-checkout-bar>div>b{font-size:11px}.unified-price b{font-size:20px!important;color:#1266e3}.unified-checkout-bar>a{padding:12px 24px}
 .store-disabled-buy{border:0;border-radius:9px;background:#dfe5eb;color:#81909f;padding:12px 24px;font-weight:700;cursor:not-allowed}
+.add-cart-button{border:0;padding:12px 22px;white-space:nowrap}
 @media(max-width:980px){.unified-store{grid-template-columns:1fr}.unified-product-panel{border-right:0;border-bottom:1px solid #e2e9f0}.unified-product-list{display:grid;grid-template-columns:repeat(2,1fr)}}
 @media(max-width:680px){.compact-regions{grid-template-columns:1fr 1fr}.config-row{grid-template-columns:1fr}.unified-checkout-bar{grid-template-columns:1fr 1fr}.unified-checkout-bar>a{grid-column:1/-1;text-align:center}.unified-product-list{grid-template-columns:1fr}}

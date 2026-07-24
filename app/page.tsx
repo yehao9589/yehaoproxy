@@ -2,6 +2,7 @@
 
 import {useEffect, useMemo, useState} from "react";
 import "./storefront-products.css";
+import StoreCart, {addStoreCartItem} from "./StoreCart";
 
 const regions = [
   {code: "US", flag: "🇺🇸", country: "美国", city: "洛杉矶 / 纽约", price: 3.8},
@@ -35,7 +36,6 @@ export default function Home() {
   const currentProduct = products.find(item => item.id === product)!;
   const isNode = currentProduct.category === "node";
   const orderRegion = isNode ? "GLOBAL" : regions[selected].code;
-  const buy = `/buy?product=${product}&region=${orderRegion}&duration=${duration}&quantity=${quantity}`;
   const productEnabled = (id: string) => saleOffers === null || saleOffers.some(offer => offer.product === id);
   const currentEnabled = saleOffers === null || saleOffers.some(offer => offer.product === product && (isNode || offer.region === orderRegion));
 
@@ -49,6 +49,18 @@ export default function Home() {
     setCategory(next);
     const first = products.find(item => item.category === next && productEnabled(item.id));
     if (first) setProduct(first.id);
+  }
+
+  function addToCart() {
+    addStoreCartItem({
+      product,
+      productName: currentProduct.name,
+      region: orderRegion,
+      regionName: isNode ? "全局节点" : regions[selected].country,
+      durationDays: duration,
+      quantity,
+      unitEstimate: total / quantity,
+    });
   }
 
   return <main>
@@ -78,7 +90,7 @@ export default function Home() {
             <div className="config-block"><div className="config-title"><b>{isNode?"1":"2"}. 选择周期</b></div><div className="duration-options">{[7,30,90].map(day=><button key={day} className={duration===day?"selected":""} onClick={()=>setDuration(day)}><b>{day} 天</b><small>{day===30?"常用":"按需选择"}</small></button>)}</div></div>
             <div className="config-block quantity-config"><div className="config-title"><b>{isNode?"2":"3"}. 购买数量</b></div><div><button onClick={()=>setQuantity(Math.max(1,quantity-1))}>−</button><input value={quantity} onChange={event=>setQuantity(Math.min(500,Math.max(1,Number(event.target.value)||1)))}/><button onClick={()=>setQuantity(Math.min(500,quantity+1))}>＋</button></div></div>
           </div>
-          <footer className="unified-checkout-bar"><div><span>当前配置</span><b>{currentProduct.name}{!isNode&&` · ${regions[selected].country}`} · {duration} 天 × {quantity}</b></div><div className="unified-price"><span>参考金额</span><b>${total.toFixed(2)}</b></div>{currentEnabled?<a className="primary" href={buy}>立即购买</a>:<button className="store-disabled-buy" disabled>暂停销售</button>}</footer>
+          <footer className="unified-checkout-bar"><div><span>当前配置</span><b>{currentProduct.name}{!isNode&&` · ${regions[selected].country}`} · {duration} 天 × {quantity}</b></div><div className="unified-price"><span>参考金额</span><b>${total.toFixed(2)}</b></div>{currentEnabled?<button className="primary add-cart-button" onClick={addToCart}>＋ 加入购物车</button>:<button className="store-disabled-buy" disabled>暂停销售</button>}</footer>
         </div>
       </div>
     </section>
@@ -86,5 +98,6 @@ export default function Home() {
     <section id="why" className="section dark"><div className="center"><span className="kicker">为什么选择 YehaoProxy</span><h2>一站式管理网络资源</h2></div><div className="why-grid">{[["多品类资源","代理 IP、软路由中转和电脑节点统一选购。"],["全球地区覆盖","按国家和城市配置适合业务的地区资源。"],["完整客户控制台","订单、资产、余额和售后统一管理。"],["专业客户支持","续费、更换和人工开通流程全程可追踪。"]].map(item => <div key={item[0]}><i>✓</i><h3>{item[0]}</h3><p>{item[1]}</p></div>)}</div></section>
     <section id="faq" className="section faq"><div><span className="kicker">常见问题</span><h2>购买前需要了解什么？</h2><p>完成订单并确认付款后，代理额度或节点服务会进入客户中心。</p><a className="primary" href="/dashboard/support">联系技术支持</a></div><div>{["节点服务如何开通？","支持哪些使用周期？","是否提供售后服务？"].map((question,index) => <details key={question} open={index===0}><summary>{question}<b>＋</b></summary><p>{index===0?"付款后由管理员按照订单地区与配置完成节点开通。":"具体规则会显示在客户中心与售后系统中。"}</p></details>)}</div></section>
     <footer><a className="brand" href="#"><span>Y</span> YehaoProxy</a><p>可靠的全球代理与节点服务，让每一次连接都更简单。</p><small>© 2026 YehaoProxy. All rights reserved.</small></footer>
+    <StoreCart/>
   </main>;
 }
