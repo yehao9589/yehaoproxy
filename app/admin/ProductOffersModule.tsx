@@ -24,11 +24,12 @@ const names: Record<string, string> = {
   residential: "动态住宅代理",
   datacenter: "数据中心代理",
   mobile: "移动代理",
+  "soft-router": "软路由中转",
   "computer-node": "电脑节点",
 };
 
 const categoryOf = (product: string): Exclude<Category, "all"> =>
-  product === "computer-node" ? "node" : "proxy";
+  ["soft-router", "computer-node"].includes(product) ? "node" : "proxy";
 
 export default function ProductOffersModule() {
   const [items, setItems] = useState<Offer[]>([]);
@@ -161,7 +162,7 @@ export default function ProductOffersModule() {
                   <option value="datacenter">数据中心代理</option>
                   <option value="mobile">移动代理</option>
                 </optgroup>
-                <optgroup label="电脑节点"><option value="computer-node">电脑节点</option></optgroup>
+                <optgroup label="节点服务"><option value="soft-router">软路由中转</option><option value="computer-node">电脑节点</option></optgroup>
               </select></label>
               <label>国家 / 地区代码<input name="region" maxLength={2} required defaultValue={editing?.region || ""} placeholder="US"/></label>
               <label>地区名称<input name="regionName" required defaultValue={editing?.regionName || ""} placeholder="美国 / 弗吉尼亚"/></label>
