@@ -229,3 +229,33 @@
 .aftersales-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px 20px}.aftersales-detail-grid>div{display:grid;gap:5px;min-width:0}.aftersales-detail-grid span{color:#75869a;font-size:11px}.aftersales-detail-grid b,.aftersales-detail-grid strong{overflow:hidden;color:#24364a;font-size:13px;text-overflow:ellipsis}.aftersales-detail-grid.renewal-focus>div{padding:13px;border-radius:8px;background:#f7faff}.aftersales-detail-grid.renewal-focus strong{color:#175ec8;font-size:15px}
 .aftersales-detail>footer{display:flex;justify-content:flex-end;gap:9px;padding:15px 24px;border-top:1px solid #dfe6ee;background:#fff}.aftersales-detail>footer button{height:34px;padding:0 14px;border:1px solid #d8e0e9;border-radius:7px;background:#fff;color:#40546a}.aftersales-detail>footer .primary{border-color:#2563eb;background:#2563eb;color:#fff}.aftersales-detail>footer .danger-outline{border-color:#fecaca;color:#dc2626}
 @media(max-width:700px){.aftersales-detail{width:100vw}.aftersales-detail-grid{grid-template-columns:1fr}.aftersales-detail-body{padding:12px}.aftersales-detail>footer{flex-wrap:wrap}.aftersales-detail>footer button{flex:1}}
+/* Customer profile header actions share one visual style. Keep this override
+   in the central button system so feature-specific styles cannot split them. */
+.admin-pro .customer-drawer>header .profile-header-actions button.customer-password-entry,
+.admin-pro .customer-drawer>header .profile-header-actions button.login-as-customer,
+.admin-pro .customer-drawer>header .profile-header-actions button.credit-admin-button{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:auto!important;
+  min-width:110px!important;
+  height:36px!important;
+  margin:0!important;
+  padding:0 15px!important;
+  border:1px solid #b9d2ec!important;
+  border-radius:8px!important;
+  background:#fff!important;
+  color:#1768bd!important;
+  box-shadow:none!important;
+  font-size:11px!important;
+  font-weight:700!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+.admin-pro .customer-drawer>header .profile-header-actions button.customer-password-entry:hover,
+.admin-pro .customer-drawer>header .profile-header-actions button.login-as-customer:hover,
+.admin-pro .customer-drawer>header .profile-header-actions button.credit-admin-button:hover{
+  border-color:#5d9fe3!important;
+  background:#edf6ff!important;
+  color:#0f5baa!important;
+}
