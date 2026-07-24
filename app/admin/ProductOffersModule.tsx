@@ -23,7 +23,6 @@ const names: Record<string, string> = {
   "static-isp": "静态住宅 ISP",
   residential: "动态住宅代理",
   datacenter: "数据中心代理",
-  mobile: "移动代理",
   "soft-router": "软路由中转",
   "computer-node": "电脑节点",
 };
@@ -146,7 +145,11 @@ export default function ProductOffersModule() {
               <span><b>{item.saleStock}</b><small>剩余 {Math.max(0, item.saleStock - item.sold)}</small></span>
               <span className="offer-row-actions">
                 <button className="offer-edit" onClick={() => setEditing(item)}>编辑商品</button>
-                <button className={item.enabled ? "offer-on" : "offer-off"} onClick={() => void toggle(item)}>{item.enabled ? "在售" : "已下架"}</button>
+                <label className="sale-switch" title={item.enabled ? "点击关闭前台售卖" : "点击开启前台售卖"}>
+                  <span>售卖</span>
+                  <button type="button" role="switch" aria-checked={item.enabled} className={item.enabled ? "on" : ""} onClick={() => void toggle(item)}><i/></button>
+                  <em>{item.enabled ? "开启" : "关闭"}</em>
+                </label>
               </span>
             </div>
           ))}
@@ -164,7 +167,6 @@ export default function ProductOffersModule() {
                   <option value="static-isp">静态住宅 ISP</option>
                   <option value="residential">动态住宅代理</option>
                   <option value="datacenter">数据中心代理</option>
-                  <option value="mobile">移动代理</option>
                 </optgroup>
                 <optgroup label="节点服务"><option value="soft-router">软路由中转</option><option value="computer-node">电脑节点</option></optgroup>
               </select></label>

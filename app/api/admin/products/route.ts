@@ -4,7 +4,7 @@ import {requireAdminApi} from "../../../../lib/admin-auth";
 import {getDb} from "../../../../db";
 import {productOffers} from "../../../../db/schema";
 
-const PRODUCTS = new Set(["static-isp", "residential", "datacenter", "mobile", "soft-router", "computer-node"]);
+const PRODUCTS = new Set(["static-isp", "residential", "datacenter", "soft-router", "computer-node"]);
 const NODE_PRODUCTS = new Set(["soft-router", "computer-node"]);
 
 export async function GET() {

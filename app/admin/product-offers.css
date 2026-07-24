@@ -28,3 +28,10 @@
 .offer-readonly-table small{color:#8797a7;font-size:9px}
 .offer-price{font-weight:700;color:#20364e}
 .offer-edit{border:0;background:#1266e3;color:#fff}
+.sale-switch{display:grid;grid-template-columns:auto 32px auto;align-items:center;gap:5px;color:#758698;font-size:8px}
+.sale-switch>button{width:32px!important;height:18px!important;padding:2px!important;border:0!important;border-radius:10px!important;background:#cbd5df!important;transition:.2s}
+.sale-switch>button i{display:block;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #13283c33;transition:.2s}
+.sale-switch>button.on{background:#18aa73!important}
+.sale-switch>button.on i{transform:translateX(14px)}
+.sale-switch em{min-width:18px;font-style:normal;color:#7d8e9e}
+.sale-switch>button.on+em{color:#16885f}

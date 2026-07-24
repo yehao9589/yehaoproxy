@@ -1,6 +1,6 @@
 "use client";
 
-import {useMemo, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import "./storefront-products.css";
 
 const regions = [
@@ -28,6 +28,7 @@ export default function Home() {
   const [duration, setDuration] = useState(30);
   const [selected, setSelected] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [saleOffers, setSaleOffers] = useState<Array<{product: string; region: string}> | null>(null);
   const multiplier = duration === 7 ? .35 : duration === 30 ? 1 : 2.55;
   const total = useMemo(() => (category === "node" ? 29.9 : regions[selected].price) * quantity * multiplier, [category, selected, quantity, multiplier]);
   const visibleProducts = products.filter(item => item.category === category);
@@ -35,10 +36,18 @@ export default function Home() {
   const isNode = currentProduct.category === "node";
   const orderRegion = isNode ? "GLOBAL" : regions[selected].code;
   const buy = `/buy?product=${product}&region=${orderRegion}&duration=${duration}&quantity=${quantity}`;
+  const productEnabled = (id: string) => saleOffers === null || saleOffers.some(offer => offer.product === id);
+  const currentEnabled = saleOffers === null || saleOffers.some(offer => offer.product === product && (isNode || offer.region === orderRegion));
+
+  useEffect(() => {
+    fetch("/api/catalog").then(response => response.json()).then(data => {
+      if (Array.isArray(data.items)) setSaleOffers(data.items.map((item: {product: string; region: string}) => ({product: item.product, region: item.region})));
+    }).catch(() => undefined);
+  }, []);
 
   function chooseCategory(next: ProductCategory) {
     setCategory(next);
-    const first = products.find(item => item.category === next);
+    const first = products.find(item => item.category === next && productEnabled(item.id));
     if (first) setProduct(first.id);
   }
 
@@ -57,19 +66,19 @@ export default function Home() {
             <button className={category==="proxy"?"on":""} onClick={()=>chooseCategory("proxy")}><span>◫</span><b>代理 IP</b><small>三种代理产品</small></button>
             <button className={category==="node"?"on":""} onClick={()=>chooseCategory("node")}><span>▣</span><b>节点服务</b><small>两种节点产品</small></button>
           </div>
-          <div className="unified-product-list">{visibleProducts.map(item=><button key={item.id} className={product===item.id?"active":""} onClick={()=>setProduct(item.id)}><span>{item.category==="node"?"▣":"◫"}</span><div><b>{item.name}</b><small>{item.desc}</small></div><i>{product===item.id?"✓":"›"}</i></button>)}</div>
+          <div className="unified-product-list">{visibleProducts.map(item=>{const enabled=productEnabled(item.id);return <button key={item.id} disabled={!enabled} className={`${product===item.id?"active":""} ${!enabled?"unavailable":""}`} onClick={()=>setProduct(item.id)}><span>{item.category==="node"?"▣":"◫"}</span><div><b>{item.name}</b><small>{enabled?item.desc:"后台已关闭售卖"}</small></div><i>{!enabled?"停售":product===item.id?"✓":"›"}</i></button>})}</div>
           <div className="store-service-note"><span>✓</span><p><b>统一售后保障</b><small>订单、续费和售后申请均可在客户中心查看。</small></p></div>
         </aside>
 
         <div className="unified-config-panel">
           <header><div><span>{isNode?"节点服务":"代理 IP"}</span><h3>{currentProduct.name}</h3><p>{currentProduct.desc}</p></div><em>{isNode?"人工开通":"额度提取"}</em></header>
-          {!isNode&&<div className="config-block"><div className="config-title"><b>1. 选择地区</b><span>{regions[selected].flag} {regions[selected].country}</span></div><div className="compact-regions">{regions.map((region,index)=><button key={region.code} className={selected===index?"selected":""} onClick={()=>setSelected(index)}><span>{region.flag}</span><b>{region.country}</b><small>{region.city}</small><em>${(region.price*multiplier).toFixed(2)}</em></button>)}</div></div>}
+          {!isNode&&<div className="config-block"><div className="config-title"><b>1. 选择地区</b><span>{regions[selected].flag} {regions[selected].country}</span></div><div className="compact-regions">{regions.map((region,index)=>{const enabled=saleOffers===null||saleOffers.some(offer=>offer.product===product&&offer.region===region.code);return <button key={region.code} disabled={!enabled} className={`${selected===index?"selected":""} ${!enabled?"unavailable":""}`} onClick={()=>setSelected(index)}><span>{region.flag}</span><b>{region.country}</b><small>{enabled?region.city:"暂停销售"}</small><em>{enabled?`$${(region.price*multiplier).toFixed(2)}`:"停售"}</em></button>})}</div></div>}
           {isNode&&<div className="node-global-notice"><span>▣</span><div><b>无需选择地区</b><small>{currentProduct.name} 为全局节点商品，付款后由管理员完成开通。</small></div></div>}
           <div className="config-row">
             <div className="config-block"><div className="config-title"><b>{isNode?"1":"2"}. 选择周期</b></div><div className="duration-options">{[7,30,90].map(day=><button key={day} className={duration===day?"selected":""} onClick={()=>setDuration(day)}><b>{day} 天</b><small>{day===30?"常用":"按需选择"}</small></button>)}</div></div>
             <div className="config-block quantity-config"><div className="config-title"><b>{isNode?"2":"3"}. 购买数量</b></div><div><button onClick={()=>setQuantity(Math.max(1,quantity-1))}>−</button><input value={quantity} onChange={event=>setQuantity(Math.min(500,Math.max(1,Number(event.target.value)||1)))}/><button onClick={()=>setQuantity(Math.min(500,quantity+1))}>＋</button></div></div>
           </div>
-          <footer className="unified-checkout-bar"><div><span>当前配置</span><b>{currentProduct.name}{!isNode&&` · ${regions[selected].country}`} · {duration} 天 × {quantity}</b></div><div className="unified-price"><span>参考金额</span><b>${total.toFixed(2)}</b></div><a className="primary" href={buy}>立即购买</a></footer>
+          <footer className="unified-checkout-bar"><div><span>当前配置</span><b>{currentProduct.name}{!isNode&&` · ${regions[selected].country}`} · {duration} 天 × {quantity}</b></div><div className="unified-price"><span>参考金额</span><b>${total.toFixed(2)}</b></div>{currentEnabled?<a className="primary" href={buy}>立即购买</a>:<button className="store-disabled-buy" disabled>暂停销售</button>}</footer>
         </div>
       </div>
     </section>
