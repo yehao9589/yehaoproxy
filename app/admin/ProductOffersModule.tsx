@@ -145,11 +145,9 @@ export default function ProductOffersModule() {
               <span><b>{item.saleStock}</b><small>剩余 {Math.max(0, item.saleStock - item.sold)}</small></span>
               <span className="offer-row-actions">
                 <button className="offer-edit" onClick={() => setEditing(item)}>编辑商品</button>
-                <label className="sale-switch" title={item.enabled ? "点击关闭前台售卖" : "点击开启前台售卖"}>
-                  <span>售卖</span>
-                  <button type="button" role="switch" aria-checked={item.enabled} className={item.enabled ? "on" : ""} onClick={() => void toggle(item)}><i/></button>
-                  <em>{item.enabled ? "开启" : "关闭"}</em>
-                </label>
+                <button type="button" role="switch" aria-checked={item.enabled} title={item.enabled ? "点击暂停销售" : "点击恢复销售"} className={`sale-toggle ${item.enabled ? "on" : "off"}`} onClick={() => void toggle(item)}>
+                  <span/><b>{item.enabled ? "正在售卖" : "暂停销售"}</b><i/>
+                </button>
               </span>
             </div>
           ))}
