@@ -76,14 +76,12 @@ export default function Home() {
         <button className={category==="proxy"?"on":""} onClick={()=>chooseCategory("proxy")}><span>◫</span><b>代理 IP</b><small>静态住宅、动态住宅、数据中心</small></button>
         <button className={category==="node"?"on":""} onClick={()=>chooseCategory("node")}><span>▣</span><b>节点服务</b><small>软路由中转、电脑节点</small></button>
       </div>
+      <div className="horizontal-product-nav">
+        <div className="horizontal-product-label"><span>商品列表</span><b>{category==="proxy"?"代理 IP":"节点服务"}</b></div>
+        {visibleProducts.map(item=>{const enabled=productEnabled(item.id);return <button key={item.id} disabled={!enabled} className={`${product===item.id?"active":""} ${!enabled?"unavailable":""}`} onClick={()=>setProduct(item.id)}><span>{item.category==="node"?"▣":"◫"}</span><div><b>{item.name}</b><small>{enabled?item.desc:"后台已关闭售卖"}</small></div><i>{!enabled?"停售":product===item.id?"✓":"›"}</i></button>})}
+      </div>
       <div className="store-commerce-grid">
-      <div className="unified-store">
-        <aside className="unified-product-panel">
-          <div className="product-panel-title"><span>商品列表</span><b>{category==="proxy"?"代理 IP":"节点服务"}</b></div>
-          <div className="unified-product-list">{visibleProducts.map(item=>{const enabled=productEnabled(item.id);return <button key={item.id} disabled={!enabled} className={`${product===item.id?"active":""} ${!enabled?"unavailable":""}`} onClick={()=>setProduct(item.id)}><span>{item.category==="node"?"▣":"◫"}</span><div><b>{item.name}</b><small>{enabled?item.desc:"后台已关闭售卖"}</small></div><i>{!enabled?"停售":product===item.id?"✓":"›"}</i></button>})}</div>
-          <div className="store-service-note"><span>✓</span><p><b>统一售后保障</b><small>订单、续费和售后申请均可在客户中心查看。</small></p></div>
-        </aside>
-
+      <div className="unified-store config-only">
         <div className="unified-config-panel">
           <header><div><span>{isNode?"节点服务":"代理 IP"}</span><h3>{currentProduct.name}</h3><p>{currentProduct.desc}</p></div><em>{isNode?"人工开通":"额度提取"}</em></header>
           {!isNode&&<div className="config-block"><div className="config-title"><b>1. 选择地区</b><span>{regions[selected].flag} {regions[selected].country}</span></div><div className="compact-regions">{regions.map((region,index)=>{const enabled=saleOffers===null||saleOffers.some(offer=>offer.product===product&&offer.region===region.code);return <button key={region.code} disabled={!enabled} className={`${selected===index?"selected":""} ${!enabled?"unavailable":""}`} onClick={()=>setSelected(index)}><span>{region.flag}</span><b>{region.country}</b><small>{enabled?region.city:"暂停销售"}</small><em>{enabled?`$${(region.price*multiplier).toFixed(2)}`:"停售"}</em></button>})}</div></div>}
