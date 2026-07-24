@@ -22,6 +22,13 @@ const products = [
 ] as const;
 
 type ProductCategory = "proxy" | "node";
+type CatalogOffer = {
+  product: string;
+  region: string;
+  price7: number;
+  price30: number;
+  price90: number;
+};
 
 export default function Home() {
   const [category, setCategory] = useState<ProductCategory>("proxy");
@@ -29,19 +36,29 @@ export default function Home() {
   const [duration, setDuration] = useState(30);
   const [selected, setSelected] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [saleOffers, setSaleOffers] = useState<Array<{product: string; region: string}> | null>(null);
-  const multiplier = duration === 7 ? .35 : duration === 30 ? 1 : 2.55;
-  const total = useMemo(() => (category === "node" ? 29.9 : regions[selected].price) * quantity * multiplier, [category, selected, quantity, multiplier]);
+  const [saleOffers, setSaleOffers] = useState<CatalogOffer[] | null>(null);
   const visibleProducts = products.filter(item => item.category === category);
   const currentProduct = products.find(item => item.id === product)!;
   const isNode = currentProduct.category === "node";
   const orderRegion = isNode ? "GLOBAL" : regions[selected].code;
+  const currentOffer = saleOffers?.find(offer => offer.product === product && offer.region === orderRegion);
+  const fallbackUnitPrice = (isNode ? 29.9 : regions[selected].price) * (duration === 7 ? .35 : duration === 30 ? 1 : 2.55);
+  const unitPrice = currentOffer
+    ? duration === 7 ? currentOffer.price7 : duration === 90 ? currentOffer.price90 : currentOffer.price30
+    : fallbackUnitPrice;
+  const total = useMemo(() => unitPrice * quantity, [unitPrice, quantity]);
   const productEnabled = (id: string) => saleOffers === null || saleOffers.some(offer => offer.product === id);
   const currentEnabled = saleOffers === null || saleOffers.some(offer => offer.product === product && (isNode || offer.region === orderRegion));
 
   useEffect(() => {
     fetch("/api/catalog").then(response => response.json()).then(data => {
-      if (Array.isArray(data.items)) setSaleOffers(data.items.map((item: {product: string; region: string}) => ({product: item.product, region: item.region})));
+      if (Array.isArray(data.items)) setSaleOffers(data.items.map((item: CatalogOffer) => ({
+        product: item.product,
+        region: item.region,
+        price7: Number(item.price7),
+        price30: Number(item.price30),
+        price90: Number(item.price90),
+      })));
     }).catch(() => undefined);
   }, []);
 
@@ -84,7 +101,7 @@ export default function Home() {
       <div className="unified-store config-only">
         <div className="unified-config-panel">
           <header><div><span>{isNode?"节点服务":"代理 IP"}</span><h3>{currentProduct.name}</h3><p>{currentProduct.desc}</p></div><em>{isNode?"人工开通":"额度提取"}</em></header>
-          {!isNode&&<div className="config-block"><div className="config-title"><b>1. 选择地区</b><span>{regions[selected].flag} {regions[selected].country}</span></div><div className="compact-regions">{regions.map((region,index)=>{const enabled=saleOffers===null||saleOffers.some(offer=>offer.product===product&&offer.region===region.code);return <button key={region.code} disabled={!enabled} className={`${selected===index?"selected":""} ${!enabled?"unavailable":""}`} onClick={()=>setSelected(index)}><span>{region.flag}</span><b>{region.country}</b><small>{enabled?region.city:"暂停销售"}</small><em>{enabled?`$${(region.price*multiplier).toFixed(2)}`:"停售"}</em></button>})}</div></div>}
+          {!isNode&&<div className="config-block"><div className="config-title"><b>1. 选择地区</b><span>{regions[selected].flag} {regions[selected].country}</span></div><div className="compact-regions">{regions.map((region,index)=>{const offer=saleOffers?.find(item=>item.product===product&&item.region===region.code);const enabled=saleOffers===null||Boolean(offer);const price=offer?(duration===7?offer.price7:duration===90?offer.price90:offer.price30):region.price*(duration===7?.35:duration===30?1:2.55);return <button key={region.code} disabled={!enabled} className={`${selected===index?"selected":""} ${!enabled?"unavailable":""}`} onClick={()=>setSelected(index)}><span>{region.flag}</span><b>{region.country}</b><small>{enabled?region.city:"暂停销售"}</small><em>{enabled?`$${price.toFixed(2)}`:"停售"}</em></button>})}</div></div>}
           {isNode&&<div className="node-global-notice"><span>▣</span><div><b>无需选择地区</b><small>{currentProduct.name} 为全局节点商品，付款后由管理员完成开通。</small></div></div>}
           <div className="config-row">
             <div className="config-block"><div className="config-title"><b>{isNode?"1":"2"}. 选择周期</b></div><div className="duration-options">{[7,30,90].map(day=><button key={day} className={duration===day?"selected":""} onClick={()=>setDuration(day)}><b>{day} 天</b><small>{day===30?"常用":"按需选择"}</small></button>)}</div></div>
