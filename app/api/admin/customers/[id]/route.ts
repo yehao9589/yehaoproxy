@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
 import { requireAdminApi } from "../../../../../lib/admin-auth";
 import { audit } from "../../../../../lib/audit";
+import { hashPassword } from "../../../../../lib/auth";
 import { getDb } from "../../../../../db";
-import { auditLogs, customers, inventory, notifications, orders, proxyAllocations, tickets, wallets, walletTransactions } from "../../../../../db/schema";
+import { auditLogs, authSessions, customers, inventory, notifications, orders, proxyAllocations, tickets, wallets, walletTransactions } from "../../../../../db/schema";
 
 export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){
   if(!await requireAdminApi())return NextResponse.json({error:"无管理员权限"},{status:403});
@@ -22,7 +23,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   if(!admin)return NextResponse.json({error:"无管理员权限"},{status:403});
   const{id}=await params,b=await req.json().catch(()=>null),db=getDb();
   const[target]=await db.select().from(customers).where(eq(customers.id,id)).limit(1);
-  if(!target)return NextResponse.json({error:"客户不存在"},{status:404});
+  if(!target||target.role!=="customer")return NextResponse.json({error:"客户不存在"},{status:404});
   if(target.id===admin.id&&b.status==="suspended")return NextResponse.json({error:"不能停用当前管理员账号"},{status:409});
   const updates:{status?:"active"|"suspended";role?:"customer"|"admin";name?:string|null;email?:string;emailVerified?:boolean}={};
   if(["active","suspended"].includes(b.status))updates.status=b.status;
@@ -36,9 +37,15 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     updates.email=email;
   }
   if(b.emailVerified!==undefined)updates.emailVerified=b.emailVerified===true||b.emailVerified==="true";
-  if(!Object.keys(updates).length)return NextResponse.json({error:"没有可修改内容"},{status:400});
+  const password=b.password===undefined?"":String(b.password);
+  if(password&&(password.length<8||password.length>128||!/[A-Za-z]/.test(password)||!/[0-9]/.test(password)))return NextResponse.json({error:"新密码需为 8–128 位，并同时包含字母和数字"},{status:400});
+  if(!Object.keys(updates).length&&!password)return NextResponse.json({error:"没有可修改内容"},{status:400});
   if(updates.email&&updates.email!==target.email)await db.update(orders).set({customerEmail:updates.email}).where(eq(orders.customerEmail,target.email));
   await db.update(customers).set(updates).where(eq(customers.id,id));
-  await audit({id:admin.id,role:admin.role},"customer.update","customer",id,updates,req);
+  if(password){
+    await db.update(customers).set({passwordHash:await hashPassword(password)}).where(eq(customers.id,id));
+    await db.delete(authSessions).where(eq(authSessions.customerId,id));
+  }
+  await audit({id:admin.id,role:admin.role},password?"customer.password.update":"customer.update","customer",id,password?{sessionsRevoked:true}:updates,req);
   return NextResponse.json({ok:true,email:updates.email});
 }
