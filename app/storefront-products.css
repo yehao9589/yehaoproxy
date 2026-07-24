@@ -11,4 +11,9 @@
 .selected-product-banner span{padding:3px 7px;border-radius:10px;background:#e4f0ff;color:#1266e3;font-size:9px;font-weight:700}
 .selected-product-banner b{font-size:13px}
 .selected-product-banner button{margin-left:auto;border:0;background:transparent;color:#1266e3;font-size:10px;font-weight:700}
+.node-no-region{min-height:260px;margin-top:20px;border:1px dashed #bdd4ec;border-radius:13px;background:linear-gradient(145deg,#f8fbff,#eef6ff);display:flex;align-items:center;justify-content:center;gap:16px;padding:28px;text-align:left}
+.node-no-region>span{width:54px;height:54px;display:grid;place-items:center;border-radius:15px;background:#1266e3;color:#fff;font-size:25px;box-shadow:0 10px 24px #1266e32b}
+.node-no-region div{display:flex;flex-direction:column;gap:7px}
+.node-no-region b{font-size:17px;color:#183653}
+.node-no-region small{max-width:330px;color:#6f8295;line-height:1.6}
 @media(max-width:700px){.store-category-tabs,.product-grid.node-products{grid-template-columns:1fr}.store-category-tabs{margin-top:24px}}

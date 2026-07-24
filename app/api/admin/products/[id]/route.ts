@@ -24,7 +24,7 @@ export async function PATCH(req: Request, {params}: {params: Promise<{id: string
   }
   if (body.region !== undefined) {
     const region = String(body.region).trim().toUpperCase();
-    if (!/^[A-Z]{2}$/.test(region)) return NextResponse.json({error: "地区代码必须是两位英文字母"}, {status: 400});
+    if (region !== "GLOBAL" && !/^[A-Z]{2}$/.test(region)) return NextResponse.json({error: "地区代码必须是两位英文字母"}, {status: 400});
     patch.region = region;
   }
   if (body.regionName !== undefined) {

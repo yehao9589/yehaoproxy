@@ -65,6 +65,10 @@ export default function ProductOffersModule() {
     event.preventDefault();
     const form = event.currentTarget;
     const body = Object.fromEntries(new FormData(form));
+    if (["soft-router", "computer-node"].includes(String(body.product))) {
+      body.region = "GLOBAL";
+      body.regionName = "全局节点";
+    }
     const isEdit = Boolean(editing);
     const url = isEdit ? `/api/admin/products/${editing!.id}` : "/api/admin/products";
     setSaving(true);
