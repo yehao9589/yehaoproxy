@@ -54,7 +54,14 @@ export default function Home() {
         <button className={category === "proxy" ? "on" : ""} onClick={() => chooseCategory("proxy")}><span>◫</span><b>代理 IP</b><small>住宅、机房与动态代理</small></button>
         <button className={category === "node" ? "on" : ""} onClick={() => chooseCategory("node")}><span>▣</span><b>节点服务</b><small>软路由中转与电脑节点</small></button>
       </div>
-      <div className={`product-grid ${category === "node" ? "node-products" : ""}`}>{visibleProducts.map((item, index) => <button key={item.id} className={`product-card ${product === item.id ? "active" : ""}`} onClick={() => setProduct(item.id)}><div className={`icon i${index}`}>{item.category === "node" ? "▣" : "◫"}</div><span className="product-type-tag">{item.category === "node" ? "节点服务" : "代理 IP"}</span><h3>{item.name}</h3><p>{item.desc}</p><b>选择此产品 →</b></button>)}</div>
+      <div className={`product-grid ${category === "node" ? "node-products" : ""}`}>{visibleProducts.map((item, index) => <button key={item.id} className={`product-card ${product === item.id ? "active" : ""}`} onClick={() => setProduct(item.id)}><div className={`icon i${index}`}>{item.category === "node" ? "▣" : "◫"}</div><span className="product-type-tag">{item.category === "node" ? "节点服务" : "代理 IP"}</span><h3>{item.name}</h3><p>{item.desc}</p><b>{product === item.id ? "已选择" : "选择此产品 →"}</b></button>)}</div>
+      {category === "node" && <div className="node-quick-checkout">
+        <div className="node-quick-summary"><span>当前选择</span><b>{currentProduct.name}</b><small>无需选择地区 · 付款后管理员人工开通</small></div>
+        <div className="node-quick-field"><label>使用周期</label><div>{[7,30,90].map(day=><button key={day} className={duration===day?"on":""} onClick={()=>setDuration(day)}>{day} 天</button>)}</div></div>
+        <div className="node-quick-field quantity"><label>购买数量</label><div><button onClick={()=>setQuantity(Math.max(1,quantity-1))}>−</button><b>{quantity}</b><button onClick={()=>setQuantity(Math.min(500,quantity+1))}>＋</button></div></div>
+        <div className="node-quick-total"><span>参考金额</span><b>${total.toFixed(2)}</b><small>实际价格按后台商品配置</small></div>
+        <a className="primary node-quick-buy" href={buy}>立即购买 {currentProduct.name}</a>
+      </div>}
     </section>
 
     <section id="pricing" className="section pricing">
