@@ -1,0 +1,71 @@
+import {eq} from "drizzle-orm";
+import {NextResponse} from "next/server";
+import {getDb} from "../../../../db";
+import {emailProviders, systemOptions} from "../../../../db/schema";
+import {requireAdminApi} from "../../../../lib/admin-auth";
+
+export const DEFAULT_TEMPLATES = [
+  {id: "register_code", name: "注册验证码", scene: "账户安全", enabled: true, emailEnabled: true, smsEnabled: false, emailSubject: "注册验证码", emailBody: "你的验证码是：{{code}}，10 分钟内有效。", smsBody: "【YehaoProxy】注册验证码：{{code}}，10分钟内有效。"},
+  {id: "reset_password", name: "重置密码验证码", scene: "账户安全", enabled: true, emailEnabled: true, smsEnabled: false, emailSubject: "重置密码验证码", emailBody: "你的重置密码验证码是：{{code}}，10 分钟内有效。", smsBody: "【YehaoProxy】重置密码验证码：{{code}}，10分钟内有效。"},
+  {id: "new_order", name: "新购服务已受理", scene: "订单通知", enabled: true, emailEnabled: true, smsEnabled: false, emailSubject: "新购服务已受理", emailBody: "订单 {{orderId}}（{{product}}）已付款，正在等待开通。", smsBody: "【YehaoProxy】订单{{orderId}}已付款，正在等待开通。"},
+  {id: "provisioning", name: "等待人工开通", scene: "交付通知", enabled: true, emailEnabled: true, smsEnabled: false, emailSubject: "服务正在等待人工开通", emailBody: "订单 {{orderId}} 已进入人工开通流程，我们会尽快完成交付。", smsBody: "【YehaoProxy】订单{{orderId}}正在人工开通，请留意后续通知。"},
+  {id: "expiry", name: "服务即将到期", scene: "到期提醒", enabled: true, emailEnabled: true, smsEnabled: false, emailSubject: "服务将在 {{days}} 天后到期", emailBody: "订单 {{orderId}} 将于 {{expiresAt}} 到期，请及时续费。", smsBody: "【YehaoProxy】订单{{orderId}}将在{{days}}天后到期，请及时续费。"},
+  {id: "expired", name: "服务已到期", scene: "到期提醒", enabled: true, emailEnabled: true, smsEnabled: false, emailSubject: "服务已到期", emailBody: "订单 {{orderId}} 已经到期，请续费后继续使用。", smsBody: "【YehaoProxy】订单{{orderId}}已到期，请登录客户中心续费。"},
+  {id: "renewed", name: "续费成功提醒", scene: "续费通知", enabled: true, emailEnabled: true, smsEnabled: false, emailSubject: "服务续费成功", emailBody: "订单 {{orderId}} 已续费成功，新的到期时间为 {{expiresAt}}。", smsBody: "【YehaoProxy】订单{{orderId}}已续费成功。"},
+  {id: "after_sale", name: "售后申请进度", scene: "售后通知", enabled: true, emailEnabled: true, smsEnabled: false, emailSubject: "售后申请状态更新", emailBody: "订单 {{orderId}} 的售后申请状态已更新，请登录客户中心查看。", smsBody: "【YehaoProxy】订单{{orderId}}的售后申请状态已更新。"},
+];
+
+export async function GET() {
+  if (!await requireAdminApi("settings")) return NextResponse.json({error: "无系统设置权限"}, {status: 403});
+  const db = getDb();
+  const [[email], optionRows] = await Promise.all([
+    db.select().from(emailProviders).where(eq(emailProviders.id, "primary")).limit(1),
+    db.select().from(systemOptions),
+  ]);
+  const options = Object.fromEntries(optionRows.map(item => [item.key, item.value]));
+  let sms = null;
+  let templates = DEFAULT_TEMPLATES;
+  try { sms = options.sms_provider_config ? JSON.parse(options.sms_provider_config) : null; } catch {}
+  try { templates = options.notification_templates ? JSON.parse(options.notification_templates) : DEFAULT_TEMPLATES; } catch {}
+  return NextResponse.json({email, sms, templates});
+}
+
+export async function POST(request: Request) {
+  if (!await requireAdminApi("settings")) return NextResponse.json({error: "无系统设置权限"}, {status: 403});
+  const body = await request.json().catch(() => null);
+  const db = getDb();
+  const now = new Date();
+  if (body?.kind === "sms") {
+    if (!["aliyun", "tencent", "twilio", "generic"].includes(body.provider)) return NextResponse.json({error: "短信服务商无效"}, {status: 400});
+    const config = {
+      provider: String(body.provider),
+      enabled: Boolean(body.enabled),
+      signName: String(body.signName || ""),
+      credentialRef: String(body.credentialRef || "SMS_API_KEY"),
+      secretRef: String(body.secretRef || "SMS_API_SECRET"),
+      region: String(body.region || ""),
+      endpoint: String(body.endpoint || ""),
+      senderId: String(body.senderId || ""),
+    };
+    if (config.enabled && !config.signName) return NextResponse.json({error: "启用短信前请填写短信签名"}, {status: 400});
+    await db.insert(systemOptions).values({key: "sms_provider_config", value: JSON.stringify(config), updatedAt: now}).onConflictDoUpdate({target: systemOptions.key, set: {value: JSON.stringify(config), updatedAt: now}});
+    return NextResponse.json({ok: true, config});
+  }
+  if (body?.kind === "templates") {
+    if (!Array.isArray(body.templates) || !body.templates.length) return NextResponse.json({error: "模板数据无效"}, {status: 400});
+    const templates = body.templates.map((item: any) => ({
+      id: String(item.id),
+      name: String(item.name).slice(0, 50),
+      scene: String(item.scene).slice(0, 30),
+      enabled: item.enabled !== false,
+      emailEnabled: item.emailEnabled !== false,
+      smsEnabled: item.smsEnabled === true,
+      emailSubject: String(item.emailSubject).slice(0, 100),
+      emailBody: String(item.emailBody).slice(0, 5000),
+      smsBody: String(item.smsBody).slice(0, 500),
+    }));
+    await db.insert(systemOptions).values({key: "notification_templates", value: JSON.stringify(templates), updatedAt: now}).onConflictDoUpdate({target: systemOptions.key, set: {value: JSON.stringify(templates), updatedAt: now}});
+    return NextResponse.json({ok: true, templates});
+  }
+  return NextResponse.json({error: "通知配置类型无效"}, {status: 400});
+}

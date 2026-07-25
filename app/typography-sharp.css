@@ -1,0 +1,107 @@
+html,
+body,
+button,
+input,
+select,
+textarea {
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC",
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+  font-synthesis: none;
+}
+
+body {
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+.admin-pro aside nav button {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+.admin-pro .admin-label,
+.admin-pro .admin-user small,
+.admin-pro .admin-head p,
+.admin-pro .box-title p,
+.admin-pro .kpi-grid span,
+.admin-pro .module-stats span,
+.admin-pro .kpi-grid small,
+.admin-pro .module-stats small,
+.admin-pro .setting-title p,
+.admin-pro .setting-title > span,
+.admin-pro .setting-grid label,
+.admin-pro .setting-note,
+.admin-pro .setting-empty,
+.admin-pro .scheduled-center p,
+.admin-pro .scheduled-center small,
+.admin-pro .scheduled-center label,
+.admin-pro .script-monitor span {
+  font-size: 11px !important;
+  line-height: 1.55 !important;
+}
+
+.admin-pro .arow,
+.admin-pro .ticket-row,
+.admin-pro .risk-row,
+.admin-pro .customer-row,
+.admin-pro .filters input,
+.admin-pro .filters select,
+.admin-pro .filters button,
+.admin-pro .module-toolbar button,
+.admin-pro .scheduled-center button,
+.admin-pro .scheduled-center input,
+.admin-pro .scheduled-center code {
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+
+.admin-pro .arow b,
+.admin-pro .customer-row b,
+.admin-pro .scheduled-center b {
+  font-weight: 600;
+}
+
+.unified-console .console-menu button {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+.unified-console :where(p, small, label, dt) {
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+}
+
+.unified-console :where(button, input, select, textarea, .orow, .wrow) {
+  font-size: 12px !important;
+}
+
+.hero-copy > p,
+.product-card p,
+.section-head > p,
+.faq p,
+.auth-form p,
+.auth-form label {
+  font-weight: 400;
+}
+
+/* Keep task switches isolated from the global admin button sizing system. */
+.admin-pro .scheduled-master button,
+.admin-pro .task-switch {
+  box-sizing: border-box !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 3px !important;
+  border: 0 !important;
+  border-radius: 20px !important;
+  background: #cbd5df;
+  line-height: 1 !important;
+  box-shadow: none !important;
+}
+
+.admin-pro .scheduled-master.on button,
+.admin-pro .task-switch.on {
+  background: #1bad78 !important;
+}

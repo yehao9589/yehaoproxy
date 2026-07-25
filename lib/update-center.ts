@@ -1,0 +1,42 @@
+import { eq } from "drizzle-orm";
+import { getDb } from "../db";
+import { systemOptions } from "../db/schema";
+
+export type UpdateSettings = {
+  deploymentMode: "docker" | "manual";
+  repository: string;
+  branch: string;
+  image: string;
+  channel: "stable" | "beta";
+  manifestUrl: string;
+  autoCheck: boolean;
+};
+
+export const defaultUpdateSettings: UpdateSettings = {
+  deploymentMode: "docker",
+  repository: "https://gitee.com/yehao9589/yehaoproxy",
+  branch: "master",
+  image: "yehaoproxy/yehaoproxy",
+  channel: "stable",
+  manifestUrl: "",
+  autoCheck: true,
+};
+
+const KEY = "update_center";
+
+export async function getUpdateSettings(): Promise<UpdateSettings> {
+  const [row] = await getDb().select().from(systemOptions).where(eq(systemOptions.key, KEY)).limit(1);
+  if (!row) return defaultUpdateSettings;
+  try {
+    return { ...defaultUpdateSettings, ...JSON.parse(row.value) };
+  } catch {
+    return defaultUpdateSettings;
+  }
+}
+
+export async function saveUpdateSettings(value: UpdateSettings) {
+  const now = new Date();
+  const json = JSON.stringify(value);
+  await getDb().insert(systemOptions).values({ key: KEY, value: json, updatedAt: now })
+    .onConflictDoUpdate({ target: systemOptions.key, set: { value: json, updatedAt: now } });
+}

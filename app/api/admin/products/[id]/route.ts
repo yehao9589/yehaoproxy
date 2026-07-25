@@ -3,8 +3,7 @@ import {eq} from "drizzle-orm";
 import {requireAdminApi} from "../../../../../lib/admin-auth";
 import {getDb} from "../../../../../db";
 import {productOffers} from "../../../../../db/schema";
-
-const PRODUCTS = new Set(["static-isp", "residential", "datacenter", "soft-router", "computer-node"]);
+import {getProductTypes} from "../../../../../lib/product-types";
 
 export async function PATCH(req: Request, {params}: {params: Promise<{id: string}>}) {
   if (!await requireAdminApi()) {
@@ -19,7 +18,7 @@ export async function PATCH(req: Request, {params}: {params: Promise<{id: string
 
   if (body.product !== undefined) {
     const product = String(body.product);
-    if (!PRODUCTS.has(product)) return NextResponse.json({error: "商品类型无效"}, {status: 400});
+    if (!(await getProductTypes()).some(x=>x.id===product&&x.enabled)) return NextResponse.json({error: "商品类型无效或已停用"}, {status: 400});
     patch.product = product;
   }
   if (body.region !== undefined) {

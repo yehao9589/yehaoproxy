@@ -1,0 +1,30 @@
+/*
+ * The storefront footer was historically styled with a bare `footer` selector.
+ * Keep those presentation rules away from modal/card action footers throughout
+ * the admin and customer applications.
+ */
+footer:not(.site-footer) {
+  position: static;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.site-footer {
+  background: #061526;
+  color: #bdcada;
+  padding: 55px max(24px, calc((100vw - 1180px) / 2));
+  position: relative;
+}
+
+.site-footer .brand {
+  color: #fff;
+}
+
+.site-footer p {
+  font-size: 13px;
+}
+
+.site-footer > small {
+  color: #71869a;
+}

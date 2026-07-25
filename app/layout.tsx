@@ -41,7 +41,17 @@ import "./proxy-usage.css";
 import "./proxy-usage-detail.css";
 import "./dashboard-compact.css";
 import "./service-policy-settings.css";
+import "./admin-permissions.css";
 import "./node-subscription.css";
+import "./footer-scope.css";
+import "./scheduled-tasks.css";
+import "./scheduled-script-monitor.css";
+import "./typography-sharp.css";
+import "./notification-settings.css";
+import "./audit-center.css";
+import "./audit-alignment-fix.css";
+import "./audit-caption-fix.css";
+import "./typography-readability.css";
 import CreditEnhancer from "./CreditEnhancer";
 import AdjustmentEnhancer from "./AdjustmentEnhancer";
 import CurrencyEnhancer from "./CurrencyEnhancer";
@@ -54,7 +64,6 @@ import ProxyOverviewCopyEnhancer from "./ProxyOverviewCopyEnhancer";
 import AutoRenewSwitchEnhancer from "./AutoRenewSwitchEnhancer";
 import ResourceExpiryEnhancer from "./ResourceExpiryEnhancer";
 import OverviewLinkEnhancer from "./OverviewLinkEnhancer";
-import CustomerLogChineseEnhancer from "./CustomerLogChineseEnhancer";
 import ProxyBatchExportEnhancer from "./ProxyBatchExportEnhancer";
 import OverviewStatusEnhancer from "./OverviewStatusEnhancer";
 import OrderCenterLinkEnhancer from "./OrderCenterLinkEnhancer";
@@ -63,6 +72,8 @@ import DashboardRecentOrdersEnhancer from "./DashboardRecentOrdersEnhancer";
 import NodeSubscriptionEnhancer from "./NodeSubscriptionEnhancer";
 import PaymentReturnEnhancer from "./PaymentReturnEnhancer";
 import RenewalVerificationEnhancer from "./RenewalVerificationEnhancer";
+import CustomerIdFormatEnhancer from "./CustomerIdFormatEnhancer";
+import ModalCloseEnhancer from "./ModalCloseEnhancer";
 
 export const metadata: Metadata = {
   title: "YehaoProxy｜全球企业级代理 IP",
@@ -70,5 +81,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="zh-CN"><body>{children}<CreditEnhancer/><AdjustmentEnhancer/><CurrencyEnhancer/><OrderResourceEnhancer/><CustomerRecordEnhancer/><DashboardExpiryEnhancer/><ProxyQrEnhancer/><ManualAllocationEnhancer/><ProxyOverviewCopyEnhancer/><AutoRenewSwitchEnhancer/><ResourceExpiryEnhancer/><OverviewLinkEnhancer/><CustomerLogChineseEnhancer/><ProxyBatchExportEnhancer/><OverviewStatusEnhancer/><OrderCenterLinkEnhancer/><ProxyReplaceEnhancer/><DashboardRecentOrdersEnhancer/><NodeSubscriptionEnhancer/><PaymentReturnEnhancer/><RenewalVerificationEnhancer/></body></html>;
+  return <html lang="zh-CN"><body>{children}<CreditEnhancer/><AdjustmentEnhancer/><CurrencyEnhancer/><OrderResourceEnhancer/><CustomerRecordEnhancer/><DashboardExpiryEnhancer/><ProxyQrEnhancer/><ManualAllocationEnhancer/><ProxyOverviewCopyEnhancer/><AutoRenewSwitchEnhancer/><ResourceExpiryEnhancer/><OverviewLinkEnhancer/><ProxyBatchExportEnhancer/><OverviewStatusEnhancer/><OrderCenterLinkEnhancer/><ProxyReplaceEnhancer/><DashboardRecentOrdersEnhancer/><NodeSubscriptionEnhancer/><PaymentReturnEnhancer/><RenewalVerificationEnhancer/><CustomerIdFormatEnhancer/><ModalCloseEnhancer/></body></html>;
 }
