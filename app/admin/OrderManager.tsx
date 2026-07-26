@@ -1,2 +1,66 @@
-"use client";import{useEffect,useState}from"react";
-type Order={id:string;customerEmail:string;product:string;region:string;quantity:number;durationDays:number;amount:number;currency:string;status:string;paymentReference:string|null;paymentMethod:string;expiresAt:string|null;renewalAmount:number|null;autoRenew:boolean;adminNote:string|null;createdAt:string;updatedAt:string};type Detail={order:Order;customer:any;allocations:any[];payments:any[]};const labels:Record<string,string>={pending:"待付款",paid:"已付款 / 可提取",provisioning:"等待人工开通",active:"已激活",refunded:"已退款",failed:"已取消"};const methods:Record<string,string>={balance:"余额支付",manual:"人工确认",alipay:"支付宝",wechat:"微信支付",paypal:"PayPal",usdt:"USDT",bank:"银行转账"};export default function OrderManager(){const[rows,setRows]=useState<Order[]>([]),[d,setD]=useState<Detail|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[confirm,setConfirm]=useState<string|null>(null);async function load(){const r=await fetch("/api/admin/orders?size=100"),x=await r.json();r.ok?setRows(x.items):setError(x.error)}useEffect(()=>{void load()},[]);async function open(id:string){setBusy(true);const r=await fetch(`/api/admin/orders/${id}`),x=await r.json();setBusy(false);r.ok?setD(x):setError(x.error)}async function action(a:string,extra:any={}){if(!d)return;const r=await fetch(`/api/admin/orders/${d.order.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({action:a,...extra})}),x=await r.json();if(!r.ok)return setError(x.error);setConfirm(null);await load();void open(d.order.id)}async function save(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);void action("service-update",{paymentMethod:f.get("paymentMethod"),expiresAt:f.get("expiresAt"),renewalAmount:f.get("renewalAmount"),autoRenew:f.get("autoRenew")==="on",status:f.get("status"),adminNote:f.get("adminNote")})}async function refund(){if(!d)return;const r=await fetch(`/api/admin/orders/${d.order.id}/refund`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({reason:"管理员后台退款"})}),x=await r.json();if(!r.ok)return setError(x.error);setConfirm(null);await load();void open(d.order.id)}return <div className="module order-manager"><div className="module-toolbar"><div><button className="on">全部订单 {rows.length}</button><button>待付款 {rows.filter(x=>x.status==="pending").length}</button><button>待开通 {rows.filter(x=>["paid","provisioning"].includes(x.status)).length}</button></div><button onClick={()=>load()}>刷新订单</button></div>{error&&<div className="live-error">{error}<button onClick={()=>setError("")}>×</button></div>}<div className="admin-table"><div className="arow order ahead"><span>订单号</span><span>客户</span><span>商品 / 地区</span><span>金额</span><span>到期时间</span><span>状态</span><span>操作</span></div>{rows.map(o=><div className="arow order" key={o.id}><span><button className="order-number-link" onClick={()=>open(o.id)}>{o.id}</button></span><span>{o.customerEmail}</span><span>{o.product} · {o.region} × {o.quantity}</span><span>${o.amount.toFixed(2)}</span><span>{o.expiresAt?new Date(o.expiresAt).toLocaleString():"未设置"}</span><span><b className={`order-status ${o.status}`}>{labels[o.status]||o.status}</b></span><span className="live-actions"><button onClick={()=>open(o.id)}>管理</button>{["paid","provisioning"].includes(o.status)&&<button className="primary" onClick={async()=>{await open(o.id)}}>开通</button>}</span></div>)}</div>{busy&&<div className="customer-drawer-mask"><div className="customer-drawer loading">正在加载订单配置…</div></div>}{d&&<div className="order-workspace-mask" onClick={()=>setD(null)}><section className="order-workspace" onClick={e=>e.stopPropagation()}><header className="order-workspace-head"><div><span>订单管理 / {d.order.customerEmail}</span><h2>订单 #{d.order.id}</h2></div><div><b className={`order-status ${d.order.status}`}>{labels[d.order.status]}</b><button onClick={()=>setD(null)}>×</button></div></header><div className="order-toolbar"><button>发送消息</button><button>创建工单</button><button onClick={()=>action("fulfill")} disabled={!["paid","provisioning"].includes(d.order.status)}>从库存提取并发放</button></div><form className="mofang-order-form" onSubmit={save}><section><h3>产品与服务</h3><div className="order-form-grid"><label>订单编号<input value={d.order.id} disabled/></label><label>客户<input value={d.customer?.name||d.order.customerEmail} disabled/></label><label>商品 / 服务<input value={d.order.product} disabled/></label><label>地区额度<input value={`${d.order.region} × ${d.order.quantity} 条`} disabled/></label><label>订购时间<input value={new Date(d.order.createdAt).toLocaleString()} disabled/></label><label>服务状态<select name="status" defaultValue={d.order.status}><option value="pending">待付款</option><option value="paid">已付款</option><option value="provisioning">等待人工开通</option><option value="active">已激活</option><option value="refunded">已退款</option><option value="failed">已取消</option></select></label></div></section><section><h3>财务与续费</h3><div className="order-form-grid"><label>首付金额<input value={d.order.amount.toFixed(2)} disabled/></label><label>付款方式<select name="paymentMethod" defaultValue={d.order.paymentMethod||"balance"}>{Object.entries(methods).map(x=><option value={x[0]} key={x[0]}>{x[1]}</option>)}</select></label><label>到期时间<input name="expiresAt" type="datetime-local" defaultValue={d.order.expiresAt?new Date(d.order.expiresAt).toISOString().slice(0,16):""}/></label><label>续费金额<input name="renewalAmount" type="number" min="0" step="0.01" defaultValue={d.order.renewalAmount??d.order.amount}/></label><label className="renew-switch">余额自动续费<input name="autoRenew" type="checkbox" defaultChecked={d.order.autoRenew}/><i/></label><label>支付流水<input value={d.order.paymentReference||"未支付"} disabled/></label></div></section><section><h3>管理员信息</h3><label className="admin-note">管理员备注<textarea name="adminNote" rows={4} defaultValue={d.order.adminNote||""} placeholder="仅管理员可见，可记录采购渠道、开通信息和客户约定"/></label></section><section><h3>已分配资源</h3>{d.allocations.length?<div className="resource-table">{d.allocations.map(x=><div key={x.id}><span className="mono">{x.host}:{x.port}</span><span className="resource-region"><b>{x.country||d.order.region}</b><small>{x.city||"City not set"}</small></span><span>{x.protocol}</span><span className="resource-expiry"><small>到期时间</small><b>{x.expiresAt?new Date(x.expiresAt).toLocaleString("zh-CN",{hour12:false}):"未设置"}</b></span><span>{x.autoRenew?"自动续费":"手动续费"}</span></div>)}</div>:<p className="empty-inline">尚未分配真实 IP</p>}</section><footer className="order-savebar"><div>{d.order.status==="pending"&&<button type="button" onClick={()=>setConfirm("cancel")}>取消订单</button>}{["paid","provisioning","active"].includes(d.order.status)&&<button type="button" className="danger" onClick={()=>setConfirm("refund")}>退款</button>}</div><div><button type="button" onClick={()=>open(d.order.id)}>取消更改</button><button className="primary">保存更改</button></div></footer></form>{confirm&&<div className="inline-confirm floating"><b>{confirm==="cancel"?"确认取消订单并恢复销售额度？":"确认退款到客户余额？"}</b><button onClick={()=>setConfirm(null)}>返回</button><button className="danger" onClick={()=>confirm==="cancel"?action("cancel"):refund()}>确认执行</button></div>}</section></div>}</div>}
+"use client";
+
+import { useEffect, useState } from "react";
+import OrderDetailWorkspace, { type AdminOrderDetail } from "./OrderDetailWorkspace";
+
+type Order = AdminOrderDetail["order"] & { currency: string; durationDays: number; updatedAt: string };
+
+const labels: Record<string, string> = {
+  pending: "待付款",
+  paid: "已付款 / 可提取",
+  provisioning: "等待人工开通",
+  active: "已激活",
+  refunded: "已退款",
+  failed: "已取消",
+};
+
+export default function OrderManager() {
+  const [rows, setRows] = useState<Order[]>([]);
+  const [detail, setDetail] = useState<AdminOrderDetail | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    const response = await fetch("/api/admin/orders?size=100");
+    const data = await response.json();
+    response.ok ? setRows(data.items) : setError(data.error);
+  }
+
+  useEffect(() => { void load(); }, []);
+
+  async function open(id: string) {
+    setBusy(true);
+    const response = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`);
+    const data = await response.json();
+    setBusy(false);
+    response.ok ? setDetail(data) : setError(data.error);
+  }
+
+  return (
+    <div className="module order-manager">
+      <div className="module-toolbar">
+        <div>
+          <button className="on">全部订单 {rows.length}</button>
+          <button>待付款 {rows.filter((item) => item.status === "pending").length}</button>
+          <button>待开通 {rows.filter((item) => ["paid", "provisioning"].includes(item.status)).length}</button>
+        </div>
+        <button onClick={() => void load()}>刷新订单</button>
+      </div>
+      {error && <div className="live-error">{error}<button onClick={() => setError("")}>×</button></div>}
+      <div className="admin-table">
+        <div className="arow order ahead"><span>订单号</span><span>客户</span><span>商品 / 地区</span><span>金额</span><span>到期时间</span><span>状态</span><span>操作</span></div>
+        {rows.map((order) => <div className="arow order" key={order.id}>
+          <span><button className="order-number-link" onClick={() => void open(order.id)}>{order.id}</button></span>
+          <span>{order.customerEmail}</span>
+          <span>{order.product} · {order.region} × {order.quantity}</span>
+          <span>${order.amount.toFixed(2)}</span>
+          <span>{order.expiresAt ? new Date(order.expiresAt).toLocaleString("zh-CN", { hour12: false }) : "未设置"}</span>
+          <span><b className={`order-status ${order.status}`}>{labels[order.status] || order.status}</b></span>
+          <span className="live-actions"><button onClick={() => void open(order.id)}>管理</button>{["paid", "provisioning"].includes(order.status) && <button className="primary" onClick={() => void open(order.id)}>开通</button>}</span>
+        </div>)}
+      </div>
+      {busy && <div className="customer-drawer-mask"><div className="customer-drawer loading">正在加载订单配置…</div></div>}
+      {detail && <OrderDetailWorkspace detail={detail} onClose={() => setDetail(null)} onChanged={async (next) => { setDetail(next); await load(); }} />}
+    </div>
+  );
+}

@@ -26,7 +26,7 @@ function CountryPicker({defaultValue}:{defaultValue:string}) {
   const [selected,setSelected]=useState(initial);
   const [query,setQuery]=useState(`${initial.flag} ${initial.name}（${initial.code}）`);
   const [open,setOpen]=useState(false);
-  const searchText=open?query.replace(/^\S+\s*/,"").replace(/（[A-Z]{2}）$/,"").trim():query;
+  const searchText=query.trim();
   const normalized=searchText.toLocaleLowerCase("zh-CN");
   const filtered=normalized
     ? countries.filter(item=>item.code.toLowerCase().includes(normalized)||item.name.toLocaleLowerCase("zh-CN").includes(normalized))
@@ -75,6 +75,7 @@ export default function ProductOffersModule() {
   const [editingType,setEditingType]=useState<ProductType|null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Offer | null>(null);
+  const [formProduct,setFormProduct]=useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
@@ -153,12 +154,12 @@ export default function ProductOffersModule() {
 
   return (
     <div className="business-page product-offers-page">
-      {error && <div className="live-error">{error}<button onClick={() => setError("")}>×</button></div>}
-      {success && <div className="offer-success"><span>✓</span>{success}</div>}
+      {error && <div className="offer-toast error" role="alert"><span>!</span><b>{error}</b><button aria-label="关闭提示" onClick={() => setError("")}>×</button></div>}
+      {success && <div className="offer-toast success" role="status"><span>✓</span><b>{success}</b></div>}
 
       <div className="business-kpis">
         <article><span>商品配置</span><b>{items.length}</b><small>地区独立定价</small></article>
-        <article><span>剩余可售额度</span><b>{items.reduce((n, x) => n + Math.max(0, x.saleStock - x.sold), 0)}</b><small>不读取库存中心</small></article>
+        <article><span>限量商品剩余额度</span><b>{items.filter(x => x.saleStock >= 0).reduce((n, x) => n + Math.max(0, x.saleStock - x.sold), 0)}</b><small>{items.filter(x => x.saleStock < 0).length} 项不限量</small></article>
         <article><span>节点服务</span><b>{items.filter(x => typeCategory(x.product) === "node").length}</b><small>节点销售配置</small></article>
         <article><span>在售配置</span><b>{items.filter(x => x.enabled).length}</b><small>前台可购买</small></article>
       </div>
@@ -169,7 +170,7 @@ export default function ProductOffersModule() {
             <h2>商品管理</h2>
             <p>通过“编辑商品”统一修改类型、地区、周期价格、销售额度和排序。</p>
           </div>
-          <div className="product-header-actions"><button onClick={()=>setManagingTypes(true)}>管理商品类型</button><button className="primary" onClick={() => setCreating(true)}>＋ 添加商品</button></div>
+          <div className="product-header-actions"><button onClick={()=>setManagingTypes(true)}>管理商品类型</button><button className="primary" onClick={() => {setFormProduct(productTypes.find(x=>x.enabled)?.id||"");setCreating(true)}}>＋ 添加商品</button></div>
         </header>
 
         <div className="offer-category-tabs" aria-label="商品分类">
@@ -190,12 +191,12 @@ export default function ProductOffersModule() {
                 <b>{typeName(item.product)}</b>
               </span>
               <span><b>{item.regionName}</b><small>{item.region}</small></span>
-              <span className="offer-price">${item.price7.toFixed(2)}</span>
-              <span className="offer-price">${item.price30.toFixed(2)}</span>
-              <span className="offer-price">${item.price90.toFixed(2)}</span>
-              <span><b>{item.saleStock}</b><small>剩余 {Math.max(0, item.saleStock - item.sold)}</small></span>
+              <span className="offer-price">{item.price7 < 0 ? "不出售" : `$${item.price7.toFixed(2)}`}</span>
+              <span className="offer-price">{item.price30 < 0 ? "不出售" : `$${item.price30.toFixed(2)}`}</span>
+              <span className="offer-price">{item.price90 < 0 ? "不出售" : `$${item.price90.toFixed(2)}`}</span>
+              <span><b>{item.saleStock < 0 ? "不限量" : item.saleStock}</b><small>{item.saleStock < 0 ? `已售 ${item.sold}` : `剩余 ${Math.max(0, item.saleStock - item.sold)}`}</small></span>
               <span className="offer-row-actions">
-                <button className="offer-edit" onClick={() => setEditing(item)}>编辑商品</button>
+                <button className="offer-edit" onClick={() => {setFormProduct(item.product);setEditing(item)}}>编辑商品</button>
                 <button type="button" role="switch" aria-checked={item.enabled} title={item.enabled ? "点击暂停销售" : "点击恢复销售"} className={`sale-toggle ${item.enabled ? "on" : "off"}`} onClick={() => void toggle(item)}>
                   <span/><b>{item.enabled ? "正在售卖" : "暂停销售"}</b><i/>
                 </button>
@@ -211,12 +212,14 @@ export default function ProductOffersModule() {
           <form onSubmit={submit}>
             <div><h2>{editing ? "编辑商品" : "添加商品"}</h2><button type="button" onClick={() => {setCreating(false); setEditing(null);}}>×</button></div>
             <div className="form-grid">
-              <label>商品类型<select name="product" defaultValue={editing?.product || productTypes.find(x=>x.enabled)?.id}>{productTypes.filter(x=>x.enabled||x.id===editing?.product).map(type=><option key={type.id} value={type.id}>{type.name}（{type.category==="node"?"节点服务":"代理 IP"}）</option>)}</select></label>
-              <CountryPicker defaultValue={editing?.region || "US"}/>
-              <label>7 天单价<input name="price7" type="number" min="0.01" step="0.01" required defaultValue={editing?.price7}/></label>
-              <label>30 天单价<input name="price30" type="number" min="0.01" step="0.01" required defaultValue={editing?.price30}/></label>
-              <label>90 天单价<input name="price90" type="number" min="0.01" step="0.01" required defaultValue={editing?.price90}/></label>
-              <label>前台销售额度<input name="saleStock" type="number" min="0" step="1" required defaultValue={editing?.saleStock}/></label>
+              <label>商品类型<select name="product" value={formProduct} onChange={event=>setFormProduct(event.target.value)}>{productTypes.filter(x=>x.enabled||x.id===editing?.product).map(type=><option key={type.id} value={type.id}>{type.name}（{type.category==="node"?"节点服务":"代理 IP"}）</option>)}</select></label>
+              {typeCategory(formProduct)==="node"
+                ? <label>销售地区<input value="全局节点（无需选择国家）" disabled/></label>
+                : <CountryPicker defaultValue={editing?.region && editing.region!=="GLOBAL" ? editing.region : "US"}/>}
+              <label>7 天单价<input name="price7" type="number" min="0.01" step="0.01" placeholder="不填写表示不出售" defaultValue={editing && editing.price7 >= 0 ? editing.price7 : ""}/></label>
+              <label>30 天单价<input name="price30" type="number" min="0.01" step="0.01" placeholder="不填写表示不出售" defaultValue={editing && editing.price30 >= 0 ? editing.price30 : ""}/></label>
+              <label>90 天单价<input name="price90" type="number" min="0.01" step="0.01" placeholder="不填写表示不出售" defaultValue={editing && editing.price90 >= 0 ? editing.price90 : ""}/></label>
+              <label>前台销售额度<input name="saleStock" type="number" min="0" step="1" placeholder="不填写表示不限量" defaultValue={editing && editing.saleStock >= 0 ? editing.saleStock : ""}/></label>
               <label>显示排序<input name="sortOrder" type="number" step="1" defaultValue={editing?.sortOrder ?? 100}/></label>
             </div>
             <p className="modal-note">保存后会立即更新商品中心配置；已产生的历史订单不会修改。</p>

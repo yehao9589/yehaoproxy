@@ -35,12 +35,14 @@ export async function POST(req: Request) {
     ))
     .limit(1);
   if (!offer) return NextResponse.json({ error: "该商品地区暂未开放销售" }, { status: 404 });
-  const available = Math.max(0, offer.saleStock - offer.sold);
-  if (available < quantity) {
+  const unlimited = offer.saleStock < 0;
+  const available = unlimited ? null : Math.max(0, offer.saleStock - offer.sold);
+  if (!unlimited && available! < quantity) {
     return NextResponse.json({ error: "商城可售额度不足", available }, { status: 409 });
   }
 
   const unit = durationDays === 7 ? offer.price7 : durationDays === 90 ? offer.price90 : offer.price30;
+  if (unit < 0) return NextResponse.json({error: `该商品暂不出售 ${durationDays} 天周期`}, {status: 409});
   const amount = Number((unit * quantity).toFixed(2));
   const now = Math.floor(Date.now() / 1000);
   const id = `YH-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
   const result = await d1.batch([
     d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'USD','pending',?,?)")
       .bind(id, user.email, product, region, quantity, durationDays, amount, now, now),
-    d1.prepare("UPDATE product_offers SET sold=sold+?,updated_at=? WHERE id=? AND enabled=1 AND sale_stock-sold>=?")
+    d1.prepare("UPDATE product_offers SET sold=sold+?,updated_at=? WHERE id=? AND enabled=1 AND (sale_stock<0 OR sale_stock-sold>=?)")
       .bind(quantity, now, offer.id, quantity),
   ]);
   if (!result[1].success || Number(result[1].meta?.changes) !== 1) {

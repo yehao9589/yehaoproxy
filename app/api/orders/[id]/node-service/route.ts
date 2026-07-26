@@ -67,6 +67,7 @@ export async function PATCH(
       .limit(1);
     if (!offer) return NextResponse.json({ error: "该节点商品已经下架，无法在线续费" }, { status: 409 });
     const unit = durationDays === 7 ? offer.price7 : durationDays === 90 ? offer.price90 : offer.price30;
+    if (unit < 0) return NextResponse.json({ error: `该服务暂不支持续费 ${durationDays} 天` }, { status: 409 });
     const amount = Number((unit * order.quantity).toFixed(2));
     const renewalId = `RN-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
     const now = new Date();

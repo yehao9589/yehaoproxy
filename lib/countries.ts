@@ -7,7 +7,12 @@ const displayNames = typeof Intl !== "undefined" && "DisplayNames" in Intl
 
 export function countryName(code: string) {
   const normalized = code.toUpperCase();
-  return displayNames?.of(normalized) || normalized;
+  if (!/^[A-Z]{2}$/.test(normalized)) return normalized === "GLOBAL" ? "全局节点" : normalized;
+  try {
+    return displayNames?.of(normalized) || normalized;
+  } catch {
+    return normalized;
+  }
 }
 
 export function countryFlag(code: string) {

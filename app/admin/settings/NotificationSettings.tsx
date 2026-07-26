@@ -147,7 +147,7 @@ export default function NotificationSettings() {
 
       <header className="notify-head">
         <div>
-          <span className="notify-eyebrow">NOTIFICATION CENTER</span>
+          <span className="notify-eyebrow">通知中心</span>
           <h2>通知中心</h2>
           <p>统一管理邮件、短信接口与客户触达模板</p>
         </div>
@@ -300,7 +300,7 @@ export default function NotificationSettings() {
                 <label>区域<input value={sms.region} onChange={event => setSms({...sms, region: event.target.value})}/></label>
                 <label>Access Key 环境变量<input value={sms.credentialRef} onChange={event => setSms({...sms, credentialRef: event.target.value})}/></label>
                 <label>Secret 环境变量<input value={sms.secretRef} onChange={event => setSms({...sms, secretRef: event.target.value})}/></label>
-                <label>Sender ID<input value={sms.senderId} onChange={event => setSms({...sms, senderId: event.target.value})}/></label>
+                <label>发送方标识<input value={sms.senderId} onChange={event => setSms({...sms, senderId: event.target.value})}/></label>
                 <label>接口地址<input value={sms.endpoint} onChange={event => setSms({...sms, endpoint: event.target.value})}/></label>
               </div>
             </div>

@@ -43,8 +43,9 @@ export async function POST(req: Request) {
 
   for (const [key, required] of requiredByKey) {
     const offer = offerByKey.get(key)!;
-    const available = Math.max(0, offer.saleStock - offer.sold);
-    if (available < required) {
+    const unlimited = offer.saleStock < 0;
+    const available = unlimited ? null : Math.max(0, offer.saleStock - offer.sold);
+    if (!unlimited && available! < required) {
       return NextResponse.json({error: `${offer.regionName} 可售额度不足`, available, required}, {status: 409});
     }
   }
@@ -56,11 +57,13 @@ export async function POST(req: Request) {
     const unit = item.durationDays === 7 ? offer.price7 : item.durationDays === 90 ? offer.price90 : offer.price30;
     return {...item, id: `YH-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, amount: Number((unit * item.quantity).toFixed(2))};
   });
+  const unavailable = created.find(item => item.amount < 0);
+  if (unavailable) return NextResponse.json({error: `${unavailable.product} / ${unavailable.region} 暂不出售 ${unavailable.durationDays} 天周期`}, {status: 409});
 
   const statements = [
     ...Array.from(requiredByKey.entries()).map(([key, required]) => {
       const offer = offerByKey.get(key)!;
-      return d1.prepare("UPDATE product_offers SET sold=sold+?,updated_at=? WHERE id=? AND enabled=1 AND sale_stock-sold>=?")
+      return d1.prepare("UPDATE product_offers SET sold=sold+?,updated_at=? WHERE id=? AND enabled=1 AND (sale_stock<0 OR sale_stock-sold>=?)")
         .bind(required, now, offer.id, required);
     }),
     ...created.map(item => d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'USD','pending',?,?)")

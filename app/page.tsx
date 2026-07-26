@@ -4,6 +4,7 @@ import {useEffect, useMemo, useState} from "react";
 import "./storefront-products.css";
 import StoreCart, {addStoreCartItem} from "./StoreCart";
 import { countryFlag, countryName } from "../lib/countries";
+const flagClass=(code:string)=>/^[A-Z]{2}$/i.test(code)?`fi fi-${code.toLowerCase()}`:"";
 
 const defaultRegions = [
   {code: "US", flag: "🇺🇸", country: "美国", city: "", price: 3.8},
@@ -88,13 +89,16 @@ export default function Home() {
   const selectedRegion = regions[selected] || regions[0] || defaultRegions[0];
   const orderRegion = isNode ? "GLOBAL" : selectedRegion.code;
   const currentOffer = saleOffers?.find(offer => offer.product === product && offer.region === orderRegion);
+  const durationPrice=(offer:CatalogOffer|undefined,days:number)=>offer?(days===7?offer.price7:days===90?offer.price90:offer.price30):null;
+  const durationAvailable=(days:number)=>saleOffers===null||Boolean(currentOffer&&Number(durationPrice(currentOffer,days))>=0);
   const fallbackUnitPrice = (isNode ? 29.9 : regions[selected].price) * (duration === 7 ? .35 : duration === 30 ? 1 : 2.55);
   const unitPrice = currentOffer
     ? duration === 7 ? currentOffer.price7 : duration === 90 ? currentOffer.price90 : currentOffer.price30
     : fallbackUnitPrice;
   const total = useMemo(() => unitPrice * quantity, [unitPrice, quantity]);
   const productEnabled = (id: string) => saleOffers === null || saleOffers.some(offer => offer.product === id);
-  const currentEnabled = saleOffers === null || saleOffers.some(offer => offer.product === product && (isNode || offer.region === orderRegion));
+  const currentEnabled = (saleOffers === null || saleOffers.some(offer => offer.product === product && (isNode || offer.region === orderRegion))) && durationAvailable(duration);
+  useEffect(()=>{if(!currentOffer||durationAvailable(duration))return;const next=[7,30,90].find(day=>durationAvailable(day));if(next)setDuration(next)},[currentOffer,duration]);
 
   useEffect(() => {
     fetch("/api/catalog").then(response => response.json()).then(data => {
@@ -157,10 +161,10 @@ export default function Home() {
       <div className="unified-store config-only">
         <div className="unified-config-panel">
           <header><div><span>{isNode?"节点服务":"代理 IP"}</span><h3>{currentProduct.name}</h3><p>{currentProduct.desc}</p></div><em>{isNode?"人工开通":"额度提取"}</em></header>
-          {!isNode&&<div className="config-block"><div className="config-title"><b>1. 选择地区</b><span className="selected-region"><span className="flag-emoji">{selectedRegion.flag}</span>{selectedRegion.country}</span></div><div className="compact-regions">{regions.map((region,index)=>{const offer=saleOffers?.find(item=>item.product===product&&item.region===region.code);const enabled=saleOffers===null||Boolean(offer);const price=offer?(duration===7?offer.price7:duration===90?offer.price90:offer.price30):region.price*(duration===7?.35:duration===30?1:2.55);return <button key={region.code} disabled={!enabled} className={`${selected===index?"selected":""} ${!enabled?"unavailable":""}`} onClick={()=>setSelected(index)}><span className="country-flag flag-emoji">{region.flag}</span><b>{region.country}</b><small>{enabled?region.code:"暂停销售"}</small><em>{enabled?`$${price.toFixed(2)}`:"停售"}</em></button>})}</div></div>}
+          {!isNode&&<div className="config-block"><div className="config-title"><b>1. 选择地区</b><span className="selected-region"><i className={flagClass(selectedRegion.code)} title={`${selectedRegion.country}国旗`}/>{selectedRegion.country}</span></div><div className="compact-regions">{regions.map((region,index)=>{const offer=saleOffers?.find(item=>item.product===product&&item.region===region.code);const enabled=saleOffers===null||Boolean(offer);const price=offer?(duration===7?offer.price7:duration===90?offer.price90:offer.price30):region.price*(duration===7?.35:duration===30?1:2.55);return <button key={region.code} disabled={!enabled} className={`${selected===index?"selected":""} ${!enabled?"unavailable":""}`} onClick={()=>setSelected(index)}><span className="country-flag"><i className={flagClass(region.code)} title={`${region.country}国旗`}/></span><b>{region.country}</b><small>{enabled?region.code:"暂停销售"}</small><em>{enabled?`$${price.toFixed(2)}`:"停售"}</em></button>})}</div></div>}
           {isNode&&<div className="node-global-notice"><span>▣</span><div><b>无需选择地区</b><small>{currentProduct.name} 为全局节点商品，付款后由管理员完成开通。</small></div></div>}
           <div className="config-row">
-            <div className="config-block"><div className="config-title"><b>{isNode?"1":"2"}. 选择周期</b></div><div className="duration-options">{[7,30,90].map(day=><button key={day} className={duration===day?"selected":""} onClick={()=>setDuration(day)}><b>{day} 天</b><small>{day===30?"常用":"按需选择"}</small></button>)}</div></div>
+            <div className="config-block"><div className="config-title"><b>{isNode?"1":"2"}. 选择周期</b></div><div className="duration-options">{[7,30,90].map(day=>{const available=durationAvailable(day);return <button key={day} disabled={!available} className={`${duration===day?"selected":""} ${!available?"unavailable":""}`} onClick={()=>setDuration(day)}><b>{day} 天</b><small>{available?(day===30?"常用":"按需选择"):"暂不出售"}</small></button>})}</div></div>
             <div className="config-block quantity-config"><div className="config-title"><b>{isNode?"2":"3"}. 购买数量</b></div><div><button onClick={()=>setQuantity(Math.max(1,quantity-1))}>−</button><input value={quantity} onChange={event=>setQuantity(Math.min(500,Math.max(1,Number(event.target.value)||1)))}/><button onClick={()=>setQuantity(Math.min(500,quantity+1))}>＋</button></div></div>
           </div>
           <footer className="unified-checkout-bar"><div><span>当前配置</span><b>{currentProduct.name}{!isNode&&` · ${selectedRegion.country}`} · {duration} 天 × {quantity}</b></div><div className="unified-price"><span>参考金额</span><b>${total.toFixed(2)}</b></div>{currentEnabled?<button className="primary add-cart-button" onClick={addToCart}>＋ 加入购物车</button>:<button className="store-disabled-buy" disabled>暂停销售</button>}</footer>

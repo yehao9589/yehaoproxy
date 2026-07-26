@@ -34,16 +34,16 @@ export async function PATCH(req: Request, {params}: {params: Promise<{id: string
 
   for (const key of ["price7", "price30", "price90"] as const) {
     if (body[key] === undefined) continue;
-    const value = Number(body[key]);
-    if (!Number.isFinite(value) || value <= 0) {
+    const value = body[key] === null || String(body[key]).trim() === "" ? -1 : Number(body[key]);
+    if (!Number.isFinite(value) || (value !== -1 && value <= 0)) {
       return NextResponse.json({error: "周期价格必须大于 0"}, {status: 400});
     }
     patch[key] = value;
   }
 
   if (body.saleStock !== undefined) {
-    const value = Number(body.saleStock);
-    if (!Number.isInteger(value) || value < 0) {
+    const value = body.saleStock === null || String(body.saleStock).trim() === "" ? -1 : Number(body.saleStock);
+    if (!Number.isInteger(value) || value < -1) {
       return NextResponse.json({error: "销售额度必须是非负整数"}, {status: 400});
     }
     patch.saleStock = value;

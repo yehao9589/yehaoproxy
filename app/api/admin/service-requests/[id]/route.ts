@@ -69,6 +69,17 @@ export async function PATCH(
     );
     return NextResponse.json({ ok: true, status: "completed" });
   }
+  if (request.type === "custom") {
+    const paidOrderId = request.reason?.match(/已付款订单\s+(\S+)/)?.[1];
+    await db.update(serviceRequests).set({
+      status: "completed",
+      adminNote: String(body?.note || "一次性服务已处理完成").slice(0, 500),
+      updatedAt: now,
+    }).where(eq(serviceRequests.id, id));
+    if (paidOrderId) await db.update(orders).set({ status: "active", updatedAt: now }).where(eq(orders.id, paidOrderId));
+    await audit(admin, "service.custom.complete", "order", request.allocationId, { requestId: id, paidOrderId, note: body?.note }, req);
+    return NextResponse.json({ ok: true, status: "completed" });
+  }
 
   const [allocation] = await db
     .select()

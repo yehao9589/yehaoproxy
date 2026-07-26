@@ -117,9 +117,12 @@ export async function POST(
   const txId = `WT-${crypto.randomUUID()}`;
   const renewalSourceId = order.adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1];
   const replacementAllocationId = order.adminNote?.match(/\[REPLACE_ALLOCATION\]([^\n]+)/)?.[1];
+  const oneTimeService = order.adminNote?.includes("[BILLING_MODE]one-time") || false;
+  const targetOrderId = order.adminNote?.match(/\[TARGET_ORDER\]([^\n]+)/)?.[1];
+  const customOneTime = order.adminNote?.includes("[PRODUCT_TYPE]one-time-service") || false;
   const nextStatus = renewalSourceId
     ? "active"
-    : nodeProducts.has(order.product) || order.product === "node-traffic-reset" || order.product === "ip-replacement"
+    : nodeProducts.has(order.product) || order.product === "node-traffic-reset" || order.product === "ip-replacement" || oneTimeService
       ? "provisioning"
       : "paid";
 
@@ -171,6 +174,22 @@ export async function POST(
       type: "reset_traffic",
       durationDays: null,
       reason: `已付款重置订单 ${id}`,
+      amount: payable,
+      status: "pending",
+      adminNote: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+  if (customOneTime && targetOrderId) {
+    const requestId = `AS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+    await db.insert(serviceRequests).values({
+      id: requestId,
+      customerId: user.id,
+      allocationId: targetOrderId,
+      type: "custom",
+      durationDays: null,
+      reason: `${order.product}（已付款订单 ${id}）`,
       amount: payable,
       status: "pending",
       adminNote: null,
