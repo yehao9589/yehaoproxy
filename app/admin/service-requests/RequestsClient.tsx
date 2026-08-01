@@ -54,6 +54,9 @@ export default function RequestsClient() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [actionDialog, setActionDialog] = useState<{id:string;action:"approve"|"reject"} | null>(null);
+  const [actionNote, setActionNote] = useState("");
+  const [actionBusy, setActionBusy] = useState(false);
 
   async function load() {
     const response = await fetch("/api/admin/service-requests");
@@ -87,15 +90,23 @@ export default function RequestsClient() {
     window.setTimeout(() => window.dispatchEvent(new CustomEvent("yehao:open-customer", { detail: { id } })), 250);
   }
 
-  async function action(id: string, actionName: string) {
-    const note = window.prompt(actionName === "approve" ? "处理备注（可选）" : "请填写拒绝原因") || "";
+  function askAction(id:string, action:"approve"|"reject"){
+    setActionNote("");
+    setActionDialog({id,action});
+  }
+
+  async function action(id: string, actionName: "approve"|"reject", note: string) {
+    if(actionName==="reject"&&!note.trim())return setError("请填写拒绝原因");
+    setActionBusy(true);
     const response = await fetch(`/api/admin/service-requests/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: actionName, note }),
+      body: JSON.stringify({ action: actionName, note:note.trim() }),
     });
     const data = await response.json();
+    setActionBusy(false);
     if (!response.ok) return setError(data.error || "处理失败");
+    setActionDialog(null);
     setDetail(null);
     await load();
   }
@@ -116,7 +127,7 @@ export default function RequestsClient() {
         <span>{item.type === "renew" ? "续费" : item.type === "reset_traffic" ? "流量重置" : item.type === "custom" ? "一次性服务" : "更换"}</span>
         <span>{item.reason || `${item.durationDays || 0} 天`}</span>
         <span><b className={`aftersales-status ${item.status}`}>{statusLabels[item.status] || "未知状态"}</b></span>
-        <span className="live-actions"><button onClick={() => void open(item)}>查看详情</button>{item.status === "pending" && <><button className="primary" onClick={() => void action(item.id, "approve")}>批准</button><button className="danger-outline" onClick={() => void action(item.id, "reject")}>拒绝</button></>}</span>
+        <span className="live-actions"><button onClick={() => void open(item)}>查看详情</button>{item.status === "pending" && <><button className="primary" onClick={() => askAction(item.id, "approve")}>批准</button><button className="danger-outline" onClick={() => askAction(item.id, "reject")}>拒绝</button></>}</span>
       </div>)}
     </div>
     {loading && <div className="customer-drawer-mask"><div className="customer-drawer loading">正在加载售后详情…</div></div>}
@@ -147,7 +158,13 @@ export default function RequestsClient() {
         </div></section>}
         {detail.request.type === "replace" && <section><h3>更换申请</h3><div className="aftersales-detail-grid renewal-focus"><div><span>已付费用</span><strong>¥{detail.request.amount?.toFixed(2) || "0.00"}</strong></div><div><span>更换原因</span><strong>{detail.request.reason || "未填写"}</strong></div></div></section>}
       </div>
-      <footer><button onClick={() => setDetail(null)}>关闭</button>{detail.request.status === "pending" && <><button className="danger-outline" onClick={() => void action(detail.request.id, "reject")}>拒绝申请</button><button className="primary" onClick={() => void action(detail.request.id, "approve")}>{detail.request.type === "reset_traffic" ? "确认已重置流量" : detail.request.type === "custom" ? "确认服务已完成" : detail.request.type === "replace" ? "确认并更换 IP" : "批准并执行续费"}</button></>}</footer>
+      <footer><button onClick={() => setDetail(null)}>关闭</button>{detail.request.status === "pending" && <button className="danger-outline" onClick={() => askAction(detail.request.id, "reject")}>拒绝申请</button>}{(detail.request.status === "pending" || (detail.request.type === "reset_traffic" && detail.request.status === "completed")) && <button className="primary" onClick={() => askAction(detail.request.id, "approve")}>{detail.request.type === "reset_traffic" ? (detail.request.status === "completed" ? "重新执行流量重置" : "执行流量重置") : detail.request.type === "custom" ? "确认服务已完成" : detail.request.type === "replace" ? "确认并更换 IP" : "批准并执行续费"}</button>}</footer>
     </section></div>}
+    {actionDialog&&<div className="aftersales-action-mask" onMouseDown={event=>{if(event.target===event.currentTarget&&!actionBusy)setActionDialog(null)}}><form className="aftersales-action-dialog" onSubmit={event=>{event.preventDefault();void action(actionDialog.id,actionDialog.action,actionNote)}}>
+      <header><div><small>售后申请 {actionDialog.id}</small><h2>{actionDialog.action==="reject"?"拒绝售后申请":"确认处理售后申请"}</h2></div><button type="button" disabled={actionBusy} onClick={()=>setActionDialog(null)}>×</button></header>
+      <label>{actionDialog.action==="reject"?"拒绝原因":"处理备注（可选）"}<textarea autoFocus rows={5} maxLength={500} required={actionDialog.action==="reject"} value={actionNote} onChange={event=>setActionNote(event.target.value)} placeholder={actionDialog.action==="reject"?"请填写明确的拒绝原因，客户可在售后记录中查看":"填写本次处理结果或内部说明"}/></label>
+      <p>{actionDialog.action==="reject"?"拒绝后申请状态将变为“已拒绝”，原因会保存到售后记录。":"确认后系统将执行对应的售后处理，请核对服务信息。"}</p>
+      <footer><button type="button" disabled={actionBusy} onClick={()=>setActionDialog(null)}>取消</button><button className={actionDialog.action==="reject"?"danger-outline":"primary"} disabled={actionBusy||(actionDialog.action==="reject"&&!actionNote.trim())}>{actionBusy?"正在处理…":actionDialog.action==="reject"?"确认拒绝":"确认执行"}</button></footer>
+    </form></div>}
   </div>;
 }

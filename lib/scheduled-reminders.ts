@@ -2,6 +2,7 @@ import {and,eq,inArray} from "drizzle-orm";
 import {getDb} from "../db";
 import {customers,notifications,orders,systemOptions} from "../db/schema";
 import {sendTransactionalEmail} from "./email";
+import {runTicketAutomation} from "./ticket-automation";
 
 export type ReminderConfig={
   enabled:boolean;
@@ -28,7 +29,7 @@ function productName(value:string){return ({"static-isp":"静态住宅 IP","stat
 function emailHtml(title:string,body:string,link:string){return `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#24384d"><h2>${title}</h2><p style="line-height:1.8">${body}</p><p><a href="${link}" style="display:inline-block;padding:11px 18px;background:#1266e3;color:#fff;text-decoration:none;border-radius:8px">进入客户中心</a></p><p style="color:#8494a4;font-size:12px">此邮件由 YehaoProxy 服务提醒系统自动发送。</p></div>`}
 
 export async function runScheduledReminders(origin:string){
-  const config=await getReminderConfig(),result={scanned:0,created:0,emailed:0,emailFailed:0,skipped:0};
+  const config=await getReminderConfig(),ticketAutomation=await runTicketAutomation(origin),result={scanned:0,created:0,emailed:0,emailFailed:0,skipped:0,ticketAutomation};
   if(!config.enabled)return result;
   const db=getDb(),now=new Date(),maxWindow=Math.max(8,...config.expiryDays)+1;
   const [orderRows,customerRows,[templateOption]]=await Promise.all([

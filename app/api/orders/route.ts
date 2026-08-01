@@ -79,6 +79,7 @@ export async function GET() {
   return NextResponse.json({
     items: rows.map(({ adminNote, ...order }) => ({
       ...order,
+      renewalOf: adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1] || null,
       subscriptionUrl: order.product === "computer-node"
         ? adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1] || null
         : null,

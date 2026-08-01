@@ -1,7 +1,6 @@
 "use client";
 
 import {useEffect, useMemo, useState} from "react";
-import "./product-offers.css";
 import { countries, countryFlag, countryName } from "../../lib/countries";
 
 type Offer = {

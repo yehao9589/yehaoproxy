@@ -1,4 +1,4 @@
-.offer-toast{position:fixed;z-index:12000;top:18px;left:50%;display:flex;align-items:center;gap:10px;min-width:300px;max-width:min(560px,calc(100vw - 32px));padding:12px 14px;border:1px solid;border-radius:10px;translate:-50% 0;font-size:12px;box-shadow:0 14px 38px rgba(15,35,55,.2);animation:offer-toast-in .2s ease-out}
+.offer-toast{position:fixed;z-index:50000;top:18px;left:50%;display:flex;align-items:center;gap:10px;min-width:300px;max-width:min(560px,calc(100vw - 32px));padding:12px 14px;border:1px solid;border-radius:10px;translate:-50% 0;font-size:12px;box-shadow:0 14px 38px rgba(15,35,55,.2);animation:offer-toast-in .2s ease-out}
 .offer-toast>span{display:grid;flex:0 0 22px;width:22px;height:22px;place-items:center;border-radius:50%;color:#fff;font-weight:800}
 .offer-toast>b{min-width:0;flex:1;line-height:1.5}
 .offer-toast>button{display:grid;width:26px;height:26px;min-width:26px;padding:0;border:0;border-radius:6px;place-items:center;background:transparent;color:currentColor;font-size:18px}

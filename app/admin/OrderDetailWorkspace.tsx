@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import XPanelOrderBinding from "./XPanelOrderBinding";
 
 export type AdminOrderDetail = {
   order: {
@@ -106,7 +107,7 @@ export default function OrderDetailWorkspace({
       const response = await fetch(`/api/admin/orders/${encodeURIComponent(d.order.id)}/refund`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ reason: "管理员后台退款" }),
+        body: JSON.stringify({ reason: "管理员审核退款工单后执行" }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "退款失败");
@@ -167,6 +168,7 @@ export default function OrderDetailWorkspace({
             <h3>管理员信息</h3>
             <label className="admin-note">管理员备注<textarea name="adminNote" rows={4} defaultValue={d.order.adminNote || ""} placeholder="仅管理员可见，可记录采购渠道、开通信息和客户约定" /></label>
           </section>
+          {d.order.product === "computer-node" && <XPanelOrderBinding orderId={d.order.id} />}
           <section>
             <h3>已分配资源</h3>
             {d.allocations.length ? <div className="resource-table">{d.allocations.map((item) => <div key={item.id}><span className="mono">{item.host}:{item.port}</span><span className="resource-region"><b>{item.country || d.order.region}</b><small>{item.city || "未设置城市"}</small></span><span>{item.protocol}</span><span className="resource-expiry"><small>到期时间</small><b>{item.expiresAt ? new Date(item.expiresAt).toLocaleString("zh-CN", { hour12: false }) : "未设置"}</b></span><span>{item.autoRenew ? "自动续费" : "手动续费"}</span></div>)}</div> : <p className="empty-inline">尚未分配真实 IP</p>}
@@ -182,7 +184,7 @@ export default function OrderDetailWorkspace({
             </div>
           </footer>
         </form>
-        {confirm && <div className="inline-confirm floating"><b>{confirm === "cancel" ? "确认取消订单并恢复销售额度？" : "确认退款到客户余额？"}</b><button type="button" onClick={() => setConfirm(null)}>返回</button><button type="button" className="danger" disabled={busy} onClick={() => void (confirm === "cancel" ? action("cancel") : refund())}>确认执行</button></div>}
+        {confirm && <div className="inline-confirm floating"><b>{confirm === "cancel" ? "确认取消订单并恢复销售额度？" : "确认已核对退款工单，并退款到客户余额？"}</b><button type="button" onClick={() => setConfirm(null)}>返回</button><button type="button" className="danger" disabled={busy} onClick={() => void (confirm === "cancel" ? action("cancel") : refund())}>确认执行</button></div>}
       </section>
     </div>
   );

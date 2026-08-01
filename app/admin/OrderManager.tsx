@@ -14,11 +14,22 @@ const labels: Record<string, string> = {
   failed: "已取消",
 };
 
-export default function OrderManager() {
+export default function OrderManager({ search = "" }: { search?: string }) {
   const [rows, setRows] = useState<Order[]>([]);
   const [detail, setDetail] = useState<AdminOrderDetail | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [externalSearch, setExternalSearch] = useState("");
+  useEffect(() => {
+    const onSearch = (event: Event) => setExternalSearch((event as CustomEvent<string>).detail || "");
+    window.addEventListener("yehao:order-search", onSearch);
+    return () => window.removeEventListener("yehao:order-search", onSearch);
+  }, []);
+  const keyword = (search || externalSearch).trim().toLowerCase();
+  const visibleRows = rows.filter((order) =>
+    !keyword || [order.id, order.customerEmail, order.product, order.region, labels[order.status] || order.status]
+      .some((value) => String(value || "").toLowerCase().includes(keyword))
+  );
 
   async function load() {
     const response = await fetch("/api/admin/orders?size=100");
@@ -49,7 +60,7 @@ export default function OrderManager() {
       {error && <div className="live-error">{error}<button onClick={() => setError("")}>×</button></div>}
       <div className="admin-table">
         <div className="arow order ahead"><span>订单号</span><span>客户</span><span>商品 / 地区</span><span>金额</span><span>到期时间</span><span>状态</span><span>操作</span></div>
-        {rows.map((order) => <div className="arow order" key={order.id}>
+        {visibleRows.map((order) => <div className="arow order" key={order.id}>
           <span><button className="order-number-link" onClick={() => void open(order.id)}>{order.id}</button></span>
           <span>{order.customerEmail}</span>
           <span>{order.product} · {order.region} × {order.quantity}</span>
@@ -58,6 +69,7 @@ export default function OrderManager() {
           <span><b className={`order-status ${order.status}`}>{labels[order.status] || order.status}</b></span>
           <span className="live-actions"><button onClick={() => void open(order.id)}>管理</button>{["paid", "provisioning"].includes(order.status) && <button className="primary" onClick={() => void open(order.id)}>开通</button>}</span>
         </div>)}
+        {visibleRows.length === 0 && <div className="empty">{rows.length ? "没有找到匹配的订单" : "暂无订单"}</div>}
       </div>
       {busy && <div className="customer-drawer-mask"><div className="customer-drawer loading">正在加载订单配置…</div></div>}
       {detail && <OrderDetailWorkspace detail={detail} onClose={() => setDetail(null)} onChanged={async (next) => { setDetail(next); await load(); }} />}

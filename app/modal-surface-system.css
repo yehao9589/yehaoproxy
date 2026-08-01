@@ -2,6 +2,22 @@
  * Modal surfaces must be isolated from the storefront page header.
  * This contract keeps every dialog/drawer header flush with its own surface.
  */
+/*
+ * Layer contract:
+ * 12000: primary operational drawer (order/customer/after-sales detail)
+ * 20000: dialog opened from a primary drawer
+ * 50000: global toast
+ */
+.manual-allocation-mask,
+.resource-modal-mask,
+.aftersales-action-mask {
+  z-index: 20000 !important;
+}
+
+.order-workspace .inline-confirm.floating {
+  z-index: 20010;
+}
+
 :is(
   .admin-permission-modal,
   .aftersales-detail,

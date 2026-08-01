@@ -14,6 +14,11 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
+  vars: {
+    XPANEL_BRIDGE_URL: process.env.XPANEL_BRIDGE_URL || "",
+    XPANEL_BRIDGE_SECRET: process.env.XPANEL_BRIDGE_SECRET || "",
+    CRON_SECRET: process.env.CRON_SECRET || "",
+  },
   d1_databases: d1
     ? [
         {
@@ -44,9 +49,13 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
-    server: isCodexSeatbeltSandbox
-      ? { watch: { useFsEvents: false, usePolling: true } }
-      : undefined,
+    server: {
+      host: "0.0.0.0",
+      allowedHosts: ["yehaoproxy", "localhost", "127.0.0.1"],
+      ...(isCodexSeatbeltSandbox
+        ? { watch: { useFsEvents: false, usePolling: true } }
+        : {}),
+    },
     plugins: [
       vinext(),
       sites(),

@@ -3,15 +3,15 @@ import {asc,eq} from "drizzle-orm";
 import {requireAdminApi} from "../../../../../lib/admin-auth";
 import {audit} from "../../../../../lib/audit";
 import {getDb} from "../../../../../db";
-import {customers,ticketMessages,tickets} from "../../../../../db/schema";
+import {customers,orders,proxyAllocations,ticketMessages,tickets} from "../../../../../db/schema";
+import {parseTicketServiceLink,stripTicketServiceLink} from "../../../../../lib/ticket-service-link";
 const statuses=["open","waiting_customer","waiting_staff","resolved","closed"] as const;
 const priorities=["low","normal","high","urgent"] as const;
 export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}){
  const admin=await requireAdminApi();if(!admin)return NextResponse.json({error:"无管理员权限"},{status:403});
  const{id}=await params,db=getDb(),[ticket]=await db.select({id:tickets.id,customerId:tickets.customerId,customerEmail:customers.email,customerName:customers.name,subject:tickets.subject,category:tickets.category,priority:tickets.priority,status:tickets.status,assignedAdminId:tickets.assignedAdminId,createdAt:tickets.createdAt,updatedAt:tickets.updatedAt}).from(tickets).leftJoin(customers,eq(customers.id,tickets.customerId)).where(eq(tickets.id,id)).limit(1);
  if(!ticket)return NextResponse.json({error:"工单不存在"},{status:404});
- const messages=await db.select().from(ticketMessages).where(eq(ticketMessages.ticketId,id)).orderBy(asc(ticketMessages.createdAt));
- return NextResponse.json({ticket,messages});
+ const messages=await db.select().from(ticketMessages).where(eq(ticketMessages.ticketId,id)).orderBy(asc(ticketMessages.createdAt)),link=parseTicketServiceLink(messages[0]?.body||"");let relatedService=null;if(link?.kind==="proxy"){const[row]=await db.select({id:proxyAllocations.id,orderId:orders.id,product:orders.product,region:orders.region,status:proxyAllocations.status,expiresAt:proxyAllocations.expiresAt}).from(proxyAllocations).innerJoin(orders,eq(proxyAllocations.orderId,orders.id)).where(eq(proxyAllocations.id,link.id)).limit(1);relatedService=row?{kind:"proxy",...row}:null}else if(link?.kind==="node"){const[row]=await db.select().from(orders).where(eq(orders.id,link.id)).limit(1);relatedService=row?{kind:"node",id:row.id,orderId:row.id,product:row.product,region:row.region,status:row.status,expiresAt:row.expiresAt}:null}return NextResponse.json({ticket,messages:messages.map(message=>({...message,body:stripTicketServiceLink(message.body)})),relatedService});
 }
 export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
  const admin=await requireAdminApi();if(!admin)return NextResponse.json({error:"无管理员权限"},{status:403});

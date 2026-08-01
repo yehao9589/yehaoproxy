@@ -4,6 +4,7 @@ import { getDb } from "../../../../../db";
 import { inventory, orders, proxyAllocations, serviceRequests } from "../../../../../db/schema";
 import { requireAdminApi } from "../../../../../lib/admin-auth";
 import { audit } from "../../../../../lib/audit";
+import { fetchXPanelTraffic, getXPanelBinding, resetXPanelCycle } from "../../../../../lib/xpanel";
 
 export async function PATCH(
   req: Request,
@@ -32,7 +33,8 @@ export async function PATCH(
     await audit(admin,"service.renew.verify","service_request",id,{resourceId:request.allocationId,resourceType:allocation?"proxy":"node",issues},req);
     return NextResponse.json({ok:true,verified:true,issues,note});
   }
-  if (request.status !== "pending") {
+  const retryCompletedTrafficReset = request.type === "reset_traffic" && request.status === "completed" && action === "approve";
+  if (request.status !== "pending" && !retryCompletedTrafficReset) {
     return NextResponse.json({ error: "售后申请已经处理" }, { status: 409 });
   }
   const now = new Date();
@@ -50,6 +52,19 @@ export async function PATCH(
   }
 
   if (request.type === "reset_traffic") {
+    const binding = await getXPanelBinding(request.allocationId);
+    if (!binding) {
+      return NextResponse.json({ error: "该节点服务尚未绑定 VPS，无法执行流量重置" }, { status: 409 });
+    }
+    try {
+      await fetchXPanelTraffic(binding);
+      await resetXPanelCycle(binding.serverId);
+      await fetchXPanelTraffic(binding);
+    } catch (error) {
+      return NextResponse.json({
+        error: error instanceof Error ? `流量重置失败：${error.message}` : "流量重置失败",
+      }, { status: 409 });
+    }
     const resetOrderId = request.reason?.match(/已付款重置订单\s+(\S+)/)?.[1];
     await db.update(serviceRequests).set({
       status: "completed",

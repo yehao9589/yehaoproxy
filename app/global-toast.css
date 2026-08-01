@@ -1,0 +1,109 @@
+.global-toast-stack{
+  position:fixed;
+  z-index:50000;
+  top:18px;
+  left:50%;
+  display:grid;
+  width:min(560px,calc(100vw - 32px));
+  gap:9px;
+  transform:translateX(-50%);
+  pointer-events:none;
+}
+.global-toast{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:46px;
+  padding:12px 14px;
+  border:1px solid #cbdced;
+  border-radius:10px;
+  background:#fff;
+  color:#29445f;
+  box-shadow:0 14px 38px rgba(15,35,55,.2);
+  font-size:12px;
+  pointer-events:auto;
+  animation:global-toast-in .18s ease-out;
+}
+.global-toast>i{
+  display:grid;
+  place-items:center;
+  flex:0 0 22px;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:#2879da;
+  color:#fff;
+  font-style:normal;
+  font-weight:800;
+}
+.global-toast>span{min-width:0;flex:1;line-height:1.5;font-weight:700}
+.global-toast.success{border-color:#aee5cb;background:#effbf5;color:#107c55}
+.global-toast.success>i{background:#18a873;color:#fff}
+.global-toast.error{border-color:#f2bbc3;background:#fff3f5;color:#bd3347}
+.global-toast.error>i{background:#d84b60;color:#fff}
+.global-toast>button{
+  width:26px;
+  height:26px;
+  padding:0;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:inherit;
+  font-size:18px;
+  cursor:pointer;
+}
+
+/* 统一现有页面反馈：无论页面滚动到哪里，都固定显示在当前视口顶部。 */
+:where(.live-error,.auth-error,.auth-success,.offer-success,.settings-toast,.ticket-toast,.customer-ticket-toast,.resource-save-success,.import-success,.import-error){
+  position:fixed!important;
+  z-index:49990!important;
+  top:18px!important;
+  right:auto!important;
+  bottom:auto!important;
+  left:50%!important;
+  box-sizing:border-box;
+  width:min(520px,calc(100vw - 32px))!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:13px 44px 13px 16px!important;
+  border-radius:11px!important;
+  transform:translateX(-50%)!important;
+  box-shadow:0 14px 38px #102a4540!important;
+  font-size:12px!important;
+}
+:where(.live-error,.auth-error,.import-error){
+  border:1px solid #f1c6ca!important;
+  background:#fff8f8!important;
+  color:#a43845!important;
+}
+:where(.auth-success,.offer-success,.settings-toast,.ticket-toast,.customer-ticket-toast,.resource-save-success,.import-success){
+  border:1px solid #bfe6d4!important;
+  background:#f5fcf8!important;
+  color:#147554!important;
+}
+:where(.live-error,.auth-error,.auth-success,.offer-success,.settings-toast,.ticket-toast,.customer-ticket-toast,.resource-save-success,.import-success,.import-error)>button{
+  position:absolute!important;
+  top:50%!important;
+  right:10px!important;
+  left:auto!important;
+  width:28px!important;
+  height:28px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  color:inherit!important;
+  transform:translateY(-50%)!important;
+}
+@media(max-width:640px){
+  .global-toast-stack{top:10px;width:calc(100vw - 20px)}
+  :where(.live-error,.auth-error,.auth-success,.offer-success,.settings-toast,.ticket-toast,.customer-ticket-toast,.resource-save-success,.import-success,.import-error){
+    top:10px!important;
+    width:calc(100vw - 20px)!important;
+  }
+}
+[data-globalized="1"]{display:none!important}
+.offer-toast[data-globalized="1"]{display:flex!important}
+@keyframes global-toast-in{
+  from{opacity:0;transform:translateY(-10px)}
+  to{opacity:1;transform:translateY(0)}
+}

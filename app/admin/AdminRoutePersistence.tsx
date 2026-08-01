@@ -4,6 +4,8 @@ import { useEffect } from "react";
 const tabs: Record<string,string> = {
   overview:"运营概览",
   orders:"订单管理",
+  services:"服务管理",
+  vps:"VPS 管理",
   products:"商品管理",
   inventory:"库存中心",
   customers:"客户管理",
