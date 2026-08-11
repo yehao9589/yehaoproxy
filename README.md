@@ -1,98 +1,142 @@
-# vinext-starter
+# YehaoProxy
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+<p align="center">
+  <strong>中文</strong> · <a href="./README.en.md">English</a>
+</p>
 
-## Prerequisites
+YehaoProxy 是一个面向代理 IP 与节点服务销售场景的全栈业务管理系统，包含商品销售、客户中心、订单与账单、人工交付、续费、售后、财务、通知、审计、VPS/X-Panel 对接、在线更新和灾难恢复等功能。
 
-- Node.js `>=22.13.0`
+> 当前项目仍处于持续开发阶段。正式部署前请先在测试环境完成支付、交付、续费、退款、备份恢复等完整流程验证。
 
-## Quick Start
+## 主要功能
+
+- 商品管理：代理 IP、电脑节点、软路由中转及自定义商品类型
+- 客户中心：订单、账单、服务、余额、工单和售后申请
+- 业务管理：产品订单、续费订单、服务管理和人工交付
+- 财务运营：交易流水、收款账单、余额充值和优惠券
+- 服务能力：自动续费、IP 更换、流量重置、订阅链接和二维码
+- 运维能力：定时任务、邮件/短信通知、审计日志和管理员权限
+- VPS 集成：对接 X-Panel，同步流量并查看入站节点
+- 数据库：支持 MySQL 8 与 SQLite/D1，两种模式均可部署
+- 更新与备份：更新前备份、失败回滚、手动备份、下载、导入与恢复
+
+## 运行要求
+
+- Node.js `>= 22.13.0`
+- pnpm `11.x`
+- 推荐使用 Docker 与 Docker Compose
+- MySQL 部署推荐 MySQL `8.4`
+
+## Docker 部署
+
+### 1. 获取代码
 
 ```bash
-npm install
-npm run dev
-npm run build
+git clone https://github.com/yehao9589/yehaoproxy.git
+cd yehaoproxy
 ```
 
-This starter does not use `wrangler.jsonc`.
+### 2. 配置环境变量
 
-## Included Shape
-
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```bash
+cp .env.example .env
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+正式部署前至少应修改以下值：
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+- `INVENTORY_ENCRYPTION_KEY`
+- `MYSQL_ROOT_PASSWORD`
+- `MYSQL_PASSWORD`
+- `MYSQL_BRIDGE_SECRET`
+- Docker Compose 中的任务、更新和 X-Panel 桥接密钥
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+请使用足够长的随机字符串，不要把真实密钥提交到 Git 仓库。
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+### 3. 启动服务
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+使用 MySQL（推荐）：
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+```bash
+docker compose --profile mysql --profile system-update up -d --build
+```
 
-## Useful Commands
+使用 SQLite：
 
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+```bash
+docker compose --profile system-update up -d --build
+```
 
-## Learn More
+### 4. 首次安装
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+浏览器访问：
+
+```text
+http://服务器地址:3000/install
+```
+
+安装向导可选择数据库、检测 MySQL 连接、初始化数据表、设置站点名称并创建首个超级管理员。
+
+安装完成后访问：
+
+- 前台：`http://服务器地址:3000/`
+- 客户中心：`http://服务器地址:3000/dashboard`
+- 管理后台：`http://服务器地址:3000/admin`
+
+## 本地开发
+
+```bash
+pnpm install
+pnpm dev
+```
+
+常用命令：
+
+```bash
+pnpm build       # 生产构建检查
+pnpm test        # 运行项目测试
+pnpm lint        # 代码检查
+pnpm db:generate # 生成 Drizzle 数据库迁移
+```
+
+## 数据库说明
+
+- MySQL：推荐用于正式部署和多容器环境。
+- SQLite/D1：适合轻量部署、开发测试或 Cloudflare 环境。
+- 两种数据库使用统一业务接口，但切换数据库前必须先完成迁移与备份。
+- 不要直接复制 SQLite 文件覆盖 MySQL；请使用安装向导、迁移脚本或备份恢复流程。
+
+## 备份与恢复
+
+进入管理后台的 `系统管理 → 更新与备份`：
+
+- 创建完整系统备份
+- 下载 `.tar.gz` 备份文件
+- 导入已有备份
+- 从恢复点还原数据库、上传文件与关键配置
+- 更新前自动建立备份，更新失败时自动回滚
+
+备份文件包含数据库和敏感配置，请存放在受保护的位置，并定期复制到异地或对象存储。
+
+## 目录结构
+
+```text
+app/                 页面、组件和 API 路由
+db/                  Drizzle 数据结构与数据库适配
+drizzle/             数据库迁移文件
+lib/                 业务服务与通用能力
+scripts/             定时任务、MySQL/X-Panel 桥接和更新执行器
+public/uploads/      站点上传文件
+docker-compose.yml   Docker 服务编排
+```
+
+## 安全建议
+
+- 生产环境必须更换示例密码和默认密钥。
+- 仅向可信管理员开放更新、恢复、财务和权限管理功能。
+- 配置 HTTPS、反向代理、防火墙及数据库访问白名单。
+- 定期下载备份并实际演练恢复流程。
+- 上线支付功能前验证回调签名、幂等处理和退款链路。
+
+## 许可证
+
+当前仓库为私有项目。未经项目所有者授权，不得复制、分发或用于商业部署。
