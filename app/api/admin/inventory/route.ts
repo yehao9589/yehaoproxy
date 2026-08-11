@@ -1,2 +1,8 @@
-import{NextResponse}from"next/server";import{requireAdminApi}from"../../../../lib/admin-auth";import{getDb}from"../../../../db";import{inventory}from"../../../../db/schema";import{encryptCredential,inventoryFingerprint}from"../../../../lib/inventory-crypto";
-export async function POST(req:Request){if(!await requireAdminApi())return NextResponse.json({error:"无管理员权限"},{status:403});const b=await req.json().catch(()=>null),port=Number(b?.port),host=String(b?.host||"").trim(),cost=b?.cost===""||b?.cost==null?null:Number(b.cost);if(!host||!Number.isInteger(port)||port<1||port>65535||!b?.country||!b?.product||!b?.protocol||cost!==null&&(!Number.isFinite(cost)||cost<0))return NextResponse.json({error:"库存参数不完整"},{status:400});const now=new Date(),id=`INV-${crypto.randomUUID()}`,fingerprint=await inventoryFingerprint(host,port,b.username?String(b.username):null);try{await getDb().insert(inventory).values({id,source:"manual",product:String(b.product),country:String(b.country).toUpperCase(),city:b.city?String(b.city):null,host,port,username:b.username?String(b.username):null,encryptedPassword:await encryptCredential(String(b.password||"")),fingerprint,protocol:String(b.protocol),cost,salePrice:0,status:"available",createdAt:now,updatedAt:now})}catch{return NextResponse.json({error:"库存已存在或数据冲突"},{status:409})}return NextResponse.json({id,status:"available"},{status:201})}
+import { NextResponse } from "next/server";
+
+const removed = () =>
+  NextResponse.json({ error: "库存中心功能已移除" }, { status: 410 });
+
+export const GET = removed;
+export const POST = removed;
+export const PATCH = removed;

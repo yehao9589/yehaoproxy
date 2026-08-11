@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { systemOptions } from "../db/schema";
+import { setSystemOption } from "./db-upsert";
 
 export type SiteConfig = {
   siteName: string;
@@ -47,14 +48,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
 }
 
 export async function saveSiteConfig(value: SiteConfig) {
-  const db = getDb();
   const now = new Date();
   const json = JSON.stringify(value);
-  await db
-    .insert(systemOptions)
-    .values({ key: KEY, value: json, updatedAt: now })
-    .onConflictDoUpdate({
-      target: systemOptions.key,
-      set: { value: json, updatedAt: now },
-    });
+  await setSystemOption(KEY, json, now);
 }

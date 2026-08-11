@@ -4,18 +4,22 @@ import { useEffect } from "react";
 const tabs: Record<string,string> = {
   overview:"运营概览",
   orders:"订单管理",
+  bills:"账单管理",
+  "product-orders":"产品订单",
+  "renewal-orders":"续费订单",
   services:"服务管理",
   vps:"VPS 管理",
   products:"商品管理",
-  inventory:"库存中心",
   customers:"客户管理",
   finance:"财务中心",
+  "finance-ledger":"交易流水",
+  "finance-bills":"收款账单",
   sales:"销售业绩",
   tickets:"工单管理",
   coupons:"优惠券",
   requests:"售后申请",
   automation:"定时任务",
-  updates:"在线更新",
+  updates:"更新与备份",
   "settings-site":"站务管理",
   "settings-general":"基础设置",
   "settings-service":"服务策略",
@@ -39,7 +43,7 @@ export default function AdminRoutePersistence(){
   useEffect(()=>{
     function restore(){
       const requested=new URL(location.href).searchParams.get("tab")||"overview";
-      const tab=requested==="settings"?"settings-general":requested;
+      const tab=requested==="settings-service"?"products":requested==="settings"?"settings-general":requested;
       const button=buttonFor(tab);
       if(button&&!button.classList.contains("on"))button.click();
     }

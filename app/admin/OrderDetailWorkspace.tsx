@@ -1,191 +1,62 @@
 "use client";
-
-import { useState } from "react";
+import {useEffect,useState} from "react";
 import XPanelOrderBinding from "./XPanelOrderBinding";
-
-export type AdminOrderDetail = {
-  order: {
-    id: string;
-    customerEmail: string;
-    product: string;
-    region: string;
-    quantity: number;
-    amount: number;
-    status: string;
-    paymentReference: string | null;
-    paymentMethod: string;
-    expiresAt: string | null;
-    renewalAmount: number | null;
-    autoRenew: boolean;
-    adminNote: string | null;
-    createdAt: string;
+import OneTimeBillWorkspace from "./OneTimeBillWorkspace";
+export type AdminOrderDetail={order:{id:string;customerEmail:string;product:string;region:string;quantity:number;durationDays:number;billingCycle?:"fixed-days"|"calendar-month";amount:number;status:string;paymentReference:string|null;paymentMethod:string;expiresAt:string|null;renewalAmount:number|null;autoRenew:boolean;adminNote:string|null;createdAt:string;billingOrderId?:string|null;subscriptionUrl?:string|null};customer:any;allocations:any[];payments:any[];manualDelivery?:{quantity:number;allocated:number};relatedOrders?:Array<{id:string;product:string;region:string;quantity:number;durationDays:number;amount:number;status:string;expiresAt:string|null;subscriptionUrl:string|null}>;serviceContext?:any;renewalContext?:{sourceOrder:any|null;allocation:any|null}|null;availableRenewalPeriods?:number[];availableRenewalBillingCycle?:"fixed-days"|"calendar-month"|null};
+const labels:Record<string,string>={pending:"待付款",paid:"已付款，等待受理",provisioning:"开通处理中",active:"已激活",refunded:"已退款",failed:"已取消",cancelled:"已取消",canceled:"已取消"};
+const methods:Record<string,string>={balance:"余额支付",manual:"人工确认",alipay:"支付宝",wechat:"微信支付",paypal:"PayPal",usdt:"USDT",bank:"银行转账"};
+const products:Record<string,string>={"static-isp":"静态住宅 IP","static-residential":"静态住宅 IP","dynamic-residential":"动态住宅代理",datacenter:"数据中心代理","soft-router":"软路由中转","computer-node":"电脑节点","node-traffic-reset":"节点流量重置","ip-replacement":"更换 IP 服务","wallet-topup":"余额充值","cart-bundle":"合并订单"};
+const regions:Record<string,string>={US:"美国",JP:"日本",BR:"巴西",GB:"英国",DE:"德国",FR:"法国",CA:"加拿大",AU:"澳大利亚",SG:"新加坡",KR:"韩国",IN:"印度",MULTI:"多个地区",GLOBAL:"全局服务"};
+const text=(map:Record<string,string>,value:string)=>map[value]||value||"未设置";
+export default function OrderDetailWorkspace({detail,onClose,onChanged}:{detail:AdminOrderDetail;onClose:()=>void;onChanged?:(d:AdminOrderDetail)=>void|Promise<void>}){
+ const[current,setCurrent]=useState(detail),[billDetail,setBillDetail]=useState<AdminOrderDetail|null>(detail.order.product==="cart-bundle"?detail:null),[confirm,setConfirm]=useState<"cancel"|"refund"|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[subscriptionUrl,setSubscriptionUrl]=useState(detail.order.subscriptionUrl||"");const d=current,renewal=d.renewalContext;
+ async function refresh(){const r=await fetch(`/api/admin/orders/${encodeURIComponent(d.order.id)}`),x=await r.json();if(!r.ok)throw Error(x.error||"读取订单详情失败");setCurrent(x);setSubscriptionUrl(x.order?.subscriptionUrl||"");await onChanged?.(x)}
+ async function action(name:string,extra:Record<string,unknown>={}){setBusy(true);setError("");try{const r=await fetch(`/api/admin/orders/${encodeURIComponent(d.order.id)}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({action:name,...extra})}),x=await r.json();if(!r.ok)throw Error(x.error||"订单操作失败");setConfirm(null);await refresh()}catch(e){setError(e instanceof Error?e.message:"订单操作失败")}finally{setBusy(false)}}
+ async function save(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);await action("service-update",{paymentMethod:f.get("paymentMethod"),expiresAt:f.has("expiresAt")?f.get("expiresAt"):d.order.expiresAt,renewalAmount:f.get("renewalAmount"),billingCycle:f.get("billingCycle"),durationDays:f.get("durationDays"),autoRenew:f.get("autoRenew")==="on",status:f.get("status"),adminNote:f.get("adminNote")})}
+ async function refund(){setBusy(true);setError("");try{const r=await fetch(`/api/admin/orders/${encodeURIComponent(d.order.id)}/refund`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({reason:"管理员审核退款工单后执行"})}),x=await r.json();if(!r.ok)throw Error(x.error||"退款失败");setConfirm(null);await refresh()}catch(e){setError(e instanceof Error?e.message:"退款失败")}finally{setBusy(false)}}
+ async function openService(id:string){setBusy(true);setError("");try{if(d.order.product==="cart-bundle")setBillDetail(d);const r=await fetch(`/api/admin/orders/${encodeURIComponent(id)}`),x=await r.json();if(!r.ok)throw Error(x.error||"读取产品订单失败");setCurrent(x);setSubscriptionUrl(x.order?.subscriptionUrl||"")}catch(e){setError(e instanceof Error?e.message:"读取产品订单失败")}finally{setBusy(false)}}
+ async function backToBill(){if(!billDetail)return;setCurrent(billDetail);setSubscriptionUrl(billDetail.order.subscriptionUrl||"");setBillDetail(null)}
+ useEffect(()=>{
+  const cycle=document.querySelector<HTMLSelectElement>('.order-workspace select[name="billingCycle"]');
+  const duration=document.querySelector<HTMLSelectElement>('.order-workspace select[name="durationDays"]');
+  if(!cycle||!duration)return;
+  const label=duration.parentElement!;
+  const custom=document.createElement("input"),hidden=document.createElement("input"),hint=document.createElement("small");
+  custom.type="number";custom.min="1";custom.max="3650";custom.className="custom-renewal-period";custom.hidden=true;
+  hidden.type="hidden";hint.className="custom-renewal-hint";hint.hidden=true;
+  label.append(custom,hidden,hint);
+  const setCustomMode=(monthly:boolean,current:number)=>{
+   const enabled=duration.value==="custom";
+   custom.hidden=!enabled;hint.hidden=true;label.classList.toggle("custom-renewal-active",enabled);
+   if(enabled){duration.removeAttribute("name");hidden.name="durationDays";custom.value=String(monthly?Math.max(1,Math.round(current/30)):current);custom.placeholder=monthly?"输入月数":"输入天数";hint.textContent=monthly?"自定义月数":"自定义天数";hidden.value=String(monthly?Number(custom.value)*30:Number(custom.value))}
+   else{duration.name="durationDays";hidden.removeAttribute("name")}
   };
-  customer: any;
-  allocations: any[];
-  payments: any[];
-};
-
-const labels: Record<string, string> = {
-  pending: "待付款",
-  paid: "已付款 / 可提取",
-  provisioning: "等待人工开通",
-  active: "已激活",
-  refunded: "已退款",
-  failed: "已取消",
-};
-
-const methods: Record<string, string> = {
-  balance: "余额支付",
-  manual: "人工确认",
-  alipay: "支付宝",
-  wechat: "微信支付",
-  paypal: "PayPal",
-  usdt: "USDT",
-  bank: "银行转账",
-};
-
-export default function OrderDetailWorkspace({
-  detail,
-  onClose,
-  onChanged,
-}: {
-  detail: AdminOrderDetail;
-  onClose: () => void;
-  onChanged?: (detail: AdminOrderDetail) => void | Promise<void>;
-}) {
-  const [current, setCurrent] = useState(detail);
-  const [confirm, setConfirm] = useState<"cancel" | "refund" | null>(null);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const d = current;
-
-  async function refresh() {
-    const response = await fetch(`/api/admin/orders/${encodeURIComponent(d.order.id)}`);
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "订单详情读取失败");
-    setCurrent(data);
-    await onChanged?.(data);
-  }
-
-  async function action(actionName: string, extra: Record<string, unknown> = {}) {
-    setBusy(true);
-    setError("");
-    try {
-      const response = await fetch(`/api/admin/orders/${encodeURIComponent(d.order.id)}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: actionName, ...extra }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "订单操作失败");
-      setConfirm(null);
-      await refresh();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "订单操作失败");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function save(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    await action("service-update", {
-      paymentMethod: form.get("paymentMethod"),
-      expiresAt: form.get("expiresAt"),
-      renewalAmount: form.get("renewalAmount"),
-      autoRenew: form.get("autoRenew") === "on",
-      status: form.get("status"),
-      adminNote: form.get("adminNote"),
-    });
-  }
-
-  async function refund() {
-    setBusy(true);
-    setError("");
-    try {
-      const response = await fetch(`/api/admin/orders/${encodeURIComponent(d.order.id)}/refund`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ reason: "管理员审核退款工单后执行" }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "退款失败");
-      setConfirm(null);
-      await refresh();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "退款失败");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="order-workspace-mask customer-record-order-mask" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
-    }}>
-      <section className="order-workspace" onMouseDown={(event) => event.stopPropagation()}>
-        <header className="order-workspace-head">
-          <div>
-            <span>订单管理 / {d.order.customerEmail}</span>
-            <h2>订单 #{d.order.id}</h2>
-          </div>
-          <div>
-            <b className={`order-status ${d.order.status}`}>{labels[d.order.status] || d.order.status}</b>
-            <button type="button" onClick={onClose}>×</button>
-          </div>
-        </header>
-        {error && <div className="live-error">{error}<button type="button" onClick={() => setError("")}>×</button></div>}
-        <div className="order-toolbar">
-          <button type="button">发送消息</button>
-          <button type="button">创建工单</button>
-          <button type="button" onClick={() => void action("fulfill")} disabled={busy || !["paid", "provisioning"].includes(d.order.status)}>从库存提取并发放</button>
-        </div>
-        <form className="mofang-order-form" onSubmit={(event) => void save(event)}>
-          <section>
-            <h3>产品与服务</h3>
-            <div className="order-form-grid">
-              <label>订单编号<input value={d.order.id} disabled /></label>
-              <label>客户<input value={d.customer?.name || d.order.customerEmail} disabled /></label>
-              <label>商品 / 服务<input value={d.order.product} disabled /></label>
-              <label>地区额度<input value={`${d.order.region} × ${d.order.quantity} 条`} disabled /></label>
-              <label>订购时间<input value={new Date(d.order.createdAt).toLocaleString("zh-CN", { hour12: false })} disabled /></label>
-              <label>服务状态<select name="status" defaultValue={d.order.status}><option value="pending">待付款</option><option value="paid">已付款</option><option value="provisioning">等待人工开通</option><option value="active">已激活</option><option value="refunded">已退款</option><option value="failed">已取消</option></select></label>
-            </div>
-          </section>
-          <section>
-            <h3>财务与续费</h3>
-            <div className="order-form-grid">
-              <label>首付金额<input value={d.order.amount.toFixed(2)} disabled /></label>
-              <label>付款方式<select name="paymentMethod" defaultValue={d.order.paymentMethod || "balance"}>{Object.entries(methods).map(([value, text]) => <option value={value} key={value}>{text}</option>)}</select></label>
-              <label>到期时间<input name="expiresAt" type="datetime-local" defaultValue={d.order.expiresAt ? new Date(d.order.expiresAt).toISOString().slice(0, 16) : ""} /></label>
-              <label>续费金额<input name="renewalAmount" type="number" min="0" step="0.01" defaultValue={d.order.renewalAmount ?? d.order.amount} /></label>
-              <label className="renew-switch">余额自动续费<input name="autoRenew" type="checkbox" defaultChecked={d.order.autoRenew} /><i /></label>
-              <label>支付流水<input value={d.order.paymentReference || "未支付"} disabled /></label>
-            </div>
-          </section>
-          <section>
-            <h3>管理员信息</h3>
-            <label className="admin-note">管理员备注<textarea name="adminNote" rows={4} defaultValue={d.order.adminNote || ""} placeholder="仅管理员可见，可记录采购渠道、开通信息和客户约定" /></label>
-          </section>
-          {d.order.product === "computer-node" && <XPanelOrderBinding orderId={d.order.id} />}
-          <section>
-            <h3>已分配资源</h3>
-            {d.allocations.length ? <div className="resource-table">{d.allocations.map((item) => <div key={item.id}><span className="mono">{item.host}:{item.port}</span><span className="resource-region"><b>{item.country || d.order.region}</b><small>{item.city || "未设置城市"}</small></span><span>{item.protocol}</span><span className="resource-expiry"><small>到期时间</small><b>{item.expiresAt ? new Date(item.expiresAt).toLocaleString("zh-CN", { hour12: false }) : "未设置"}</b></span><span>{item.autoRenew ? "自动续费" : "手动续费"}</span></div>)}</div> : <p className="empty-inline">尚未分配真实 IP</p>}
-          </section>
-          <footer className="order-savebar">
-            <div>
-              {d.order.status === "pending" && <button type="button" onClick={() => setConfirm("cancel")}>取消订单</button>}
-              {["paid", "provisioning", "active"].includes(d.order.status) && <button type="button" className="danger" onClick={() => setConfirm("refund")}>退款</button>}
-            </div>
-            <div>
-              <button type="button" disabled={busy} onClick={() => void refresh()}>取消更改</button>
-              <button className="primary" disabled={busy}>{busy ? "处理中…" : "保存更改"}</button>
-            </div>
-          </footer>
-        </form>
-        {confirm && <div className="inline-confirm floating"><b>{confirm === "cancel" ? "确认取消订单并恢复销售额度？" : "确认已核对退款工单，并退款到客户余额？"}</b><button type="button" onClick={() => setConfirm(null)}>返回</button><button type="button" className="danger" disabled={busy} onClick={() => void (confirm === "cancel" ? action("cancel") : refund())}>确认执行</button></div>}
-      </section>
-    </div>
-  );
+  custom.oninput=()=>{hidden.value=String(cycle.value==="calendar-month"?Number(custom.value||1)*30:Number(custom.value||1))};
+  const render=()=>{
+   const monthly=cycle.value==="calendar-month",current=Number(duration.value||d.order.durationDays);
+   cycle.options[0].textContent="固定天数";cycle.options[1].textContent="按月";
+   const values=monthly?[30,60,90]:d.availableRenewalBillingCycle==="fixed-days"?[...(d.availableRenewalPeriods||[])]:[7,30];
+   const saved=d.order.billingCycle===cycle.value?d.order.durationDays:NaN;
+   duration.replaceChildren(...values.map(value=>new Option(monthly?`${value/30} 个月`:`${value} 天`,String(value),false,value===saved)),new Option(monthly?"自定义月数":"自定义天数","custom"));
+   duration.value=values.includes(saved)?String(saved):"custom";
+   setCustomMode(monthly,Number.isFinite(saved)?saved:(monthly?30:30));
+  };
+  cycle.onchange=render;duration.onchange=()=>setCustomMode(cycle.value==="calendar-month",d.order.durationDays);render();
+  return()=>{cycle.onchange=null;duration.onchange=null;label.classList.remove("custom-renewal-active");custom.remove();hidden.remove();hint.remove()};
+ },[d.order.id,d.order.durationDays,d.availableRenewalBillingCycle,d.availableRenewalPeriods]);
+ useEffect(()=>{if(renewal||["computer-node","soft-router"].includes(d.order.product))return;const input=document.querySelector<HTMLInputElement>('.order-workspace input[name="expiresAt"]'),label=input?.closest<HTMLElement>("label");if(!input||!label)return;label.style.display="none";return()=>{label.style.display=""}},[d.order.id,d.order.product,renewal]);
+ if(["ip-replacement","node-traffic-reset"].includes(d.order.product)||(d.order.durationDays===0&&!["wallet-topup","cart-bundle"].includes(d.order.product)))return <OneTimeBillWorkspace detail={d} onClose={onClose} onChanged={async next=>{setCurrent(next);await onChanged?.(next)}}/>;
+ return <div className="order-workspace-mask customer-record-order-mask" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section className="order-workspace" onMouseDown={e=>e.stopPropagation()}>
+  <header className="order-workspace-head"><div><span>{renewal?"续费账单":"订单管理"} / {d.order.customerEmail}</span><h2>{renewal?"服务续费":"订单"} #{d.order.id}</h2></div><div><b className={`order-status ${d.order.status}`}>{renewal&&d.order.status==="active"?"续费成功":labels[d.order.status]||"未知状态"}</b><button type="button" onClick={onClose}>×</button></div></header>
+  {error&&<div className="live-error">{error}<button type="button" onClick={()=>setError("")}>×</button></div>}<div className="order-toolbar">{billDetail&&<button type="button" className="primary" onClick={()=>void backToBill()}>← 返回合并账单</button>}<button type="button">发送消息</button><button type="button">创建工单</button></div>
+  <form className="mofang-order-form" onSubmit={e=>void save(e)}>
+   <section><h3>产品与服务</h3><div className="order-form-grid"><label>订单编号<input value={d.order.id} disabled/></label>{d.order.billingOrderId&&<label>结算账单<input value={d.order.billingOrderId} disabled/></label>}<label>客户<input value={d.customer?.name||d.order.customerEmail} disabled/></label><label>商品 / 服务<input value={text(products,d.order.product)} disabled/></label><label>地区 / 数量<input value={`${text(regions,d.order.region)} × ${d.order.quantity}`} disabled/></label><label>下单时间<input value={new Date(d.order.createdAt).toLocaleString("zh-CN",{hour12:false})} disabled/></label><label>服务状态<select name="status" defaultValue={d.order.status}>{Object.entries(labels).slice(0,6).map(([v,t])=><option value={v} key={v}>{t}</option>)}</select></label></div>
+   {d.order.product==="computer-node"&&<div className="subscription-delivery"><div><b>电脑节点订阅交付</b><small>填写并发放后，客户中心将展示订阅链接及二维码。</small></div><div><input type="url" value={subscriptionUrl} onChange={e=>setSubscriptionUrl(e.target.value)} placeholder="https://example.com/subscription/..."/><button type="button" className="primary" disabled={busy||!["paid","provisioning","active"].includes(d.order.status)} onClick={()=>void action("deliver-subscription",{subscriptionUrl})}>{d.order.subscriptionUrl?"更新订阅链接":"发放订阅链接"}</button></div></div>}{d.order.product==="cart-bundle"&&<div className="bill-service-list"><header><div><b>本账单包含的产品服务</b><small>账单统一收款，IP 与节点按产品订单分别交付。</small></div><strong>{d.relatedOrders?.length||0} 项</strong></header>{d.relatedOrders?.map(item=><div className="bill-service-item" key={item.id}><span><b>{text(products,item.product)}</b><small>{item.id}</small></span><span><b>{text(regions,item.region)} × {item.quantity}</b><small>{item.durationDays} 天 · ¥{Number(item.amount).toFixed(2)}</small></span><span><em className={`order-status ${item.status}`}>{labels[item.status]||item.status}</em></span><button type="button" onClick={()=>void openService(item.id)}>{item.product==="computer-node"&&!item.subscriptionUrl?"发放订阅":"管理 / 交付"}</button></div>)}</div>}</section>
+   {renewal&&<section className="renewal-bill-context"><h3>本次续费对应的原服务</h3><div className="order-form-grid"><label>原服务订单<input value={renewal.sourceOrder?.id||"原服务不存在"} disabled/></label><label>续费产品<input value={text(products,d.order.product)} disabled/></label><label>续费地区<input value={text(regions,d.order.region)} disabled/></label><label>续费周期<input value={`${d.order.durationDays} 天`} disabled/></label><label>代理地址<input value={renewal.allocation?`${renewal.allocation.host}:${renewal.allocation.port}`:"未找到关联资源"} disabled/></label><label>续费后到期时间<input value={renewal.allocation?.expiresAt?new Date(renewal.allocation.expiresAt).toLocaleString("zh-CN",{hour12:false}):renewal.sourceOrder?.expiresAt?new Date(renewal.sourceOrder.expiresAt).toLocaleString("zh-CN",{hour12:false}):"未设置"} disabled/></label></div><p className="renewal-bill-note">续费只延长上述已有服务，不会创建新 IP，也不参与交付数量统计。</p></section>}
+   <section><h3>{renewal?"续费付款信息":"财务与续费"}</h3><div className="order-form-grid"><label>{renewal?"续费金额":"订单金额"}<input value={d.order.amount.toFixed(2)} disabled/></label><label>付款方式<select name="paymentMethod" defaultValue={d.order.paymentMethod||"balance"}>{Object.entries(methods).map(([v,t])=><option value={v} key={v}>{t}</option>)}</select></label>{!renewal&&<label>到期时间<input name="expiresAt" type="datetime-local" defaultValue={d.order.expiresAt?new Date(d.order.expiresAt).toISOString().slice(0,16):""}/></label>}{!renewal&&d.order.durationDays>0&&d.order.product!=="cart-bundle"&&<label>周期计费方式<select name="billingCycle" defaultValue={d.order.billingCycle||"fixed-days"}><option value="fixed-days">固定天数</option><option value="calendar-month">自然月</option></select></label>}{!renewal&&d.order.durationDays>0&&d.order.product!=="cart-bundle"&&<label>默认续费周期<select name="durationDays" defaultValue={d.order.durationDays}><option value="7">7 天（固定天数）</option><option value="30">30 天 / 1 个自然月</option><option value="90">90 天 / 3 个自然月</option></select></label>}{!renewal&&<label>续费金额<input name="renewalAmount" type="number" min="0" step="0.01" defaultValue={d.order.renewalAmount??d.order.amount}/></label>}{!renewal&&<label className="renew-switch">自动续费<input name="autoRenew" type="checkbox" defaultChecked={d.order.autoRenew}/><i/></label>}<label>支付流水<input value={d.order.paymentReference||"未支付"} disabled/></label></div></section>
+   <section><h3>管理员备注</h3><textarea name="adminNote" rows={3} defaultValue={d.order.adminNote||""} placeholder="仅管理员可见"/></section>{d.order.product==="computer-node"&&<XPanelOrderBinding orderId={d.order.id}/>}
+   {!renewal&&d.order.product!=="computer-node"&&<section className="allocated-resource-section"><h3>已分配资源 {d.manualDelivery&&<em>{d.manualDelivery.allocated}/{d.manualDelivery.quantity} 已交付</em>}</h3>{d.allocations.length?<div className="resource-table">{d.allocations.map(i=><div key={i.id}><span className="resource-order-link"><small>子订单 {i.orderId||d.order.id}</small><b className="mono">{i.host}:{i.port}</b></span><span>{text(regions,i.country||d.order.region)} / {i.city||"未设置城市"}</span><span>{i.protocol||"未设置协议"}</span><span>{i.expiresAt?new Date(i.expiresAt).toLocaleString("zh-CN",{hour12:false}):"未设置"}</span></div>)}</div>:<p className="empty-inline">尚未分配真实 IP</p>}</section>}
+   <footer className="order-savebar"><div>{d.order.status==="pending"&&<button type="button" onClick={()=>setConfirm("cancel")}>取消订单</button>}{["paid","provisioning","active"].includes(d.order.status)&&<button type="button" className="danger" onClick={()=>setConfirm("refund")}>退款</button>}</div><div><button type="button" disabled={busy} onClick={()=>void refresh()}>取消更改</button><button className="primary" disabled={busy}>{busy?"处理中…":"保存更改"}</button></div></footer>
+  </form>{confirm&&<div className="inline-confirm floating"><b>{confirm==="cancel"?"确认取消订单并恢复销售额度？":"确认已核对退款工单，并退款到客户余额？"}</b><button type="button" onClick={()=>setConfirm(null)}>返回</button><button type="button" className="danger" disabled={busy} onClick={()=>void(confirm==="cancel"?action("cancel"):refund())}>确认执行</button></div>}
+ </section></div>
 }

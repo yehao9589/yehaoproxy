@@ -1,11 +1,65 @@
-import {NextResponse} from "next/server";
-import {and,eq,inArray} from "drizzle-orm";
-import {getCurrentCustomer} from "../../../../lib/auth";
-import {getDb} from "../../../../db";
-import {inventory,orders,proxyAllocations,serviceRequests,systemOptions,wallets,walletTransactions} from "../../../../db/schema";
-import {encryptCredential} from "../../../../lib/inventory-crypto";
-import {audit} from "../../../../lib/audit";
-export async function POST(req:Request){const user=await getCurrentCustomer();if(!user)return NextResponse.json({error:"请先登录"},{status:401});const b=await req.json().catch(()=>null),ids=[...new Set((Array.isArray(b?.ids)?b.ids:[]).map(String))].slice(0,200),action=String(b?.action||"");if(!ids.length)return NextResponse.json({error:"请选择代理"},{status:400});const db=getDb(),owned=await db.select({allocation:proxyAllocations}).from(proxyAllocations).innerJoin(orders,eq(proxyAllocations.orderId,orders.id)).where(and(eq(orders.customerEmail,user.email),inArray(proxyAllocations.id,ids),eq(proxyAllocations.status,"active")));if(owned.length!==ids.length)return NextResponse.json({error:"部分代理不存在或不属于当前账户"},{status:403});
-if(action==="credentials"){const[option]=await db.select().from(systemOptions).where(eq(systemOptions.key,"customer_node_credential_editing")).limit(1);if(option?.value!=="true")return NextResponse.json({error:"管理员已关闭节点账号密码编辑功能"},{status:403});const username=String(b?.username||"").trim()||null,password=String(b?.password||"");if(!username&&!password)return NextResponse.json({error:"请填写新用户名或密码"},{status:400});const updates:any={};if(username)updates.username=username;if(password)updates.encryptedPassword=await encryptCredential(password);await db.update(proxyAllocations).set(updates).where(inArray(proxyAllocations.id,ids));await audit({id:user.id,role:user.role},"proxy.bulk_credentials","proxy",null,{ids,count:ids.length,usernameChanged:!!username,passwordChanged:!!password},req);return NextResponse.json({ok:true,updated:ids.length})}
-if(action==="renew"){const durationDays=Number(b?.durationDays);if(![7,30,90].includes(durationDays))return NextResponse.json({error:"续费时长无效"},{status:400});const multiplier=durationDays===7?.35:durationDays===30?1:2.55,priced=[] as Array<{id:string;amount:number;allocation:typeof proxyAllocations.$inferSelect}>;for(const row of owned){const[stock]=await db.select({salePrice:inventory.salePrice}).from(inventory).where(and(eq(inventory.host,row.allocation.host),eq(inventory.port,row.allocation.port))).limit(1);if(!stock)return NextResponse.json({error:`代理 ${row.allocation.host}:${row.allocation.port} 缺少续费价格，请联系管理员`},{status:409});priced.push({id:row.allocation.id,amount:Number((stock.salePrice*multiplier).toFixed(2)),allocation:row.allocation})}const total=Number(priced.reduce((sum,x)=>sum+x.amount,0).toFixed(2)),[wallet]=await db.select().from(wallets).where(eq(wallets.customerId,user.id)).limit(1),balance=wallet?.balance||0,credit=wallet?.creditLimit||0,spendingPower=Math.max(0,balance)+Math.max(0,credit-Math.max(0,-balance));if(spendingPower<total)return NextResponse.json({error:`余额和可用信用额不足，应付 ¥${total.toFixed(2)}`,payable:total},{status:409});const now=new Date(),nextBalance=Number((balance-total).toFixed(2));await db.update(wallets).set({balance:nextBalance,updatedAt:now}).where(eq(wallets.customerId,user.id));await db.insert(walletTransactions).values({id:`WT-${crypto.randomUUID()}`,customerId:user.id,type:"purchase",amount:-total,balanceAfter:nextBalance,referenceType:"renewal",referenceId:ids.join(","),note:`代理续费 ${ids.length} 项 / ${durationDays} 天`,createdAt:now});for(const item of priced){const base=item.allocation.expiresAt&&item.allocation.expiresAt>now?item.allocation.expiresAt:now,expiresAt=new Date(base.getTime()+durationDays*86400000),requestId=`RN-${crypto.randomUUID().slice(0,10).toUpperCase()}`;await db.update(proxyAllocations).set({expiresAt}).where(eq(proxyAllocations.id,item.id));await db.insert(serviceRequests).values({id:requestId,customerId:user.id,allocationId:item.id,type:"renew",durationDays,reason:"客户余额支付自动续费",amount:item.amount,status:"completed",adminNote:`系统自动续费，待后台核验；到期时间 ${expiresAt.toISOString()}`,createdAt:now,updatedAt:now})}await audit({id:user.id,role:user.role},"proxy.bulk_renew_complete","proxy",null,{ids,count:ids.length,durationDays,total,balanceAfter:nextBalance},req);return NextResponse.json({ok:true,created:ids.length,automatic:true,total,balance:nextBalance})}
-if(action==="auto-renew"){const enabled=b?.enabled===true;await db.update(proxyAllocations).set({autoRenew:enabled}).where(inArray(proxyAllocations.id,ids));return NextResponse.json({ok:true,updated:ids.length})}return NextResponse.json({error:"不支持的批量操作"},{status:400})}
+import { NextResponse } from "next/server";
+import { and, eq, inArray } from "drizzle-orm";
+import { getCurrentCustomer } from "../../../../lib/auth";
+import { getDb } from "../../../../db";
+import { orders, productOffers, proxyAllocations, systemOptions } from "../../../../db/schema";
+import { encryptCredential } from "../../../../lib/inventory-crypto";
+import { audit } from "../../../../lib/audit";
+import { billingCycleFromNote } from "../../../../lib/billing-period";
+
+export async function POST(req: Request) {
+  const user = await getCurrentCustomer();
+  if (!user) return NextResponse.json({ error: "请先登录" }, { status: 401 });
+  const body = await req.json().catch(() => null);
+  const ids = [...new Set((Array.isArray(body?.ids) ? body.ids : []).map(String))].slice(0, 200);
+  const action = String(body?.action || "");
+  if (!ids.length) return NextResponse.json({ error: "请选择代理" }, { status: 400 });
+  const db = getDb();
+  const owned = await db.select({ allocation: proxyAllocations, order: orders })
+    .from(proxyAllocations).innerJoin(orders, eq(proxyAllocations.orderId, orders.id))
+    .where(and(eq(orders.customerEmail, user.email), inArray(proxyAllocations.id, ids), eq(proxyAllocations.status, "active")));
+  if (owned.length !== ids.length) return NextResponse.json({ error: "部分代理不存在或不属于当前账户" }, { status: 403 });
+
+  if (action === "credentials") {
+    if (owned.some(row => row.allocation.expiresAt && row.allocation.expiresAt.getTime() <= Date.now())) return NextResponse.json({ error: "已到期代理不能修改账号密码，请先续费" }, { status: 409 });
+    const [option] = await db.select().from(systemOptions).where(eq(systemOptions.key, "customer_node_credential_editing")).limit(1);
+    if (option?.value !== "true") return NextResponse.json({ error: "管理员已关闭节点账号密码编辑功能" }, { status: 403 });
+    const username = String(body?.username || "").trim() || null, password = String(body?.password || "");
+    if (!username && !password) return NextResponse.json({ error: "请填写新用户名或密码" }, { status: 400 });
+    const updates: {username?: string; encryptedPassword?: string} = {};
+    if (username) updates.username = username;
+    if (password) updates.encryptedPassword = await encryptCredential(password);
+    await db.update(proxyAllocations).set(updates).where(inArray(proxyAllocations.id, ids));
+    await audit({id:user.id,role:user.role}, "proxy.bulk_credentials", "proxy", null, {ids,count:ids.length,usernameChanged:!!username,passwordChanged:!!password}, req);
+    return NextResponse.json({ok:true,updated:ids.length});
+  }
+
+  if (action === "renew") {
+    const durationDays = Number(body?.durationDays);
+    if (!Number.isInteger(durationDays)||durationDays<1||durationDays>3650) return NextResponse.json({error:"续费周期无效"},{status:400});
+    const offers = await db.select().from(productOffers).where(eq(productOffers.enabled,true));
+    const now = new Date(), created: Array<{id:string;amount:number}> = [];
+    for (const row of owned) {
+      const cycle = billingCycleFromNote(row.order.adminNote);
+      if (cycle === "calendar-month"&&durationDays%30!==0) return NextResponse.json({error:"按月续费必须填写完整月数"},{status:409});
+      const offer = offers.find(item=>item.product===row.order.product&&item.region===row.order.region);
+      const listedPrice = durationDays===7?offer?.price7:durationDays===90?offer?.price90:(offer?.price30??0)*(durationDays/30);
+      const multiplier = durationDays===7?.35:durationDays/30;
+      const amount = Number(((row.order.renewalAmount!=null&&row.order.renewalAmount>0?row.order.renewalAmount*multiplier:Number(listedPrice))).toFixed(2));
+      if(!Number.isFinite(amount)||amount<=0)return NextResponse.json({error:`${row.order.product} / ${row.order.region} 尚未配置该续费价格`},{status:409});
+      const renewalId=`RN-${crypto.randomUUID().slice(0,8).toUpperCase()}`;
+      await db.insert(orders).values({id:renewalId,customerEmail:user.email,product:row.order.product,region:row.order.region,quantity:1,durationDays,amount,currency:row.order.currency,status:"pending",paymentMethod:"balance",renewalAmount:amount,adminNote:`[RENEWAL_OF]${row.order.id}\n[RENEW_ALLOCATION]${row.allocation.id}\n[BILLING_CYCLE]${cycle}`,createdAt:now,updatedAt:now});
+      created.push({id:renewalId,amount});
+    }
+    const total=Number(created.reduce((sum,item)=>sum+item.amount,0).toFixed(2));
+    await audit({id:user.id,role:user.role},"proxy.renewal_orders.create","order",created[0]?.id||null,{allocationIds:ids,orderIds:created.map(item=>item.id),durationDays,total},req);
+    return NextResponse.json({ok:true,created:created.length,orderIds:created.map(item=>item.id),orderId:created[0]?.id,total});
+  }
+  if(action==="auto-renew"){
+    if (owned.some(row => row.allocation.expiresAt && row.allocation.expiresAt.getTime() <= Date.now())) return NextResponse.json({ error: "已到期代理不能开启自动续费，请先手动续费" }, { status: 409 });
+    const enabled=body?.enabled===true;
+    await db.update(proxyAllocations).set({autoRenew:enabled}).where(inArray(proxyAllocations.id,ids));
+    return NextResponse.json({ok:true,updated:ids.length});
+  }
+  return NextResponse.json({error:"不支持的批量操作"},{status:400});
+}

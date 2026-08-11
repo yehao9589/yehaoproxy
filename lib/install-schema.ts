@@ -1,0 +1,40 @@
+export const installSchema = `
+CREATE TABLE IF NOT EXISTS customers (id TEXT PRIMARY KEY,email TEXT NOT NULL UNIQUE,name TEXT,password_hash TEXT,email_verified INTEGER NOT NULL DEFAULT 0,role TEXT NOT NULL DEFAULT 'customer',status TEXT NOT NULL DEFAULT 'active',created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY,customer_email TEXT NOT NULL,product TEXT NOT NULL,region TEXT NOT NULL,quantity INTEGER NOT NULL,duration_days INTEGER NOT NULL,amount REAL NOT NULL,currency TEXT NOT NULL DEFAULT 'USD',status TEXT NOT NULL DEFAULT 'pending',payment_reference TEXT,payment_method TEXT NOT NULL DEFAULT 'balance',expires_at INTEGER,renewal_amount REAL,auto_renew INTEGER NOT NULL DEFAULT 0,admin_note TEXT,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS proxy_allocations (id TEXT PRIMARY KEY,order_id TEXT NOT NULL,host TEXT NOT NULL,port INTEGER NOT NULL,username TEXT,encrypted_password TEXT,wifi_name TEXT,protocol TEXT NOT NULL,note TEXT,auto_renew INTEGER NOT NULL DEFAULT 0,expires_at INTEGER,status TEXT NOT NULL DEFAULT 'active');
+CREATE TABLE IF NOT EXISTS inventory (id TEXT PRIMARY KEY,source TEXT NOT NULL,supplier_id TEXT,product TEXT NOT NULL,country TEXT NOT NULL,city TEXT,host TEXT NOT NULL,port INTEGER NOT NULL,username TEXT,encrypted_password TEXT,wifi_name TEXT,fingerprint TEXT NOT NULL UNIQUE,protocol TEXT NOT NULL,cost REAL,sale_price REAL NOT NULL,status TEXT NOT NULL DEFAULT 'available',reserved_by_order_id TEXT,external_id TEXT,expires_at INTEGER,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS provider_events (id TEXT PRIMARY KEY,provider TEXT NOT NULL,external_id TEXT NOT NULL,type TEXT NOT NULL,processed_at INTEGER,created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS payment_gateways (id TEXT PRIMARY KEY,name TEXT NOT NULL,type TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 0,priority INTEGER NOT NULL DEFAULT 100,supported_currencies TEXT NOT NULL,secret_ref TEXT,webhook_secret_ref TEXT,configuration TEXT,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS suppliers (id TEXT PRIMARY KEY,name TEXT NOT NULL,adapter TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 0,priority INTEGER NOT NULL DEFAULT 100,api_base_url TEXT,credential_ref TEXT,health_status TEXT NOT NULL DEFAULT 'unknown',last_synced_at INTEGER,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS payment_transactions (id TEXT PRIMARY KEY,order_id TEXT NOT NULL,gateway_id TEXT NOT NULL,external_id TEXT,amount REAL NOT NULL,currency TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'created',idempotency_key TEXT NOT NULL UNIQUE,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS email_verifications (id TEXT PRIMARY KEY,email TEXT NOT NULL,code_hash TEXT NOT NULL,purpose TEXT NOT NULL DEFAULT 'register',attempts INTEGER NOT NULL DEFAULT 0,verified INTEGER NOT NULL DEFAULT 0,expires_at INTEGER NOT NULL,created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS email_providers (id TEXT PRIMARY KEY,provider TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 0,from_name TEXT NOT NULL,from_email TEXT NOT NULL,host TEXT,port INTEGER,username TEXT,credential_ref TEXT,region TEXT,updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS auth_sessions (id TEXT PRIMARY KEY,customer_id TEXT NOT NULL,token_hash TEXT NOT NULL UNIQUE,user_agent TEXT,ip_address TEXT,expires_at INTEGER NOT NULL,created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS password_resets (id TEXT PRIMARY KEY,customer_id TEXT NOT NULL,token_hash TEXT NOT NULL UNIQUE,used INTEGER NOT NULL DEFAULT 0,expires_at INTEGER NOT NULL,created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS ip_whitelist (id TEXT PRIMARY KEY,customer_id TEXT NOT NULL,ip_address TEXT NOT NULL,label TEXT,enabled INTEGER NOT NULL DEFAULT 1,created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS audit_logs (id TEXT PRIMARY KEY,actor_id TEXT NOT NULL,actor_role TEXT NOT NULL,action TEXT NOT NULL,resource_type TEXT NOT NULL,resource_id TEXT,detail TEXT,ip_address TEXT,created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS service_requests (id TEXT PRIMARY KEY,customer_id TEXT NOT NULL,allocation_id TEXT NOT NULL,type TEXT NOT NULL,duration_days INTEGER,reason TEXT,amount REAL,status TEXT NOT NULL DEFAULT 'pending',admin_note TEXT,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS wallets (customer_id TEXT PRIMARY KEY,balance REAL NOT NULL DEFAULT 0,frozen REAL NOT NULL DEFAULT 0,credit_limit REAL NOT NULL DEFAULT 0,currency TEXT NOT NULL DEFAULT 'USD',updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS wallet_transactions (id TEXT PRIMARY KEY,customer_id TEXT NOT NULL,type TEXT NOT NULL,amount REAL NOT NULL,balance_after REAL NOT NULL,reference_type TEXT,reference_id TEXT,note TEXT,operator_id TEXT,created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS coupons (id TEXT PRIMARY KEY,code TEXT NOT NULL UNIQUE,type TEXT NOT NULL,value REAL NOT NULL,min_amount REAL NOT NULL DEFAULT 0,max_discount REAL,total_limit INTEGER,used_count INTEGER NOT NULL DEFAULT 0,enabled INTEGER NOT NULL DEFAULT 1,starts_at INTEGER,expires_at INTEGER,created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS coupon_redemptions (id TEXT PRIMARY KEY,coupon_id TEXT NOT NULL,customer_id TEXT NOT NULL,order_id TEXT NOT NULL UNIQUE,discount REAL NOT NULL,created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS tickets (id TEXT PRIMARY KEY,customer_id TEXT NOT NULL,subject TEXT NOT NULL,category TEXT NOT NULL,priority TEXT NOT NULL DEFAULT 'normal',status TEXT NOT NULL DEFAULT 'open',assigned_admin_id TEXT,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS ticket_messages (id TEXT PRIMARY KEY,ticket_id TEXT NOT NULL,author_id TEXT NOT NULL,author_role TEXT NOT NULL,body TEXT NOT NULL,internal INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY,customer_id TEXT NOT NULL,type TEXT NOT NULL,title TEXT NOT NULL,body TEXT NOT NULL,link TEXT,read INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS admin_roles (id TEXT PRIMARY KEY,name TEXT NOT NULL UNIQUE,permissions TEXT NOT NULL,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS admin_memberships (customer_id TEXT PRIMARY KEY,role_id TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 1,created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS product_offers (id TEXT PRIMARY KEY,product TEXT NOT NULL,region TEXT NOT NULL,region_name TEXT NOT NULL,billing_cycle TEXT NOT NULL DEFAULT 'fixed-days',price_7 REAL NOT NULL,price_30 REAL NOT NULL,price_90 REAL NOT NULL,sale_stock INTEGER NOT NULL DEFAULT 0,sold INTEGER NOT NULL DEFAULT 0,enabled INTEGER NOT NULL DEFAULT 1,sort_order INTEGER NOT NULL DEFAULT 100,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS currencies (code TEXT PRIMARY KEY,name TEXT NOT NULL,symbol TEXT NOT NULL,rate REAL NOT NULL,enabled INTEGER NOT NULL DEFAULT 1,is_default INTEGER NOT NULL DEFAULT 0,decimal_places INTEGER NOT NULL DEFAULT 2,sort_order INTEGER NOT NULL DEFAULT 100,updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS system_options (key TEXT PRIMARY KEY,value TEXT NOT NULL,updated_at INTEGER NOT NULL);
+`;
+
+// Query tables are shared by both Drizzle dialects. MySQL only needs indexed
+// text identifiers converted to bounded VARCHAR columns during DDL creation.
+export const installMysqlSchema = installSchema
+  .replaceAll("read INTEGER", "`read` INTEGER")
+  .replaceAll("(key TEXT", "(`key` TEXT")
+  .replaceAll("TEXT PRIMARY KEY", "VARCHAR(191) PRIMARY KEY")
+  .replaceAll("TEXT NOT NULL UNIQUE", "VARCHAR(191) NOT NULL UNIQUE")
+  .replaceAll("TEXT NOT NULL DEFAULT", "VARCHAR(191) NOT NULL DEFAULT")
+  .replaceAll("INTEGER PRIMARY KEY", "BIGINT PRIMARY KEY")
+  .replaceAll(" INTEGER", " BIGINT");

@@ -38,6 +38,7 @@ export async function POST(req: Request) {
       eq(productOffers.enabled, true),
     )).limit(1);
     if (!offer) return NextResponse.json({error: `${item.product} / ${item.region} 当前未开放销售`}, {status: 409});
+    if (offer.billingCycle === "calendar-month" && item.durationDays === 7) return NextResponse.json({error: `${offer.regionName} 为自然月商品，不支持 7 天周期`}, {status: 409});
     offerByKey.set(key, offer);
   }
 
@@ -52,28 +53,34 @@ export async function POST(req: Request) {
 
   const now = Math.floor(Date.now() / 1000);
   const d1 = (env as unknown as {DB: D1Database}).DB;
-  const created = items.map(item => {
+  const bundleId = `YH-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  const created = items.flatMap(item => {
     const offer = offerByKey.get(`${item.product}:${item.region}`)!;
     const unit = item.durationDays === 7 ? offer.price7 : item.durationDays === 90 ? offer.price90 : offer.price30;
-    return {...item, id: `YH-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, amount: Number((unit * item.quantity).toFixed(2))};
-  });
+    return Array.from({length:item.quantity},()=>({...item,quantity:1,unit}));
+  }).map((item,index)=>({...item,id:`${bundleId}-${String(index+1).padStart(2,"0")}`,amount:Number(item.unit.toFixed(2))}));
   const unavailable = created.find(item => item.amount < 0);
   if (unavailable) return NextResponse.json({error: `${unavailable.product} / ${unavailable.region} 暂不出售 ${unavailable.durationDays} 天周期`}, {status: 409});
 
+  const total = Number(created.reduce((sum, item) => sum + item.amount, 0).toFixed(2));
+  const bundleItems = encodeURIComponent(JSON.stringify(created.map(({id, product, region, durationDays, quantity, amount}) => ({id, product, region, durationDays, quantity, amount}))));
   const statements = [
     ...Array.from(requiredByKey.entries()).map(([key, required]) => {
       const offer = offerByKey.get(key)!;
       return d1.prepare("UPDATE product_offers SET sold=sold+?,updated_at=? WHERE id=? AND enabled=1 AND (sale_stock<0 OR sale_stock-sold>=?)")
         .bind(required, now, offer.id, required);
     }),
-    ...created.map(item => d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'USD','pending',?,?)")
-      .bind(item.id, user.email, item.product, item.region, item.quantity, item.durationDays, item.amount, now, now)),
+    d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,admin_note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'USD','pending',?,?,?)")
+      .bind(bundleId, user.email, "cart-bundle", "MULTI", created.reduce((sum,item)=>sum+item.quantity,0), 0, total, `[BUNDLE_ITEMS]${bundleItems}`, now, now),
+    ...created.map(item => d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,admin_note,created_at,updated_at) VALUES (?,?,?,?,?,?,0,'USD','pending',?,?,?)")
+      .bind(item.id, user.email, item.product, item.region, item.quantity, item.durationDays, `[BUNDLE_PARENT]${bundleId}\n[BUNDLE_ITEM_AMOUNT]${item.amount}\n[BILLING_CYCLE]${offerByKey.get(`${item.product}:${item.region}`)!.billingCycle}`, now, now)),
   ];
   const results = await d1.batch(statements);
   const stockResults = results.slice(0, requiredByKey.size);
   if (stockResults.some(result => !result.success || Number(result.meta?.changes) !== 1)) {
     const stockEntries = Array.from(requiredByKey.entries());
     await d1.batch([
+      d1.prepare("DELETE FROM orders WHERE id=?").bind(bundleId),
       ...created.map(item => d1.prepare("DELETE FROM orders WHERE id=?").bind(item.id)),
       ...stockEntries.flatMap(([key, required], index) => {
         if (!stockResults[index]?.success || Number(stockResults[index]?.meta?.changes) !== 1) return [];
@@ -85,7 +92,8 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    orders: created.map(item => ({id: item.id, amount: item.amount})),
-    total: Number(created.reduce((sum, item) => sum + item.amount, 0).toFixed(2)),
+    order: {id: bundleId, amount: total, itemCount: created.length},
+    orders: [{id: bundleId, amount: total}],
+    total,
   }, {status: 201});
 }

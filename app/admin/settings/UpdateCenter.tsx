@@ -21,6 +21,12 @@ type Data = {
     updateWebhookReady: boolean;
     checkedAt: string;
   };
+  executor: {
+    ready: boolean;
+    running: boolean;
+    backupDirectory?: string;
+    history: Array<{id:string;kind?:string;status:string;createdAt:string;updatedAt:string;image:string;message:string;fileName?:string;checksum?:string;database?:string}>;
+  };
 };
 type CheckResult = {
   currentVersion: string;
@@ -81,8 +87,25 @@ export default function UpdateCenter() {
   async function trigger() {
     if (!confirm("确定把更新任务提交给容器编排服务吗？更新期间服务可能短暂重启。")) return;
     const value = await call({ action: "trigger" });
-    if (value) setMessage(value.message);
+    if (value) { setMessage("更新任务已提交，系统正在执行备份与健康检查"); window.setTimeout(()=>void load(),1500); }
   }
+  async function rollback(backupId:string) {
+    if (!confirm(`确定恢复备份 ${backupId} 吗？恢复前会先备份当前系统，随后替换数据库、上传文件与配置。`)) return;
+    const value=await call({action:"rollback",backupId});
+    if(value){setMessage(value.message||"回滚任务已提交");window.setTimeout(()=>void load(),1500)}
+  }
+  async function createBackup(){
+    if(!confirm("确定立即创建完整系统备份吗？"))return;
+    const value=await call({action:"backup"});if(value){setMessage("系统备份已创建，可以下载到本地保存");await load()}
+  }
+  async function importBackup(file:File){
+    if(!file.name.toLowerCase().endsWith(".tar.gz")){setMessage("请选择 .tar.gz 系统备份文件");return}
+    setBusy("import");setMessage("");
+    const response=await fetch("/api/admin/update-center",{method:"POST",headers:{"content-type":"application/gzip","x-backup-filename":file.name},body:file});const value=await response.json();setBusy("");
+    if(!response.ok){setMessage(value.error||"导入失败");return}setMessage("备份文件已导入，请核对后点击恢复");await load();
+  }
+  const statusName:Record<string,string>={backed_up:"可恢复",updating:"正在更新",completed:"更新成功",rolling_back:"正在恢复",rolled_back:"已回滚",rollback_failed:"回滚失败",restored:"恢复成功",restore_failed:"恢复失败"};
+  const kindName:Record<string,string>={manual:"手动备份",update:"更新前备份",safety:"恢复前保护点",imported:"导入备份"};
 
   if (!data) return <div className="setting-card">{message || "正在加载更新中心…"}</div>;
   return <div className="update-center">
@@ -90,7 +113,7 @@ export default function UpdateCenter() {
     <section className="update-hero">
       <div><span>当前版本</span><b>{data.runtime.currentVersion}</b><small>{data.runtime.commit ? `提交 ${data.runtime.commit}` : "开发版本"}</small></div>
       <div><span>部署方式</span><b>{data.settings.deploymentMode === "docker" ? "Docker 镜像" : "手动部署"}</b><small>{data.runtime.image || data.settings.image || "尚未设置镜像"}</small></div>
-      <div><span>远程触发</span><b className={data.runtime.updateWebhookReady ? "ready" : "waiting"}>{data.runtime.updateWebhookReady ? "已就绪" : "待配置"}</b><small>由容器编排执行拉取与重建</small></div>
+      <div><span>安全更新执行器</span><b className={data.executor.ready ? "ready" : "waiting"}>{data.executor.ready ? (data.executor.running?"任务执行中":"已就绪") : "待配置"}</b><small>备份、健康检查与自动回滚</small></div>
       <button onClick={check} disabled={Boolean(busy)}>{busy === "check" ? "检查中…" : "检查更新"}</button>
     </section>
 
@@ -101,6 +124,13 @@ export default function UpdateCenter() {
         {busy === "trigger" ? "正在提交…" : "提交容器更新任务"}
       </button>
     </section>}
+
+    <section className="setting-card update-history system-backup-card">
+      <div className="setting-title"><div><h2>系统备份与灾难恢复</h2><p>完整备份数据库、上传文件和关键配置，可下载到其他设备保存，重装系统后也能导入恢复。</p></div><span>{data.executor.history.length} 个恢复点</span></div>
+      <div className="backup-actions"><button className="primary" disabled={!data.executor.ready||Boolean(busy)} onClick={createBackup}>{busy==="backup"?"正在备份…":"立即创建备份"}</button><label className={busy==="import"?"disabled":""}>导入备份文件<input type="file" accept=".gz,application/gzip" disabled={!data.executor.ready||Boolean(busy)} onChange={event=>{const file=event.target.files?.[0];if(file)void importBackup(file);event.currentTarget.value=""}} /></label><small>建议每次重大修改前备份，并把文件下载到本地或对象存储。</small></div>
+      {!data.executor.ready?<div className="update-empty">备份执行器尚未连接，部署后才能创建和恢复系统备份。</div>:!data.executor.history.length?<div className="update-empty">还没有系统备份，建议现在创建第一个恢复点。</div>:null}
+      {data.executor.ready&&Boolean(data.executor.history.length)&&<div className="update-history-list">{data.executor.history.map(item=><article key={`backup-${item.id}`}><span className={`update-history-status ${item.status}`}>{statusName[item.status]||item.status}</span><div><b>{item.id}<em>{kindName[item.kind||""]||"系统备份"}</em></b><small>{new Date(item.createdAt).toLocaleString("zh-CN",{hour12:false})} · {item.database==="mysql"?"MySQL 数据库":"SQLite 数据库"}</small><p>{item.message}{item.checksum?` · 校验 ${item.checksum.slice(0,12)}`:""}</p></div><div className="backup-row-actions"><a href={`/api/admin/update-center?download=${encodeURIComponent(item.id)}`}>下载</a><button disabled={data.executor.running||["updating","rolling_back"].includes(item.status)} onClick={()=>rollback(item.id)}>恢复</button></div></article>)}</div>}
+    </section>
 
     <form className="setting-card" onSubmit={save}>
       <div className="setting-title"><div><h2>更新源与镜像</h2><p>后台负责检测版本，Docker/宝塔容器编排负责真正更新。</p></div><span>仅超级管理员</span></div>

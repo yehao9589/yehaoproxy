@@ -6,6 +6,21 @@ const tabIndexes:Record<string,number>=Object.fromEntries(tabs.map((tab,index)=>
 
 export default function DashboardTabSync(){
   useEffect(()=>{
+    const loginUrl=()=>`/login?next=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}`;
+    const originalFetch=window.fetch.bind(window);
+    let redirecting=false;
+    const redirectToLogin=()=>{
+      if(redirecting)return;
+      redirecting=true;
+      location.replace(loginUrl());
+    };
+    window.fetch=async(input,init)=>{
+      const response=await originalFetch(input,init);
+      const target=typeof input==="string"?input:input instanceof URL?input.href:input.url;
+      if(response.status===401&&target.includes("/api/")&&!target.includes("/api/auth/login"))redirectToLogin();
+      return response;
+    };
+    void originalFetch("/api/auth/me",{cache:"no-store"}).then(response=>{if(response.status===401)redirectToLogin()}).catch(()=>undefined);
     let syncing=false;
     const sync=()=>{
       const requested=new URLSearchParams(location.search).get("tab")||"overview";
@@ -55,6 +70,7 @@ export default function DashboardTabSync(){
       document.removeEventListener("click",remember);
       removeEventListener("popstate",sync);
       observer.disconnect();
+      window.fetch=originalFetch;
     };
   },[]);
   return null;

@@ -2,12 +2,14 @@
 
 import {useEffect, useMemo, useState} from "react";
 import { countries, countryFlag, countryName } from "../../lib/countries";
+import ServicePriceSettings from "./settings/ServicePriceSettings";
 
 type Offer = {
   id: string;
   product: string;
   region: string;
   regionName: string;
+  billingCycle: "fixed-days"|"calendar-month";
   price7: number;
   price30: number;
   price90: number;
@@ -71,20 +73,27 @@ export default function ProductOffersModule() {
   const [productTypes,setProductTypes]=useState<ProductType[]>([]);
   const [category, setCategory] = useState<Category>("all");
   const [managingTypes,setManagingTypes]=useState(false);
+  const [showDefaultPolicy,setShowDefaultPolicy]=useState(false);
   const [editingType,setEditingType]=useState<ProductType|null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Offer | null>(null);
   const [formProduct,setFormProduct]=useState("");
+  const [formBillingCycle,setFormBillingCycle]=useState<"fixed-days"|"calendar-month">("fixed-days");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
+  const [servicePolicy,setServicePolicy]=useState({resetPrice:"5",replacePrice:"5",freeDays:"3",freeCount:"1",credentialEditing:false});
+  const [policyOptions,setPolicyOptions]=useState<Record<string,string>>({});
+  const [offerPolicy,setOfferPolicy]=useState({resetPrice:"",replacePrice:"",freeDays:"",freeCount:""});
 
   async function load() {
-    const response = await fetch("/api/admin/products");
+    const [response,settingsResponse] = await Promise.all([fetch("/api/admin/products"),fetch("/api/admin/settings")]);
     const data = await response.json();
+    const settingsData = await settingsResponse.json().catch(()=>({}));
     if (!response.ok) return setError(data.error || "商品加载失败");
     setItems(data.items);
     if(Array.isArray(data.productTypes))setProductTypes(data.productTypes);
+    if(settingsResponse.ok){const options=settingsData.options||{};setPolicyOptions(options);setServicePolicy({resetPrice:String(options.nodeTrafficResetPrice??5),replacePrice:String(options.ipReplacementPrice??5),freeDays:String(options.ipReplacementFreeDays??3),freeCount:String(options.ipReplacementFreeCount??1),credentialEditing:options.customer_node_credential_editing==="true"})}
   }
 
   useEffect(() => {
@@ -101,6 +110,25 @@ export default function ProductOffersModule() {
   function showSuccess(message: string) {
     setSuccess(message);
     window.setTimeout(() => setSuccess(""), 3500);
+  }
+
+  function openOfferEditor(item:Offer){
+    const key=(name:string)=>policyOptions[`productPolicy:${item.id}:${name}`]||"";
+    setOfferPolicy({resetPrice:key("nodeTrafficResetPrice"),replacePrice:key("ipReplacementPrice"),freeDays:key("ipReplacementFreeDays"),freeCount:key("ipReplacementFreeCount")});
+    setFormProduct(item.product);setFormBillingCycle(item.billingCycle||"fixed-days");setEditing(item);
+  }
+
+  function openOfferCreator(){setOfferPolicy({resetPrice:"",replacePrice:"",freeDays:"",freeCount:""});setFormProduct(productTypes.find(x=>x.enabled)?.id||"");setFormBillingCycle("fixed-days");setCreating(true)}
+
+  async function saveServicePolicy(product:string,offerId:string){
+    const values=typeCategory(product)==="node"
+      ? [["nodeTrafficResetPrice",offerPolicy.resetPrice]]
+      : [["ipReplacementPrice",offerPolicy.replacePrice],["ipReplacementFreeDays",offerPolicy.freeDays],["ipReplacementFreeCount",offerPolicy.freeCount]];
+    for(const[key,value]of values){
+      const response=await fetch("/api/admin/product-policy",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({offerId,name:key,value})});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"商品服务功能保存失败");
+    }
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -124,8 +152,9 @@ export default function ProductOffersModule() {
       body: JSON.stringify(body),
     });
     const data = await response.json();
+    if (!response.ok) {setSaving(false);return setError(data.error || "保存失败");}
+    try{await saveServicePolicy(String(body.product),editing?.id||String(data.id))}catch(error){setSaving(false);return setError(error instanceof Error?error.message:"商品服务功能保存失败")}
     setSaving(false);
-    if (!response.ok) return setError(data.error || "保存失败");
     setCreating(false);
     setEditing(null);
     await load();
@@ -169,7 +198,7 @@ export default function ProductOffersModule() {
             <h2>商品管理</h2>
             <p>通过“编辑商品”统一修改类型、地区、周期价格、销售额度和排序。</p>
           </div>
-          <div className="product-header-actions"><button onClick={()=>setManagingTypes(true)}>管理商品类型</button><button className="primary" onClick={() => {setFormProduct(productTypes.find(x=>x.enabled)?.id||"");setCreating(true)}}>＋ 添加商品</button></div>
+          <div className="product-header-actions"><button onClick={()=>setShowDefaultPolicy(true)}>默认服务配置</button><button onClick={()=>setManagingTypes(true)}>管理商品类型</button><button className="primary" onClick={openOfferCreator}>＋ 添加商品</button></div>
         </header>
 
         <div className="offer-category-tabs" aria-label="商品分类">
@@ -180,22 +209,22 @@ export default function ProductOffersModule() {
 
         <div className="business-table product offer-table offer-readonly-table">
           <div className="brow head">
-            <span>分类 / 商品</span><span>地区</span><span>7 天价</span><span>30 天价</span>
-            <span>90 天价</span><span>额度 / 剩余</span><span>操作</span>
+            <span>分类 / 商品</span><span>地区</span><span>短周期</span><span>标准周期</span>
+            <span>长期周期</span><span>额度 / 剩余</span><span>操作</span>
           </div>
           {visibleItems.map(item => (
             <div className="brow" key={item.id}>
               <span className="offer-identity">
                 <em>{typeCategory(item.product) === "node" ? "节点服务" : "代理 IP"}</em>
-                <b>{typeName(item.product)}</b>
+                <b>{typeName(item.product)}</b><small>{item.billingCycle==="calendar-month"?"自然月计费":"固定天数计费"}</small>
               </span>
               <span><b>{item.regionName}</b><small>{item.region}</small></span>
-              <span className="offer-price">{item.price7 < 0 ? "不出售" : `$${item.price7.toFixed(2)}`}</span>
-              <span className="offer-price">{item.price30 < 0 ? "不出售" : `$${item.price30.toFixed(2)}`}</span>
-              <span className="offer-price">{item.price90 < 0 ? "不出售" : `$${item.price90.toFixed(2)}`}</span>
+              <span className="offer-price">{item.billingCycle==="calendar-month"?"—":item.price7 < 0 ? "不出售" : <><b>$${item.price7.toFixed(2)}</b><small>7 天</small></>}</span>
+              <span className="offer-price">{item.price30 < 0 ? "不出售" : <><b>$${item.price30.toFixed(2)}</b><small>{item.billingCycle==="calendar-month"?"1 个自然月":"30 天"}</small></>}</span>
+              <span className="offer-price">{item.price90 < 0 ? "不出售" : <><b>$${item.price90.toFixed(2)}</b><small>{item.billingCycle==="calendar-month"?"3 个自然月":"90 天"}</small></>}</span>
               <span><b>{item.saleStock < 0 ? "不限量" : item.saleStock}</b><small>{item.saleStock < 0 ? `已售 ${item.sold}` : `剩余 ${Math.max(0, item.saleStock - item.sold)}`}</small></span>
               <span className="offer-row-actions">
-                <button className="offer-edit" onClick={() => {setFormProduct(item.product);setEditing(item)}}>编辑商品</button>
+                <button className="offer-edit" onClick={() => openOfferEditor(item)}>编辑商品</button>
                 <button type="button" role="switch" aria-checked={item.enabled} title={item.enabled ? "点击暂停销售" : "点击恢复销售"} className={`sale-toggle ${item.enabled ? "on" : "off"}`} onClick={() => void toggle(item)}>
                   <span/><b>{item.enabled ? "正在售卖" : "暂停销售"}</b><i/>
                 </button>
@@ -206,21 +235,38 @@ export default function ProductOffersModule() {
         </div>
       </div>
 
+      {showDefaultPolicy&&<div className="modal default-policy-modal" onMouseDown={event=>{if(event.target===event.currentTarget)setShowDefaultPolicy(false)}}><div className="default-policy-dialog"><header><div><h2>默认服务配置</h2><p>商品未设置独立金额时使用这里的默认值。</p></div><button type="button" aria-label="关闭" onClick={()=>setShowDefaultPolicy(false)}>×</button></header><ServicePriceSettings/></div></div>}
+
       {(creating || editing) && (
         <div className="modal">
           <form onSubmit={submit}>
             <div><h2>{editing ? "编辑商品" : "添加商品"}</h2><button type="button" onClick={() => {setCreating(false); setEditing(null);}}>×</button></div>
             <div className="form-grid">
               <label>商品类型<select name="product" value={formProduct} onChange={event=>setFormProduct(event.target.value)}>{productTypes.filter(x=>x.enabled||x.id===editing?.product).map(type=><option key={type.id} value={type.id}>{type.name}（{type.category==="node"?"节点服务":"代理 IP"}）</option>)}</select></label>
+              <label>周期计算方式<select name="billingCycle" value={formBillingCycle} onChange={event=>setFormBillingCycle(event.target.value as "fixed-days"|"calendar-month")}><option value="fixed-days">固定天数</option><option value="calendar-month">自然月</option></select></label>
               {typeCategory(formProduct)==="node"
                 ? <label>销售地区<input value="全局节点（无需选择国家）" disabled/></label>
                 : <CountryPicker defaultValue={editing?.region && editing.region!=="GLOBAL" ? editing.region : "US"}/>}
-              <label>7 天单价<input name="price7" type="number" min="0.01" step="0.01" placeholder="不填写表示不出售" defaultValue={editing && editing.price7 >= 0 ? editing.price7 : ""}/></label>
-              <label>30 天单价<input name="price30" type="number" min="0.01" step="0.01" placeholder="不填写表示不出售" defaultValue={editing && editing.price30 >= 0 ? editing.price30 : ""}/></label>
-              <label>90 天单价<input name="price90" type="number" min="0.01" step="0.01" placeholder="不填写表示不出售" defaultValue={editing && editing.price90 >= 0 ? editing.price90 : ""}/></label>
+              {formBillingCycle==="fixed-days"&&<label>7 天单价<input name="price7" type="number" min="0.01" step="0.01" placeholder="不填写表示不出售" defaultValue={editing && editing.price7 >= 0 ? editing.price7 : ""}/></label>}
+              <label>{formBillingCycle==="calendar-month"?"1 个自然月单价":"30 天单价"}<input name="price30" type="number" min="0.01" step="0.01" placeholder="不填写表示不出售" defaultValue={editing && editing.price30 >= 0 ? editing.price30 : ""}/></label>
+              <label>{formBillingCycle==="calendar-month"?"3 个自然月单价":"90 天单价"}<input name="price90" type="number" min="0.01" step="0.01" placeholder="不填写表示不出售" defaultValue={editing && editing.price90 >= 0 ? editing.price90 : ""}/></label>
               <label>前台销售额度<input name="saleStock" type="number" min="0" step="1" placeholder="不填写表示不限量" defaultValue={editing && editing.saleStock >= 0 ? editing.saleStock : ""}/></label>
               <label>显示排序<input name="sortOrder" type="number" step="1" defaultValue={editing?.sortOrder ?? 100}/></label>
             </div>
+            <section className="offer-service-policy">
+              <div className="offer-service-policy-title"><b>{typeCategory(formProduct)==="node"?"节点服务功能":"代理 IP 服务功能"}</b><small>保存商品时同步更新该类商品的客户功能规则</small></div>
+              {typeCategory(formProduct)==="node"?<>
+                <div className="form-grid">
+                  <label>流量重置费用<input type="number" min="0" step="0.01" placeholder={`留空使用默认 ¥${servicePolicy.resetPrice}`} value={offerPolicy.resetPrice} onChange={event=>setOfferPolicy(value=>({...value,resetPrice:event.target.value}))}/><small>留空时使用上方默认金额</small></label>
+                </div>
+              </>:<>
+                <div className="form-grid">
+                  <label>付费更换 IP 价格<input type="number" min="0" step="0.01" placeholder={`留空使用默认 ¥${servicePolicy.replacePrice}`} value={offerPolicy.replacePrice} onChange={event=>setOfferPolicy(value=>({...value,replacePrice:event.target.value}))}/><small>免费期或次数用完后的单次费用</small></label>
+                  <label>免费更换有效期<input type="number" min="0" max="365" step="1" placeholder={`留空使用默认 ${servicePolicy.freeDays} 天`} value={offerPolicy.freeDays} onChange={event=>setOfferPolicy(value=>({...value,freeDays:event.target.value}))}/><small>从 IP 开通时间开始计算</small></label>
+                  <label>免费更换次数<input type="number" min="0" max="100" step="1" placeholder={`留空使用默认 ${servicePolicy.freeCount} 次`} value={offerPolicy.freeCount} onChange={event=>setOfferPolicy(value=>({...value,freeCount:event.target.value}))}/><small>每条已开通 IP 的免费次数</small></label>
+                </div>
+              </>}
+            </section>
             <p className="modal-note">保存后会立即更新商品中心配置；已产生的历史订单不会修改。</p>
             <footer>
               <button type="button" onClick={() => {setCreating(false); setEditing(null);}}>取消</button>

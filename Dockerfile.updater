@@ -1,0 +1,7 @@
+FROM docker.m.daocloud.io/library/docker:27-cli
+
+RUN apk add --no-cache nodejs tar mariadb-client
+WORKDIR /runner
+COPY scripts/update-runner.mjs /runner/update-runner.mjs
+EXPOSE 8788
+ENTRYPOINT ["node", "/runner/update-runner.mjs"]

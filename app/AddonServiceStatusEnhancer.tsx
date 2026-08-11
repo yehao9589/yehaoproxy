@@ -55,7 +55,11 @@ export default function AddonServiceStatusEnhancer() {
       proxyRows.forEach((row, index) => {
         const request = latest.get(String(proxies[index]?.id || ""));
         const expiry = row.querySelector<HTMLElement>(".proxy-expiry");
-        if (request && expiry) expiry.appendChild(createBadge(request));
+        // Completed add-on work is already reflected by the service data (for
+        // example, the new expiry date). Keep only actionable states in the
+        // service table so a historical success badge does not live here
+        // forever; the completed record remains available in orders/requests.
+        if (request && request.status !== "completed" && expiry) expiry.appendChild(createBadge(request));
       });
 
       document.querySelectorAll<HTMLElement>(".managed-node-table .orow:not(.head)").forEach(row => {
@@ -63,7 +67,7 @@ export default function AddonServiceStatusEnhancer() {
         const orderId = text.match(/订单\s+([^\s·]+)/)?.[1];
         const request = orderId ? latest.get(orderId) : undefined;
         const statusCell = row.querySelector<HTMLElement>(".node-service-actions")?.previousElementSibling as HTMLElement | undefined;
-        if (request && statusCell) statusCell.appendChild(createBadge(request));
+        if (request && request.status !== "completed" && statusCell) statusCell.appendChild(createBadge(request));
       });
     }
 

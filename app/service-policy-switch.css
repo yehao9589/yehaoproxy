@@ -1,0 +1,70 @@
+.policy-permission-row.proxy-credential-permission {
+  margin-top: 16px;
+  padding: 16px 2px 0;
+  border: 0;
+  border-top: 1px solid #edf1f5;
+  border-radius: 0;
+  background: transparent;
+}
+
+.modal button.policy-toggle,
+.policy-toggle {
+  position: relative;
+  flex: 0 0 auto;
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: #cbd5df !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  transition: background .18s ease;
+}
+
+.policy-toggle i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px #31465b45;
+  transition: transform .18s ease;
+}
+
+.modal button.policy-toggle:hover,
+.policy-toggle:hover { background: #b9c7d5 !important; }
+.modal button.policy-toggle.on,
+.policy-toggle.on { background: #2389ee !important; }
+.modal button.policy-toggle.on:hover,
+.policy-toggle.on:hover { background: #1778d4 !important; }
+.policy-toggle.on i { transform: translateX(18px); }
+.policy-toggle:focus-visible { outline: 3px solid #bfdbfe; outline-offset: 2px; }
+
+.default-policy-modal {
+  z-index: 20000 !important;
+  background: rgba(15, 23, 42, .58) !important;
+}
+
+.default-policy-dialog {
+  isolation: isolate;
+  max-height: calc(100vh - 48px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+.default-policy-dialog .service-policy-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  box-sizing: border-box;
+  width: 100%;
+  overflow: hidden;
+  justify-content: flex-end !important;
+}

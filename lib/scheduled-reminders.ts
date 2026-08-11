@@ -1,5 +1,6 @@
 import {and,eq,inArray} from "drizzle-orm";
 import {getDb} from "../db";
+import {setSystemOption} from "./db-upsert";
 import {customers,notifications,orders,systemOptions} from "../db/schema";
 import {sendTransactionalEmail} from "./email";
 import {runTicketAutomation} from "./ticket-automation";
@@ -65,7 +66,7 @@ export async function runScheduledReminders(origin:string){
     result.scanned++;
     const ageMinutes=(now.getTime()-order.createdAt.getTime())/60000;
     const values={orderId:order.id,product:productName(order.product),days:0,expiresAt:order.expiresAt?.toLocaleString("zh-CN",{hour12:false})||"",customerName:customerByEmail.get(order.customerEmail.toLowerCase())?.name||order.customerEmail};
-    if(config.newOrderEnabled&&["paid","provisioning"].includes(order.status)&&ageMinutes<=maxWindow*1440)await emit(order,"new-order","new_order","新购服务已受理",`订单 ${order.id}（${productName(order.product)}）已付款，正在等待提取或人工开通。`,values);
+    if(config.newOrderEnabled&&["paid","provisioning"].includes(order.status)&&ageMinutes<=maxWindow*1440)await emit(order,"new-order","new_order","新购服务已受理",`订单 ${order.id}（${productName(order.product)}）已付款，正在等待管理员开通。`,values);
     if(config.provisioningEnabled&&order.status==="provisioning"&&ageMinutes>=config.provisioningMinutes)await emit(order,`provisioning-${config.provisioningMinutes}`,"provisioning","服务正在等待人工开通",`订单 ${order.id} 已进入人工开通流程，我们会尽快完成交付。`,values);
     if(order.status==="active"&&order.expiresAt){
       const remaining=order.expiresAt.getTime()-now.getTime(),days=Math.ceil(remaining/86400000);
@@ -76,6 +77,6 @@ export async function runScheduledReminders(origin:string){
       if(remaining<0&&remaining>-maxWindow*86400000)await emit(order,"expired","expired","服务已到期",`订单 ${order.id}（${productName(order.product)}）已经到期，请续费后继续使用。`,values);
     }
   }
-  await db.insert(systemOptions).values({key:"scheduled_reminder_last_run",value:JSON.stringify({...result,ranAt:now.toISOString()}),updatedAt:now}).onConflictDoUpdate({target:systemOptions.key,set:{value:JSON.stringify({...result,ranAt:now.toISOString()}),updatedAt:now}});
+  await setSystemOption("scheduled_reminder_last_run",JSON.stringify({...result,ranAt:now.toISOString()}),now);
   return result;
 }

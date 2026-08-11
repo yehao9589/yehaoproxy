@@ -21,6 +21,7 @@ export async function POST(req: Request) {
   const price7 = parsePrice(body?.price7);
   const price30 = parsePrice(body?.price30);
   const price90 = parsePrice(body?.price90);
+  const billingCycle = body?.billingCycle === "calendar-month" ? "calendar-month" : "fixed-days";
   const rawSaleStock = body?.saleStock;
   const saleStock = rawSaleStock === undefined || rawSaleStock === null || String(rawSaleStock).trim() === ""
     ? -1
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
   const now = new Date();
   const id = `offer-${crypto.randomUUID()}`;
   await getDb().insert(productOffers).values({
-    id, product, region, regionName, price7, price30, price90, saleStock,
+    id, product, region, regionName, billingCycle, price7:billingCycle==="calendar-month"?-1:price7, price30, price90, saleStock,
     sold: 0,
     enabled: body?.enabled !== false,
     sortOrder: Number(body?.sortOrder) || 100,

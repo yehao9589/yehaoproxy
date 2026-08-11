@@ -1,6 +1,6 @@
 "use client";import { useState } from "react";import "../console.css";
 const proxies=[
- ["66.17.66.107:443","AFunRewNOZXw","••••••••","🇺🇸 Virginia, US","2026-08-08","主力店-US01"],
+ ["66.17.66.107:443","AFunRewNOZXw","••••••••","🇺🇸 弗吉尼亚，美国","2026-08-08","主力店-US01"],
  ["203.160.133.74:443","CmUJBPiSfStQ","••••••••","🇻🇳 Ho Chi Minh, VN","2026-08-08","采集-VN01"],
  ["144.56.95.3:443","XnqJrLcNmebx","••••••••","🇫🇷 Paris, FR","2026-08-07","社媒-FR03"],
  ["145.79.120.112:443","chBkCapbZQax","••••••••","🇩🇪 Frankfurt, DE","2026-08-06","广告-DE04"],

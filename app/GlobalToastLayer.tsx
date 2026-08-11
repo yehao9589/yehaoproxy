@@ -22,7 +22,6 @@ export default function GlobalToastLayer(){
     };
     const originalFetch=window.fetch.bind(window);
     const successText=(url:string,method:string)=>{
-      if(url.includes("/inventory"))return method==="POST"?"库存数据已保存":"库存资源已保存";
       if(url.includes("/orders"))return method==="DELETE"?"订单已删除":"订单信息已保存";
       if(url.includes("/products"))return method==="POST"?"商品已创建":"商品信息已保存";
       if(url.includes("/customers"))return "客户资料已保存";

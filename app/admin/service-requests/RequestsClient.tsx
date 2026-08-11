@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {displayCustomerId} from "../../../lib/customer-id";
 
 type RequestItem = {
   id: string;
   customerId: string;
+  customerName?: string | null;
+  customerEmail?: string | null;
   allocationId: string;
   type: string;
   durationDays: number | null;
@@ -122,7 +125,7 @@ export default function RequestsClient() {
       <div className="orow head"><span>申请编号</span><span>客户</span><span>代理资产</span><span>类型</span><span>原因 / 时长</span><span>状态</span><span>操作</span></div>
       {items.length === 0 ? <div className="empty">暂无售后申请</div> : items.map((item) => <div className="orow" key={item.id}>
         <span><button className="aftersales-link mono" onClick={() => void open(item)}>{item.id}</button></span>
-        <span><button className="aftersales-link" onClick={() => openCustomer(item.customerId)}>{item.customerId}</button></span>
+        <span><button className="aftersales-link" onClick={() => openCustomer(item.customerId)}>{item.customerName || "未设置名称"}</button>{item.customerEmail&&<small>{item.customerEmail}</small>}</span>
         <span><button className="aftersales-link mono" onClick={() => void open(item)}>{item.allocationId}</button></span>
         <span>{item.type === "renew" ? "续费" : item.type === "reset_traffic" ? "流量重置" : item.type === "custom" ? "一次性服务" : "更换"}</span>
         <span>{item.reason || `${item.durationDays || 0} 天`}</span>
@@ -135,7 +138,7 @@ export default function RequestsClient() {
       <header><div><small>售后申请详情</small><h2>{detail.request.type === "renew" ? "代理续费" : detail.request.type === "reset_traffic" ? "节点流量重置" : detail.request.type === "custom" ? "一次性服务" : "代理更换"}</h2><p>{detail.request.id}</p></div><button onClick={() => setDetail(null)}>×</button></header>
       <div className="aftersales-detail-body">
         <section><h3>客户与申请</h3><div className="aftersales-detail-grid">
-          <div><span>客户</span><button className="aftersales-link" onClick={() => openCustomer(detail.request.customerId)}>{detail.customer?.name || detail.customer?.email || detail.request.customerId}</button></div>
+          <div><span>客户</span><button className="aftersales-link" onClick={() => openCustomer(detail.request.customerId)}>{detail.customer?.name || detail.customer?.email || displayCustomerId(detail.request.customerId)}</button></div>
           <div><span>联系邮箱</span><b>{detail.customer?.email || "未知"}</b></div>
           <div><span>申请时间</span><b>{date(detail.request.createdAt)}</b></div>
           <div><span>申请状态</span><b className={`aftersales-status ${detail.request.status}`}>{statusLabels[detail.request.status] || "未知状态"}</b></div>

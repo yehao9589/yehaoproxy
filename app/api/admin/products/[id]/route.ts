@@ -16,6 +16,12 @@ export async function PATCH(req: Request, {params}: {params: Promise<{id: string
 
   const patch: Record<string, unknown> = {updatedAt: new Date()};
 
+  if (body.billingCycle !== undefined) {
+    if (!["fixed-days", "calendar-month"].includes(String(body.billingCycle))) return NextResponse.json({error: "周期计算方式无效"}, {status: 400});
+    patch.billingCycle = body.billingCycle;
+    if (body.billingCycle === "calendar-month") patch.price7 = -1;
+  }
+
   if (body.product !== undefined) {
     const product = String(body.product);
     if (!(await getProductTypes()).some(x=>x.id===product&&x.enabled)) return NextResponse.json({error: "商品类型无效或已停用"}, {status: 400});

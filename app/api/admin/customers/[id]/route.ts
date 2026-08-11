@@ -4,7 +4,7 @@ import { requireAdminApi } from "../../../../../lib/admin-auth";
 import { audit } from "../../../../../lib/audit";
 import { hashPassword } from "../../../../../lib/auth";
 import { getDb } from "../../../../../db";
-import { auditLogs, authSessions, customers, inventory, notifications, orders, proxyAllocations, tickets, wallets, walletTransactions } from "../../../../../db/schema";
+import { auditLogs, authSessions, customers, notifications, orders, proxyAllocations, tickets, wallets, walletTransactions } from "../../../../../db/schema";
 import { AFTER_SALES_TICKET_CATEGORIES } from "../../../../../lib/ticket-categories";
 
 export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){
@@ -13,7 +13,14 @@ export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){
   if(!customer||customer.role!=="customer")return NextResponse.json({error:"客户不存在"},{status:404});
   const [wallet]=await db.select().from(wallets).where(eq(wallets.customerId,id)).limit(1);
   const orderRows=await db.select().from(orders).where(eq(orders.customerEmail,customer.email)).orderBy(desc(orders.createdAt));
-  const assets=await db.select({id:proxyAllocations.id,orderId:proxyAllocations.orderId,host:proxyAllocations.host,port:proxyAllocations.port,username:proxyAllocations.username,protocol:proxyAllocations.protocol,status:proxyAllocations.status,expiresAt:proxyAllocations.expiresAt,autoRenew:proxyAllocations.autoRenew,product:orders.product,region:orders.region,country:inventory.country,city:inventory.city}).from(proxyAllocations).innerJoin(orders,eq(proxyAllocations.orderId,orders.id)).leftJoin(inventory,and(eq(inventory.reservedByOrderId,orders.id),eq(inventory.host,proxyAllocations.host),eq(inventory.port,proxyAllocations.port))).where(eq(orders.customerEmail,customer.email)).orderBy(desc(proxyAllocations.expiresAt));
+  const assetRows=await db.select({id:proxyAllocations.id,orderId:proxyAllocations.orderId,host:proxyAllocations.host,port:proxyAllocations.port,username:proxyAllocations.username,protocol:proxyAllocations.protocol,note:proxyAllocations.note,status:proxyAllocations.status,expiresAt:proxyAllocations.expiresAt,autoRenew:proxyAllocations.autoRenew,product:orders.product,region:orders.region}).from(proxyAllocations).innerJoin(orders,eq(proxyAllocations.orderId,orders.id)).where(eq(orders.customerEmail,customer.email)).orderBy(desc(proxyAllocations.expiresAt));
+  const proxyAssets=assetRows.map(row=>({...row,kind:"proxy" as const,note:undefined,country:row.region,city:row.note?.match(/\[CITY\]([^\n]*)/)?.[1]||null}));
+  const serviceStatuses=new Set(["paid","provisioning","active"]);
+  const nodeAssets=orderRows.filter(row=>["computer-node","soft-router"].includes(row.product)&&serviceStatuses.has(row.status)&&!row.adminNote?.includes("[RENEWAL_OF]")).map(row=>({
+    id:`node:${row.id}`,kind:"node" as const,orderId:row.id,host:null,port:null,username:null,protocol:"订阅服务",status:row.status,expiresAt:row.expiresAt,autoRenew:row.autoRenew,product:row.product,region:row.region,country:row.region,city:null,
+    subscriptionUrl:row.adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1]||null,
+  }));
+  const assets=[...proxyAssets,...nodeAssets].sort((a,b)=>(b.expiresAt?.getTime()||0)-(a.expiresAt?.getTime()||0));
   const [transactions,ticketRows,logs,notificationRows]=await Promise.all([db.select().from(walletTransactions).where(eq(walletTransactions.customerId,id)).orderBy(desc(walletTransactions.createdAt)).limit(50),db.select().from(tickets).where(and(eq(tickets.customerId,id),notInArray(tickets.category,[...AFTER_SALES_TICKET_CATEGORIES]))).orderBy(desc(tickets.updatedAt)).limit(50),db.select().from(auditLogs).where(eq(auditLogs.actorId,id)).orderBy(desc(auditLogs.createdAt)).limit(50),db.select().from(notifications).where(eq(notifications.customerId,id)).orderBy(desc(notifications.createdAt)).limit(50)]);
   const paidStatuses=new Set(["paid","provisioning","active"]),totalSpent=orderRows.filter(x=>paidStatuses.has(x.status)).reduce((sum,x)=>sum+x.amount,0);
   const balance=wallet?.balance||0,creditLimit=wallet?.creditLimit||0,creditUsed=Math.max(0,-balance);return NextResponse.json({customer:{id:customer.id,email:customer.email,name:customer.name,status:customer.status,emailVerified:customer.emailVerified,createdAt:customer.createdAt},summary:{totalSpent:Number(totalSpent.toFixed(2)),orderCount:orderRows.length,activeAssets:assets.filter(x=>x.status==="active").length,totalAssets:assets.length,balance,frozen:wallet?.frozen||0,creditLimit,creditUsed,availableCredit:Math.max(0,creditLimit-creditUsed),openTickets:ticketRows.filter(x=>!["resolved","closed"].includes(x.status)).length},orders:orderRows,assets,transactions,tickets:ticketRows,logs,notifications:notificationRows});

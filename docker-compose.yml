@@ -1,4 +1,46 @@
 services:
+  mysql:
+    profiles: ["mysql"]
+    image: mysql:8.4
+    container_name: yehaoproxy-mysql
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-this-root-password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-yehaoproxy}
+      MYSQL_USER: ${MYSQL_USER:-yehaoproxy}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change-this-database-password}
+    volumes:
+      - yehaoproxy_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "--password=${MYSQL_ROOT_PASSWORD:-change-this-root-password}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  mysql-bridge:
+    profiles: ["mysql"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yehaoproxy-mysql-bridge
+    command: ["node", "scripts/mysql-bridge.mjs"]
+    environment:
+      PORT: 8789
+      DATABASE_URL: mysql://${MYSQL_USER:-yehaoproxy}:${MYSQL_PASSWORD:-change-this-database-password}@mysql:3306/${MYSQL_DATABASE:-yehaoproxy}?charset=utf8mb4
+      MYSQL_BRIDGE_SECRET: ${MYSQL_BRIDGE_SECRET:-yehaoproxy-local-mysql-bridge}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8789/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
   yehaoproxy:
     build:
       context: .
@@ -9,15 +51,41 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: development
+      CI: "true"
+      CONTAINER: "true"
       CRON_SECRET: yehaoproxy-local-cron
       XPANEL_BRIDGE_URL: http://xpanel-bridge:8787
       XPANEL_BRIDGE_SECRET: yehaoproxy-local-xpanel-bridge
+      UPDATE_WEBHOOK_URL: http://updater:8788
+      UPDATE_WEBHOOK_TOKEN: yehaoproxy-local-update-runner
+      MYSQL_BRIDGE_URL: http://mysql-bridge:8789
+      MYSQL_BRIDGE_SECRET: ${MYSQL_BRIDGE_SECRET:-yehaoproxy-local-mysql-bridge}
     depends_on:
       xpanel-bridge:
         condition: service_healthy
     volumes:
       - .:/app
       - yehaoproxy_node_modules:/app/node_modules
+    restart: unless-stopped
+
+  updater:
+    profiles: ["system-update"]
+    build:
+      context: .
+      dockerfile: Dockerfile.updater
+    container_name: yehaoproxy-updater
+    environment:
+      PORT: 8788
+      UPDATE_WEBHOOK_TOKEN: yehaoproxy-local-update-runner
+      UPDATE_PROJECT_DIR: /workspace
+      UPDATE_BACKUP_DIR: /backups
+      UPDATE_HEALTH_URL: http://yehaoproxy:3000/api/health
+      UPDATE_SERVICES: yehaoproxy scheduler xpanel-bridge mysql-bridge
+      DATABASE_URL: mysql://${MYSQL_USER:-yehaoproxy}:${MYSQL_PASSWORD:-change-this-database-password}@mysql:3306/${MYSQL_DATABASE:-yehaoproxy}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace
+      - yehaoproxy_update_backups:/backups
     restart: unless-stopped
 
   scheduler:
@@ -53,3 +121,5 @@ services:
 
 volumes:
   yehaoproxy_node_modules:
+  yehaoproxy_update_backups:
+  yehaoproxy_mysql_data:

@@ -3,6 +3,7 @@ import {NextResponse} from "next/server";
 import {getDb} from "../../../../db";
 import {emailProviders} from "../../../../db/schema";
 import {requireAdminApi} from "../../../../lib/admin-auth";
+import {upsertRecord} from "../../../../lib/db-upsert";
 
 export async function POST(request: Request) {
   if (!await requireAdminApi("settings")) return NextResponse.json({error: "无系统设置权限"}, {status: 403});
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({error: "邮件配置不完整"}, {status: 400});
   }
   const now = new Date();
-  await getDb().insert(emailProviders).values({
+  const values={
     id: "primary",
     provider: body.provider,
     enabled: Boolean(body.enabled),
@@ -23,9 +24,8 @@ export async function POST(request: Request) {
     credentialRef: body.credentialRef ? String(body.credentialRef) : null,
     region: body.region ? String(body.region) : null,
     updatedAt: now,
-  }).onConflictDoUpdate({
-    target: emailProviders.id,
-    set: {
+  };
+  await upsertRecord(emailProviders,emailProviders.id,"primary",values,{
       provider: body.provider,
       enabled: Boolean(body.enabled),
       fromName: String(body.fromName),
@@ -36,7 +36,6 @@ export async function POST(request: Request) {
       credentialRef: body.credentialRef ? String(body.credentialRef) : null,
       region: body.region ? String(body.region) : null,
       updatedAt: now,
-    },
   });
   return NextResponse.json({ok: true});
 }

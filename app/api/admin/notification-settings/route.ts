@@ -3,6 +3,7 @@ import {NextResponse} from "next/server";
 import {getDb} from "../../../../db";
 import {emailProviders, systemOptions} from "../../../../db/schema";
 import {requireAdminApi} from "../../../../lib/admin-auth";
+import {setSystemOption} from "../../../../lib/db-upsert";
 
 export const DEFAULT_TEMPLATES = [
   {id: "register_code", name: "注册验证码", scene: "账户安全", enabled: true, emailEnabled: true, smsEnabled: false, emailSubject: "注册验证码", emailBody: "你的验证码是：{{code}}，10 分钟内有效。", smsBody: "【YehaoProxy】注册验证码：{{code}}，10分钟内有效。"},
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
       senderId: String(body.senderId || ""),
     };
     if (config.enabled && !config.signName) return NextResponse.json({error: "启用短信前请填写短信签名"}, {status: 400});
-    await db.insert(systemOptions).values({key: "sms_provider_config", value: JSON.stringify(config), updatedAt: now}).onConflictDoUpdate({target: systemOptions.key, set: {value: JSON.stringify(config), updatedAt: now}});
+    await setSystemOption("sms_provider_config",JSON.stringify(config),now);
     return NextResponse.json({ok: true, config});
   }
   if (body?.kind === "templates") {
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
       emailBody: String(item.emailBody).slice(0, 5000),
       smsBody: String(item.smsBody).slice(0, 500),
     }));
-    await db.insert(systemOptions).values({key: "notification_templates", value: JSON.stringify(templates), updatedAt: now}).onConflictDoUpdate({target: systemOptions.key, set: {value: JSON.stringify(templates), updatedAt: now}});
+    await setSystemOption("notification_templates",JSON.stringify(templates),now);
     return NextResponse.json({ok: true, templates});
   }
   return NextResponse.json({error: "通知配置类型无效"}, {status: 400});

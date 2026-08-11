@@ -1,1 +1,2 @@
-import{redirect}from"next/navigation";import{getCurrentCustomer}from"../../../lib/auth";import ImportClient from"./ImportClient";export const dynamic="force-dynamic";export default async function Page(){const u=await getCurrentCustomer();if(!u)redirect("/login");if(u.role!=="admin")redirect("/dashboard");return <ImportClient/>}
+import {redirect} from "next/navigation";
+export default function RemovedInventoryPage(){redirect("/admin?tab=overview")}

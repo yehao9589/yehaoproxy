@@ -12,6 +12,7 @@ import {
 } from "../../../../../db/schema";
 import { audit } from "../../../../../lib/audit";
 import { getCurrentCustomer } from "../../../../../lib/auth";
+import {addBillingPeriod,billingCycleFromNote} from "../../../../../lib/billing-period";
 
 const nodeProducts = new Set(["soft-router", "computer-node"]);
 
@@ -116,15 +117,13 @@ export async function POST(
   const now = new Date();
   const txId = `WT-${crypto.randomUUID()}`;
   const renewalSourceId = order.adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1];
+  const renewalAllocationId = order.adminNote?.match(/\[RENEW_ALLOCATION\]([^\n]+)/)?.[1];
   const replacementAllocationId = order.adminNote?.match(/\[REPLACE_ALLOCATION\]([^\n]+)/)?.[1];
   const oneTimeService = order.adminNote?.includes("[BILLING_MODE]one-time") || false;
   const targetOrderId = order.adminNote?.match(/\[TARGET_ORDER\]([^\n]+)/)?.[1];
   const customOneTime = order.adminNote?.includes("[PRODUCT_TYPE]one-time-service") || false;
-  const nextStatus = renewalSourceId
-    ? "active"
-    : nodeProducts.has(order.product) || order.product === "node-traffic-reset" || order.product === "ip-replacement" || oneTimeService
-      ? "provisioning"
-      : "paid";
+  const bundleOrder = order.product === "cart-bundle" && order.adminNote?.includes("[BUNDLE_ITEMS]");
+  const nextStatus = "provisioning";
 
   await db
     .update(wallets)
@@ -164,6 +163,18 @@ export async function POST(
       updatedAt: now,
     })
     .where(eq(orders.id, id));
+  if (bundleOrder) {
+    const customerOrders = await db.select().from(orders).where(eq(orders.customerEmail, user.email));
+    const children = customerOrders.filter(item => item.adminNote?.includes(`[BUNDLE_PARENT]${id}`));
+    for (const child of children) {
+      await db.update(orders).set({
+        status: "provisioning",
+        paymentMethod: order.paymentMethod,
+        paymentReference: txId,
+        updatedAt: now,
+      }).where(eq(orders.id, child.id));
+    }
+  }
   if (order.product === "node-traffic-reset") {
     const sourceOrderId = order.adminNote?.match(/\[RESET_OF\]([^\n]+)/)?.[1] || "未知节点";
     const requestId = `AS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
@@ -212,25 +223,16 @@ export async function POST(
     const base = sourceOrder.expiresAt && sourceOrder.expiresAt > now
       ? sourceOrder.expiresAt
       : now;
-    const expiresAt = new Date(base.getTime() + order.durationDays * 86400000);
+    const cycle=billingCycleFromNote(sourceOrder.adminNote||order.adminNote);
+    const expiresAt = addBillingPeriod(base,order.durationDays,cycle);
     await db.update(orders).set({
       status: "active",
       expiresAt,
       updatedAt: now,
     }).where(eq(orders.id, sourceOrder.id));
-    await db.insert(serviceRequests).values({
-      id: `RN-V-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-      customerId: user.id,
-      allocationId: sourceOrder.id,
-      type: "renew",
-      durationDays: order.durationDays,
-      reason: `节点续费订单 ${id} 已自动生效`,
-      amount: payable,
-      status: "completed",
-      adminNote: `系统自动续费，待后台核验；新到期时间 ${expiresAt.toLocaleString("zh-CN", { hour12: false })}`,
-      createdAt: now,
-      updatedAt: now,
-    });
+    let previousAllocationExpiry="";
+    if(renewalAllocationId){const[allocation]=await db.select().from(proxyAllocations).where(eq(proxyAllocations.id,renewalAllocationId)).limit(1);previousAllocationExpiry=allocation?.expiresAt?.toISOString()||"";const allocationBase=allocation?.expiresAt&&allocation.expiresAt>now?allocation.expiresAt:now,allocationExpiry=addBillingPeriod(allocationBase,order.durationDays,cycle);await db.update(proxyAllocations).set({expiresAt:allocationExpiry}).where(eq(proxyAllocations.id,renewalAllocationId))}
+    await db.update(orders).set({status:"provisioning",adminNote:`${order.adminNote||""}\n[RENEW_PREVIOUS_SOURCE_EXPIRY]${sourceOrder.expiresAt?.toISOString()||""}\n[RENEW_PREVIOUS_ALLOCATION_EXPIRY]${previousAllocationExpiry}\n[RENEW_APPLIED_AT]${now.toISOString()}`.trim(),updatedAt:now}).where(eq(orders.id,id));
   }
   if (replacementAllocationId) {
     const reason = order.adminNote?.match(/\[REPLACE_REASON\]([^\n]+)/)?.[1] || "客户付费申请更换 IP";

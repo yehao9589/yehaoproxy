@@ -29,6 +29,8 @@ yarn-error.log*
 .pnpm-debug.log*
 /.pnpm-store/
 /.dev-server.*.log
+/.dev*.log
+/.dev*.pid
 
 # env files (can opt-in for committing if needed)
 .env*

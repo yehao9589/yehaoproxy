@@ -25,7 +25,7 @@ export default function ProxyReplaceEnhancer() {
         buttons[2].disabled = false;
         buttons[2].classList.remove("replace-expired");
         buttons[2].title = item.replaceEligible
-          ? `提取后 3 天内可申请更换，截止 ${new Date(item.replaceEligibleUntil!).toLocaleString("zh-CN", { hour12: false })}`
+          ? `开通后 3 天内可申请更换，截止 ${new Date(item.replaceEligibleUntil!).toLocaleString("zh-CN", { hour12: false })}`
           : "已超过免费期，可按后台设置的价格付费更换";
       });
     }

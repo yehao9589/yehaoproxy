@@ -15,7 +15,7 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const admin = await requireAdminApi();
+  const admin = await requireAdminApi("orders");
   if (!admin) return NextResponse.json({ error: "无管理员权限" }, { status: 403 });
 
   const { id } = await params;
@@ -24,7 +24,7 @@ export async function POST(
   const db = getDb();
   const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
 
-  if (!order || !["paid", "provisioning", "active", "failed"].includes(order.status)) {
+  if (!order || !["paid", "provisioning", "active"].includes(order.status)) {
     return NextResponse.json({ error: "订单不可退款" }, { status: 409 });
   }
   if (reason.length < 3) {
@@ -57,6 +57,10 @@ export async function POST(
     .select({ id: proxyAllocations.id })
     .from(proxyAllocations)
     .where(eq(proxyAllocations.orderId, id));
+  const allOrders = await db.select().from(orders).where(eq(orders.customerEmail, order.customerEmail));
+  const children = order.product === "cart-bundle"
+    ? allOrders.filter(item => item.adminNote?.includes(`[BUNDLE_PARENT]${id}`))
+    : [];
 
   await db.update(wallets).set({ balance: next, updatedAt: now }).where(eq(wallets.customerId, customer.id));
   await db.insert(walletTransactions).values({
@@ -73,13 +77,17 @@ export async function POST(
   });
   await db.update(proxyAllocations).set({ status: "revoked", autoRenew: false }).where(eq(proxyAllocations.orderId, id));
   await db.update(orders).set({ status: "refunded", autoRenew: false, updatedAt: now }).where(eq(orders.id, id));
+  for (const child of children) {
+    await db.update(proxyAllocations).set({ status: "revoked", autoRenew: false }).where(eq(proxyAllocations.orderId, child.id));
+    await db.update(orders).set({ status: "refunded", autoRenew: false, updatedAt: now }).where(eq(orders.id, child.id));
+  }
 
   await audit(
     { id: admin.id, role: admin.role },
     "order.refund",
     "order",
     id,
-    { amount: order.amount, reason, txId, revokedAllocations: allocations.length },
+    { amount: order.amount, reason, txId, revokedAllocations: allocations.length, bundleItems: children.length },
     req,
   );
   return NextResponse.json({

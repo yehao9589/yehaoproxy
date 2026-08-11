@@ -3,6 +3,7 @@ import {getDb} from "../db";
 import {customers,notifications,systemOptions,ticketMessages,tickets} from "../db/schema";
 import {sendTransactionalEmail} from "./email";
 import {AFTER_SALES_TICKET_CATEGORIES} from "./ticket-categories";
+import {setSystemOption} from "./db-upsert";
 
 export type TicketAutomationConfig={
   enabled:boolean;
@@ -44,8 +45,7 @@ export async function saveTicketAutomationConfig(input:Partial<TicketAutomationC
     emailEnabled:Boolean(input.emailEnabled),
   };
   const now=new Date();
-  await getDb().insert(systemOptions).values({key:"ticket_automation_config",value:JSON.stringify(config),updatedAt:now})
-    .onConflictDoUpdate({target:systemOptions.key,set:{value:JSON.stringify(config),updatedAt:now}});
+  await setSystemOption("ticket_automation_config",JSON.stringify(config),now);
   return config;
 }
 
@@ -112,7 +112,6 @@ export async function runTicketAutomation(origin:string){
       result.reminded++;
     }
   }
-  await db.insert(systemOptions).values({key:"ticket_automation_last_run",value:JSON.stringify({...result,ranAt:now.toISOString()}),updatedAt:now})
-    .onConflictDoUpdate({target:systemOptions.key,set:{value:JSON.stringify({...result,ranAt:now.toISOString()}),updatedAt:now}});
+  await setSystemOption("ticket_automation_last_run",JSON.stringify({...result,ranAt:now.toISOString()}),now);
   return result;
 }

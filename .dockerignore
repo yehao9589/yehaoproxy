@@ -2,7 +2,13 @@
 .next
 dist
 node_modules
-.wrangler/logs
+.pnpm-store
+.wrangler
+.git
+uploads
+backups
+*.sqlite
+.dev3001.*
 .dev-server*.log
 npm-debug.log*
 pnpm-debug.log*

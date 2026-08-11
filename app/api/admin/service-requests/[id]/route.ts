@@ -1,10 +1,12 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, like } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "../../../../../db";
-import { inventory, orders, proxyAllocations, serviceRequests } from "../../../../../db/schema";
+import { customers, orders, proxyAllocations, serviceRequests, wallets, walletTransactions } from "../../../../../db/schema";
 import { requireAdminApi } from "../../../../../lib/admin-auth";
 import { audit } from "../../../../../lib/audit";
 import { fetchXPanelTraffic, getXPanelBinding, resetXPanelCycle } from "../../../../../lib/xpanel";
+import { encryptCredential } from "../../../../../lib/inventory-crypto";
+import { normalizeCityName } from "../../../../../lib/cities";
 
 export async function PATCH(
   req: Request,
@@ -38,14 +40,52 @@ export async function PATCH(
     return NextResponse.json({ error: "售后申请已经处理" }, { status: 409 });
   }
   const now = new Date();
+  let linkedBillId=String(request.reason||"").match(/(?:RP|RS|MB|FR|AS|YH)-[A-Z0-9-]+/)?.[0]||null;
+  if(!linkedBillId){
+    const[freeReplacementBill]=await db.select({id:orders.id}).from(orders).where(like(orders.adminNote,`%[FREE_REPLACEMENT_REQUEST]${id}%`)).limit(1);
+    linkedBillId=freeReplacementBill?.id||null;
+  }
+  if(!linkedBillId){
+    const[requestCustomer]=await db.select({email:customers.email}).from(customers).where(eq(customers.id,request.customerId)).limit(1);
+    if(requestCustomer){
+      const candidateBills=await db.select().from(orders).where(eq(orders.customerEmail,requestCustomer.email)).orderBy(desc(orders.createdAt)).limit(100);
+      const linkedCandidate=candidateBills.find((order)=>{
+        if(!["ip-replacement","node-traffic-reset"].includes(order.product)&&order.durationDays!==0)return false;
+        const note=String(order.adminNote||"");
+        const targetId=note.match(/\[(?:REPLACE_ALLOCATION|RESET_OF|TARGET_ORDER)\]([^\n]+)/)?.[1]?.trim();
+        return targetId===request.allocationId;
+      });
+      linkedBillId=linkedCandidate?.id||null;
+    }
+  }
   if (action === "reject") {
     await db.update(serviceRequests).set({
       status: "rejected",
       adminNote: String(body?.note || "").slice(0, 500),
       updatedAt: now,
     }).where(eq(serviceRequests.id, id));
-    await audit(admin, "service.reject", "service_request", id, { note: body?.note }, req);
-    return NextResponse.json({ ok: true, status: "rejected" });
+    let refundedOrderId:string|null=null,refundAmount=0;
+    if(linkedBillId){
+      const[linkedOrder]=await db.select().from(orders).where(eq(orders.id,linkedBillId)).limit(1);
+      if(linkedOrder&&["paid","provisioning","active"].includes(linkedOrder.status)){
+        const[customer]=await db.select().from(customers).where(eq(customers.email,linkedOrder.customerEmail)).limit(1);
+        if(customer){
+          let[wallet]=await db.select().from(wallets).where(eq(wallets.customerId,customer.id)).limit(1);
+          if(!wallet){
+            await db.insert(wallets).values({customerId:customer.id,balance:0,frozen:0,creditLimit:0,currency:linkedOrder.currency,updatedAt:now});
+            wallet={customerId:customer.id,balance:0,frozen:0,creditLimit:0,currency:linkedOrder.currency,updatedAt:now};
+          }
+          refundAmount=Number(linkedOrder.amount||0);
+          const balanceAfter=Number((wallet.balance+refundAmount).toFixed(2));
+          await db.update(wallets).set({balance:balanceAfter,updatedAt:now}).where(eq(wallets.customerId,customer.id));
+          await db.insert(walletTransactions).values({id:`WT-${crypto.randomUUID()}`,customerId:customer.id,type:"refund",amount:refundAmount,balanceAfter,referenceType:"service_request_reject",referenceId:id,note:`售后申请 ${id} 已拒绝，款项退回账户余额`,operatorId:admin.id,createdAt:now});
+        }
+        await db.update(orders).set({status:"refunded",updatedAt:now,adminNote:`${linkedOrder.adminNote||""}\n[SERVICE_REQUEST_REJECTED]${id}`.trim()}).where(eq(orders.id,linkedBillId));
+        refundedOrderId=linkedBillId;
+      }
+    }
+    await audit(admin, "service.reject", "service_request", id, { note: body?.note,refundedOrderId,refundAmount }, req);
+    return NextResponse.json({ ok: true, status: "rejected",refundedOrderId,refundAmount });
   }
   if (action !== "approve") {
     return NextResponse.json({ error: "不支持的操作" }, { status: 400 });
@@ -54,6 +94,7 @@ export async function PATCH(
   if (request.type === "reset_traffic") {
     const binding = await getXPanelBinding(request.allocationId);
     if (!binding) {
+      await audit(admin,"service.traffic_reset.failed","order",request.allocationId,{requestId:id,resetOrderId:linkedBillId,error:"节点服务尚未绑定 VPS"},req);
       return NextResponse.json({ error: "该节点服务尚未绑定 VPS，无法执行流量重置" }, { status: 409 });
     }
     try {
@@ -61,11 +102,13 @@ export async function PATCH(
       await resetXPanelCycle(binding.serverId);
       await fetchXPanelTraffic(binding);
     } catch (error) {
+      const errorMessage=error instanceof Error?error.message:"未知错误";
+      await audit(admin,"service.traffic_reset.failed","order",request.allocationId,{requestId:id,resetOrderId:linkedBillId,serverId:binding.serverId,error:errorMessage},req);
       return NextResponse.json({
-        error: error instanceof Error ? `流量重置失败：${error.message}` : "流量重置失败",
+        error: `流量重置失败：${errorMessage}`,
       }, { status: 409 });
     }
-    const resetOrderId = request.reason?.match(/已付款重置订单\s+(\S+)/)?.[1];
+    const resetOrderId = linkedBillId||request.reason?.match(/已付款重置订单\s+(\S+)/)?.[1];
     await db.update(serviceRequests).set({
       status: "completed",
       adminNote: String(body?.note || "节点流量已重置").slice(0, 500),
@@ -85,7 +128,7 @@ export async function PATCH(
     return NextResponse.json({ ok: true, status: "completed" });
   }
   if (request.type === "custom") {
-    const paidOrderId = request.reason?.match(/已付款订单\s+(\S+)/)?.[1];
+    const paidOrderId = linkedBillId||request.reason?.match(/已付款订单\s+(\S+)/)?.[1];
     await db.update(serviceRequests).set({
       status: "completed",
       adminNote: String(body?.note || "一次性服务已处理完成").slice(0, 500),
@@ -117,46 +160,21 @@ export async function PATCH(
     return NextResponse.json({ ok: true, status: "completed", expiresAt });
   }
 
-  const [originalOrder] = await db.select().from(orders).where(eq(orders.id, allocation.orderId)).limit(1);
-  if (!originalOrder) return NextResponse.json({ error: "原订单不存在" }, { status: 409 });
-  const [replacement] = await db.select().from(inventory).where(and(
-    eq(inventory.product, originalOrder.product),
-    eq(inventory.country, originalOrder.region),
-    eq(inventory.status, "available"),
-  )).limit(1);
-  if (!replacement) {
-    return NextResponse.json({ error: "没有同产品同地区的可用库存" }, { status: 409 });
+  const host=String(body?.host||"").trim(),port=Number(body?.port),username=String(body?.username||"").trim()||null,password=String(body?.password||""),wifiName=String(body?.wifiName||"").trim()||null,protocol=String(body?.protocol||allocation.protocol||"HTTPS").toUpperCase(),country=String(body?.country||"").trim().toUpperCase(),city=normalizeCityName(String(body?.city||""));
+  if(!host||!Number.isInteger(port)||port<1||port>65535||!["HTTP","HTTPS","SOCKS5"].includes(protocol)||!/^[A-Z]{2}$/.test(country)||!city){
+    return NextResponse.json({error:"请填写完整的新 IP、端口、国家、城市和协议后再确认更换"},{status:400});
   }
-  await db.update(inventory).set({
-    status: "allocated",
-    reservedByOrderId: originalOrder.id,
-    updatedAt: now,
-  }).where(and(eq(inventory.id, replacement.id), eq(inventory.status, "available")));
   await db.update(proxyAllocations).set({
-    host: replacement.host,
-    port: replacement.port,
-    username: replacement.username,
-    encryptedPassword: replacement.encryptedPassword,
-    protocol: replacement.protocol,
-    note: `${allocation.note || ""} [已更换]`.trim(),
-  }).where(eq(proxyAllocations.id, allocation.id));
-  await db.update(inventory).set({
-    status: "disabled",
-    reservedByOrderId: null,
-    updatedAt: now,
-  }).where(and(eq(inventory.host, allocation.host), eq(inventory.port, allocation.port)));
+    host,port,username,wifiName,protocol,
+    encryptedPassword:password?await encryptCredential(password):allocation.encryptedPassword,
+    note:`[CITY]${city}`,
+  }).where(eq(proxyAllocations.id,allocation.id));
   await db.update(serviceRequests).set({
     status: "completed",
-    adminNote: String(body?.note || "更换完成"),
+    adminNote: String(body?.note || `已更换为 ${host}:${port}（${country} / ${city}）`),
     updatedAt: now,
   }).where(eq(serviceRequests.id, id));
-  await audit(
-    admin,
-    "service.replace.complete",
-    "proxy",
-    allocation.id,
-    { oldHost: allocation.host, newHost: replacement.host },
-    req,
-  );
-  return NextResponse.json({ ok: true, status: "completed" });
+  if(linkedBillId)await db.update(orders).set({status:"active",updatedAt:now}).where(eq(orders.id,linkedBillId));
+  await audit(admin, "service.replace.complete", "proxy", allocation.id, { manual: true,host,port,country,city,linkedBillId:linkedBillId||null }, req);
+  return NextResponse.json({ ok: true, status: "completed",host,port });
 }

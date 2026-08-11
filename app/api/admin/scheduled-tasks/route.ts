@@ -4,6 +4,7 @@ import {getDb} from "../../../../db";
 import {orders,systemOptions} from "../../../../db/schema";
 import {requireAdminApi} from "../../../../lib/admin-auth";
 import {DEFAULT_REMINDER_CONFIG,getReminderConfig,runScheduledReminders} from "../../../../lib/scheduled-reminders";
+import {setSystemOption} from "../../../../lib/db-upsert";
 
 export async function GET(){
   if(!await requireAdminApi("automation"))return NextResponse.json({error:"无定时任务管理权限"},{status:403});
@@ -24,6 +25,6 @@ export async function POST(req:Request){
   if(body?.action==="run")return NextResponse.json({ok:true,result:await runScheduledReminders(new URL(req.url).origin)});
   const expiryDays=Array.isArray(body?.expiryDays)?body.expiryDays.map(Number).filter((x:number)=>Number.isInteger(x)&&x>=0&&x<=90).slice(0,8):[];
   const config={enabled:Boolean(body?.enabled),emailEnabled:Boolean(body?.emailEnabled),siteEnabled:Boolean(body?.siteEnabled),expiryDays:expiryDays.length?expiryDays:[7,3,1,0],newOrderEnabled:Boolean(body?.newOrderEnabled),provisioningEnabled:Boolean(body?.provisioningEnabled),provisioningMinutes:Math.min(10080,Math.max(5,Number(body?.provisioningMinutes)||30))};
-  const now=new Date();await getDb().insert(systemOptions).values({key:"scheduled_reminder_config",value:JSON.stringify(config),updatedAt:now}).onConflictDoUpdate({target:systemOptions.key,set:{value:JSON.stringify(config),updatedAt:now}});
+  const now=new Date();await setSystemOption("scheduled_reminder_config",JSON.stringify(config),now);
   return NextResponse.json({ok:true,config});
 }

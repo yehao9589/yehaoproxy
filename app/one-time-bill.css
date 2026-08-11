@@ -1,0 +1,28 @@
+.one-time-bill-workspace{width:min(900px,96vw)}
+.one-time-bill-workspace .order-workspace-head p{margin:5px 0 0;color:#7b8da1;font-size:11px}
+.one-time-bill-body{display:grid;gap:14px;padding:18px 22px 28px}
+.one-time-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.one-time-summary>div,.one-time-target,.one-time-action{border:1px solid #dfe7ef;border-radius:11px;background:#fff}
+.one-time-summary>div{display:grid;gap:5px;padding:14px}
+.one-time-summary span,.one-time-target-grid span{color:#75879a;font-size:10px}
+.one-time-summary b{overflow:hidden;color:#20364d;font-size:13px;text-overflow:ellipsis;white-space:nowrap}
+.one-time-summary small{overflow:hidden;color:#8a99a9;font-size:9px;text-overflow:ellipsis;white-space:nowrap}
+.one-time-target>header,.one-time-action>header{padding:15px 17px;border-bottom:1px solid #e8edf2}
+.one-time-target h3,.one-time-action h3{margin:0;color:#20364d;font-size:14px}
+.one-time-target header p,.one-time-action header p{margin:5px 0 0;color:#7b8da1;font-size:10px}
+.one-time-target-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;padding:5px 17px 14px}
+.one-time-target-grid>div{display:grid;gap:5px;padding:12px 8px;border-bottom:1px solid #edf1f5}
+.one-time-target-grid b{overflow:hidden;color:#263b52;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.one-time-action-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;padding:16px 17px 4px}
+.one-time-action label{display:grid;gap:7px;color:#52687e;font-size:10px;font-weight:700}
+.one-time-action input,.one-time-action select,.one-time-action textarea{box-sizing:border-box;width:100%;border:1px solid #d7e0e9;border-radius:7px;background:#fff;color:#20364d;font:inherit;font-weight:500;outline:none}
+.one-time-action input,.one-time-action select{height:36px;padding:0 10px}
+.one-time-action textarea{padding:10px;resize:vertical}
+.one-time-action input:focus,.one-time-action select:focus,.one-time-action textarea:focus{border-color:#6ba5f5;box-shadow:0 0 0 3px #eaf3ff}
+.one-time-note{padding:13px 17px 4px}
+.one-time-action footer{display:flex;justify-content:flex-end;gap:8px;padding:15px 17px}
+.one-time-action footer button{min-width:92px;height:34px;border:1px solid #d7e0e9;border-radius:7px;background:#fff;color:#40566d;font-size:10px;font-weight:700}
+.one-time-action footer button.primary{border-color:#2563eb;background:#2563eb;color:#fff}
+.one-time-action footer button:disabled{cursor:not-allowed;opacity:.55}
+.one-time-target .empty-inline{margin:14px 17px}
+@media(max-width:760px){.one-time-summary{grid-template-columns:1fr 1fr}.one-time-target-grid,.one-time-action-grid{grid-template-columns:1fr}.one-time-bill-body{padding:12px}}

@@ -4,9 +4,9 @@ import { getDb } from "../../../../../db";
 import { orders, productOffers, systemOptions } from "../../../../../db/schema";
 import { audit } from "../../../../../lib/audit";
 import { getCurrentCustomer } from "../../../../../lib/auth";
+import { billingCycleFromNote } from "../../../../../lib/billing-period";
 
 const nodeProducts = new Set(["soft-router", "computer-node"]);
-const durations = new Set([7, 30, 90]);
 
 export async function PATCH(
   req: Request,
@@ -26,15 +26,21 @@ export async function PATCH(
   if (!order || !nodeProducts.has(order.product)) {
     return NextResponse.json({ error: "节点服务不存在" }, { status: 404 });
   }
+  const billingCycle = billingCycleFromNote(order.adminNote);
+  const expired = Boolean(order.expiresAt && order.expiresAt.getTime() <= Date.now());
   if (!["paid", "provisioning", "active"].includes(order.status)) {
     return NextResponse.json({ error: "当前服务状态不能进行此操作" }, { status: 409 });
   }
 
   if (action === "auto-renew") {
+    if (expired) return NextResponse.json({ error: "节点服务已到期，请先手动续费" }, { status: 409 });
     const autoRenew = Boolean(body?.autoRenew);
     const durationDays = Number(body?.durationDays || order.durationDays);
-    if (!durations.has(durationDays)) {
+    if (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 3650 || billingCycle === "calendar-month" && durationDays % 30 !== 0) {
       return NextResponse.json({ error: "自动续费周期无效" }, { status: 400 });
+    }
+    if (billingCycle === "calendar-month" && durationDays === 7) {
+      return NextResponse.json({ error: "自然月计费不支持 7 天续费周期" }, { status: 409 });
     }
     await db
       .update(orders)
@@ -53,8 +59,11 @@ export async function PATCH(
 
   if (action === "renew") {
     const durationDays = Number(body?.durationDays);
-    if (!durations.has(durationDays)) {
+    if (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 3650 || billingCycle === "calendar-month" && durationDays % 30 !== 0) {
       return NextResponse.json({ error: "续费周期无效" }, { status: 400 });
+    }
+    if (billingCycle === "calendar-month" && durationDays === 7) {
+      return NextResponse.json({ error: "自然月计费不支持 7 天续费周期" }, { status: 409 });
     }
     const [offer] = await db
       .select()
@@ -66,7 +75,7 @@ export async function PATCH(
       ))
       .limit(1);
     if (!offer) return NextResponse.json({ error: "该节点商品已经下架，无法在线续费" }, { status: 409 });
-    const unit = durationDays === 7 ? offer.price7 : durationDays === 90 ? offer.price90 : offer.price30;
+    const unit = durationDays === 7 ? offer.price7 : durationDays === 90 ? offer.price90 : offer.price30 * (durationDays / 30);
     if (unit < 0) return NextResponse.json({ error: `该服务暂不支持续费 ${durationDays} 天` }, { status: 409 });
     const amount = Number((unit * order.quantity).toFixed(2));
     const renewalId = `RN-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
@@ -84,7 +93,7 @@ export async function PATCH(
       paymentMethod: "balance",
       renewalAmount: amount,
       autoRenew: false,
-      adminNote: `[RENEWAL_OF]${order.id}`,
+      adminNote: `[RENEWAL_OF]${order.id}\n[BILLING_CYCLE]${billingCycle}`,
       createdAt: now,
       updatedAt: now,
     });
@@ -100,6 +109,7 @@ export async function PATCH(
   }
 
   if (action === "reset-traffic") {
+    if (expired) return NextResponse.json({ error: "节点服务已到期，不能重置流量，请先续费" }, { status: 409 });
     if (order.status !== "active") {
       return NextResponse.json({ error: "只有已开通的节点可以购买流量重置" }, { status: 409 });
     }
@@ -119,12 +129,11 @@ export async function PATCH(
         { status: 409 },
       );
     }
-    const [priceOption] = await db
-      .select()
-      .from(systemOptions)
-      .where(eq(systemOptions.key, "nodeTrafficResetPrice"))
-      .limit(1);
-    const configuredPrice = Number(priceOption?.value ?? 5);
+    const [resetOffer] = await db.select().from(productOffers).where(and(eq(productOffers.product,order.product),eq(productOffers.region,order.region))).limit(1);
+    const optionRows=await db.select().from(systemOptions);
+    const productPrice=optionRows.find(item=>item.key===`productPolicy:${resetOffer?.id}:nodeTrafficResetPrice`)?.value;
+    const defaultPrice=optionRows.find(item=>item.key==="nodeTrafficResetPrice")?.value;
+    const configuredPrice = Number(productPrice||defaultPrice||5);
     const amount = Number.isFinite(configuredPrice) && configuredPrice > 0
       ? Number(configuredPrice.toFixed(2))
       : 5;

@@ -27,6 +27,7 @@ type ProductCategory = "proxy" | "node";
 type CatalogOffer = {
   product: string;
   region: string;
+  billingCycle: "fixed-days"|"calendar-month";
   price7: number;
   price30: number;
   price90: number;
@@ -44,6 +45,7 @@ type SiteConfig = {
   copyright: string;
   icpNumber: string;
 };
+type CurrentUser = {id:string;email:string;name:string;role:string;status:string};
 const initialSiteConfig: SiteConfig = {
   siteName: "YehaoProxy",
   logoText: "Y",
@@ -67,6 +69,8 @@ export default function Home() {
   const [quantity, setQuantity] = useState(1);
   const [saleOffers, setSaleOffers] = useState<CatalogOffer[] | null>(null);
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(initialSiteConfig);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   const regions = useMemo(() => {
     if (!saleOffers) return defaultRegions;
     const codes = [...new Set(saleOffers
@@ -89,6 +93,8 @@ export default function Home() {
   const selectedRegion = regions[selected] || regions[0] || defaultRegions[0];
   const orderRegion = isNode ? "GLOBAL" : selectedRegion.code;
   const currentOffer = saleOffers?.find(offer => offer.product === product && offer.region === orderRegion);
+  const billingCycle=currentOffer?.billingCycle||"fixed-days";
+  const periodText=(days:number)=>billingCycle==="calendar-month"?(days===90?"3 个自然月":"1 个自然月"):`${days} 天`;
   const durationPrice=(offer:CatalogOffer|undefined,days:number)=>offer?(days===7?offer.price7:days===90?offer.price90:offer.price30):null;
   const durationAvailable=(days:number)=>saleOffers===null||Boolean(currentOffer&&Number(durationPrice(currentOffer,days))>=0);
   const fallbackUnitPrice = (isNode ? 29.9 : regions[selected].price) * (duration === 7 ? .35 : duration === 30 ? 1 : 2.55);
@@ -98,13 +104,14 @@ export default function Home() {
   const total = useMemo(() => unitPrice * quantity, [unitPrice, quantity]);
   const productEnabled = (id: string) => saleOffers === null || saleOffers.some(offer => offer.product === id);
   const currentEnabled = (saleOffers === null || saleOffers.some(offer => offer.product === product && (isNode || offer.region === orderRegion))) && durationAvailable(duration);
-  useEffect(()=>{if(!currentOffer||durationAvailable(duration))return;const next=[7,30,90].find(day=>durationAvailable(day));if(next)setDuration(next)},[currentOffer,duration]);
+  useEffect(()=>{if(!currentOffer||durationAvailable(duration))return;const next=[30,90,7].find(day=>durationAvailable(day));if(next)setDuration(next)},[currentOffer,duration]);
 
   useEffect(() => {
     fetch("/api/catalog").then(response => response.json()).then(data => {
       if (Array.isArray(data.items)) setSaleOffers(data.items.map((item: CatalogOffer) => ({
         product: item.product,
         region: item.region,
+        billingCycle: item.billingCycle||"fixed-days",
         price7: Number(item.price7),
         price30: Number(item.price30),
         price90: Number(item.price90),
@@ -119,8 +126,15 @@ export default function Home() {
       .then(response => response.json())
       .then(data => setSiteConfig(current => ({ ...current, ...data })))
       .catch(() => undefined);
+    fetch("/api/auth/me", {cache:"no-store"})
+      .then(async response => response.ok ? setCurrentUser(await response.json()) : setCurrentUser(null))
+      .catch(() => setCurrentUser(null));
   }, []);
-  useEffect(() => setSelected(0), [product]);
+  useEffect(() => {
+    setSelected(0);
+    setQuantity(1);
+  }, [product]);
+  useEffect(() => setQuantity(1), [selected]);
 
   function chooseCategory(next: ProductCategory) {
     setCategory(next);
@@ -135,20 +149,34 @@ export default function Home() {
       region: orderRegion,
       regionName: isNode ? "全局节点" : selectedRegion.country,
       durationDays: duration,
+      billingCycle,
       quantity,
       unitEstimate: total / quantity,
     });
   }
 
+  async function logout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      const response = await fetch("/api/auth/logout", {method:"POST"});
+      if (!response.ok) throw new Error("退出失败");
+      setCurrentUser(null);
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   return <main>
     {siteConfig.topAdEnabled && siteConfig.topAdText && <div className="notice">{siteConfig.topAdLink ? <a href={siteConfig.topAdLink}>{siteConfig.topAdText}</a> : siteConfig.topAdText}</div>}
-    <header><a className="brand" href="#">{siteConfig.logoUrl ? <span className="has-logo"><img src={siteConfig.logoUrl} alt="" /></span> : <span>{siteConfig.logoText}</span>} {siteConfig.siteName}</a><nav><a href="#products">产品</a><a href="#pricing">定价</a><a href="#why">解决方案</a><a href="#faq">帮助中心</a></nav><div className="header-actions"><a className="ghost" href="/login">登录</a><a className="primary" href="/register">免费注册</a></div></header>
+    <header><a className="brand" href="#">{siteConfig.logoUrl ? <span className="has-logo"><img src={siteConfig.logoUrl} alt="" /></span> : <span>{siteConfig.logoText}</span>} {siteConfig.siteName}</a><nav><a href="#products">产品</a><a href="#pricing">定价</a><a href="#why">解决方案</a><a href="#faq">帮助中心</a></nav>{currentUser?<div className="header-current-user"><span>{(currentUser.name||currentUser.email).slice(0,1).toUpperCase()}</span><div><small>当前登录用户</small><b>{currentUser.name||currentUser.email}</b></div><a href="/dashboard">客户中心</a><button type="button" disabled={loggingOut} onClick={()=>void logout()}>{loggingOut?"退出中…":"退出账号"}</button></div>:<div className="header-actions"><a className="ghost" href="/login">登录</a><a className="primary" href="/register">免费注册</a></div>}</header>
 
     <section className="hero"><div className="hero-copy"><div className="eyebrow">全球企业级网络服务</div><h1>稳定、纯净、<em>即买即用</em>的网络资源</h1><p>为跨境电商、数据业务、远程办公和多设备运营提供可靠连接。</p><div className="hero-actions"><a className="primary large" href="#pricing">立即选购</a><a className="text-link" href="#products">查看产品 →</a></div><div className="metrics"><div><b>80M+</b><span>全球 IP 池</span></div><div><b>99.9%</b><span>网络可用率</span></div><div><b>7×24</b><span>售后支持</span></div></div></div><div className="network-card"><div className="globe">◎<i className="dot d1"/><i className="dot d2"/><i className="dot d3"/></div><div className="status"><i/> 全球网络运行正常 <b>99.99%</b></div></div></section>
 
     <span id="pricing" className="store-anchor"/>
     <section id="products" className="section unified-store-section">
       <div className="section-head"><div><span className="kicker">产品商城</span><h2>选择商品，直接完成购买配置</h2></div><p>商品、地区、周期和数量集中在同一个界面，无需上下滚动。</p></div>
+      {currentUser&&<div className="purchase-user-banner"><span>{(currentUser.name||currentUser.email).slice(0,1).toUpperCase()}</span><div><small>本次订单购买账号</small><b>{currentUser.name||"未设置昵称"}</b><em>{currentUser.email}</em></div><strong>已登录</strong><a href="/dashboard">进入客户中心 →</a></div>}
       <div className="store-category-tabs store-category-top">
         <button className={category==="proxy"?"on":""} onClick={()=>chooseCategory("proxy")}><span>◫</span><b>代理 IP</b><small>静态住宅、动态住宅、数据中心</small></button>
         <button className={category==="node"?"on":""} onClick={()=>chooseCategory("node")}><span>▣</span><b>节点服务</b><small>软路由中转、电脑节点</small></button>
@@ -160,14 +188,14 @@ export default function Home() {
       <div className="store-commerce-grid">
       <div className="unified-store config-only">
         <div className="unified-config-panel">
-          <header><div><span>{isNode?"节点服务":"代理 IP"}</span><h3>{currentProduct.name}</h3><p>{currentProduct.desc}</p></div><em>{isNode?"人工开通":"额度提取"}</em></header>
+          <header><div><span>{isNode?"节点服务":"代理 IP"}</span><h3>{currentProduct.name}</h3><p>{currentProduct.desc}</p></div><em>{isNode?"人工开通":"人工开通"}</em></header>
           {!isNode&&<div className="config-block"><div className="config-title"><b>1. 选择地区</b><span className="selected-region"><i className={flagClass(selectedRegion.code)} title={`${selectedRegion.country}国旗`}/>{selectedRegion.country}</span></div><div className="compact-regions">{regions.map((region,index)=>{const offer=saleOffers?.find(item=>item.product===product&&item.region===region.code);const enabled=saleOffers===null||Boolean(offer);const price=offer?(duration===7?offer.price7:duration===90?offer.price90:offer.price30):region.price*(duration===7?.35:duration===30?1:2.55);return <button key={region.code} disabled={!enabled} className={`${selected===index?"selected":""} ${!enabled?"unavailable":""}`} onClick={()=>setSelected(index)}><span className="country-flag"><i className={flagClass(region.code)} title={`${region.country}国旗`}/></span><b>{region.country}</b><small>{enabled?region.code:"暂停销售"}</small><em>{enabled?`$${price.toFixed(2)}`:"停售"}</em></button>})}</div></div>}
           {isNode&&<div className="node-global-notice"><span>▣</span><div><b>无需选择地区</b><small>{currentProduct.name} 为全局节点商品，付款后由管理员完成开通。</small></div></div>}
           <div className="config-row">
-            <div className="config-block"><div className="config-title"><b>{isNode?"1":"2"}. 选择周期</b></div><div className="duration-options">{[7,30,90].map(day=>{const available=durationAvailable(day);return <button key={day} disabled={!available} className={`${duration===day?"selected":""} ${!available?"unavailable":""}`} onClick={()=>setDuration(day)}><b>{day} 天</b><small>{available?(day===30?"常用":"按需选择"):"暂不出售"}</small></button>})}</div></div>
+            <div className="config-block"><div className="config-title"><b>{isNode?"1":"2"}. 选择周期</b><span>{billingCycle==="calendar-month"?"按日历月份计算":"按固定天数计算"}</span></div><div className="duration-options">{(billingCycle==="calendar-month"?[30,90]:[7,30,90]).map(day=>{const available=durationAvailable(day);return <button key={day} disabled={!available} className={`${duration===day?"selected":""} ${!available?"unavailable":""}`} onClick={()=>setDuration(day)}><b>{periodText(day)}</b><small>{available?(day===30?"常用":"按需选择"):"暂不出售"}</small></button>})}</div></div>
             <div className="config-block quantity-config"><div className="config-title"><b>{isNode?"2":"3"}. 购买数量</b></div><div><button onClick={()=>setQuantity(Math.max(1,quantity-1))}>−</button><input value={quantity} onChange={event=>setQuantity(Math.min(500,Math.max(1,Number(event.target.value)||1)))}/><button onClick={()=>setQuantity(Math.min(500,quantity+1))}>＋</button></div></div>
           </div>
-          <footer className="unified-checkout-bar"><div><span>当前配置</span><b>{currentProduct.name}{!isNode&&` · ${selectedRegion.country}`} · {duration} 天 × {quantity}</b></div><div className="unified-price"><span>参考金额</span><b>${total.toFixed(2)}</b></div>{currentEnabled?<button className="primary add-cart-button" onClick={addToCart}>＋ 加入购物车</button>:<button className="store-disabled-buy" disabled>暂停销售</button>}</footer>
+          <footer className="unified-checkout-bar"><div><span>当前配置</span><b>{currentProduct.name}{!isNode&&` · ${selectedRegion.country}`} · {periodText(duration)} × {quantity}</b></div><div className="unified-price"><span>参考金额</span><b>${total.toFixed(2)}</b></div>{currentEnabled?<button className="primary add-cart-button" onClick={addToCart}>＋ 加入购物车</button>:<button className="store-disabled-buy" disabled>暂停销售</button>}</footer>
         </div>
       </div>
       <StoreCart inline/>

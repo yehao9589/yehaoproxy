@@ -84,7 +84,7 @@
 .admin-pro .record-status.paid{background:#eaf2ff!important;color:#2468ce!important}
 .admin-pro .record-status.pending{background:#fff5df!important;color:#aa6a00!important}
 .admin-pro .record-status.provisioning{background:#f0ecff!important;color:#7152c4!important}
-.admin-pro .record-status.refunded,.admin-pro .record-status.failed{background:#fff0f1!important;color:#c54a5a!important}
+.admin-pro .record-status.refunded,.admin-pro .record-status.failed{background:#f1f4f7!important;color:#68798a!important}
 .admin-pro .redesigned-record-list{margin:0 18px 18px;border-radius:12px}
 .admin-pro .redesigned-record-list article{min-height:64px;padding:13px 18px;font-size:11px}
 .admin-pro .customer-detail-body>.detail-list{border:1px solid #e0e7ef;border-radius:14px;background:#fff;box-shadow:0 7px 22px rgba(23,43,70,.04)}
