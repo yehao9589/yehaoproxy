@@ -9,9 +9,13 @@ RUN pnpm install --frozen-lockfile --ignore-scripts \
     && pnpm rebuild esbuild sharp unrs-resolver workerd
 
 COPY . .
-RUN pnpm run build
+RUN pnpm run build \
+    && pnpm prune --prod \
+    && pnpm store prune
 
-FROM base AS runtime
+FROM docker.m.daocloud.io/library/node:22-bookworm-slim AS runtime
+
+WORKDIR /app
 
 ARG APP_VERSION=pre-release
 ARG APP_COMMIT=""
@@ -20,6 +24,14 @@ ARG IMAGE_REPOSITORY=ghcr.io/yehao9589/yehaoproxy:pre-release
 RUN apt-get update \
     && apt-get install -y --no-install-recommends mariadb-client \
     && rm -rf /var/lib/apt/lists/*
+
+# Only runtime artifacts are copied. Source files, development dependencies,
+# compilers and package-manager caches stay in the builder image.
+COPY --from=base /app/package.json ./package.json
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/dist ./dist
+COPY --from=base /app/public ./public
+COPY --from=base /app/scripts ./scripts
 
 EXPOSE 3000
 

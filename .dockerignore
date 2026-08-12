@@ -7,6 +7,17 @@ node_modules
 .git
 uploads
 backups
+outputs
+work
+examples
+tests
+.agents
+.codex
+.openai
+.github
+*.md
+*.cmd
+package-lock.json
 *.sqlite
 .dev3001.*
 .dev-server*.log
