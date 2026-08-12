@@ -10,6 +10,7 @@ import {
 } from "../../../../../../db/schema";
 import { requireAdminApi } from "../../../../../../lib/admin-auth";
 import { audit } from "../../../../../../lib/audit";
+import { withRequestLock } from "../../../../../../lib/request-lock";
 
 function noteValue(note: string | null, key: string) {
   return note?.match(new RegExp(`\\[${key}\\]([^\\n]*)`))?.[1]?.trim() ?? "";
@@ -31,6 +32,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!action) return NextResponse.json({ error: "请选择核验结果" }, { status: 400 });
 
   const { id } = await params;
+  return withRequestLock(`renewal-verification:${id}`,async()=>{
   const db = getDb();
   const [renewal] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
   if (!renewal) return NextResponse.json({ error: "续费订单不存在" }, { status: 404 });
@@ -58,11 +60,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const previousSourceExpiry = noteDate(renewal.adminNote, "RENEW_PREVIOUS_SOURCE_EXPIRY");
   const previousAllocationExpiry = noteDate(renewal.adminNote, "RENEW_PREVIOUS_ALLOCATION_EXPIRY");
-  await db.update(orders).set({ expiresAt: previousSourceExpiry, updatedAt: now }).where(eq(orders.id, sourceId));
-  if (allocationId) {
-    await db.update(proxyAllocations).set({ expiresAt: previousAllocationExpiry }).where(eq(proxyAllocations.id, allocationId));
-  }
-
   const [customer] = await db.select().from(customers).where(eq(customers.email, renewal.customerEmail)).limit(1);
   if (!customer) return NextResponse.json({ error: "客户账户不存在，无法退款" }, { status: 409 });
   let [wallet] = await db.select().from(wallets).where(eq(wallets.customerId, customer.id)).limit(1);
@@ -72,8 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   const refund = Number(renewal.amount || 0);
   const balanceAfter = Number((wallet.balance + refund).toFixed(2));
-  await db.update(wallets).set({ balance: balanceAfter, updatedAt: now }).where(eq(wallets.customerId, customer.id));
-  await db.insert(walletTransactions).values({
+  const refundInsert=db.insert(walletTransactions).values({
     id: `WT-${crypto.randomUUID()}`,
     customerId: customer.id,
     type: "refund",
@@ -85,11 +81,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     operatorId: admin.id,
     createdAt: now,
   });
-  await db.update(orders).set({
-    status: "refunded",
-    updatedAt: now,
-    adminNote: `${renewal.adminNote || ""}\n[RENEWAL_REJECTED_AT]${now.toISOString()}`.trim(),
-  }).where(eq(orders.id, id));
+  await db.batch([
+    db.update(orders).set({ expiresAt: previousSourceExpiry, updatedAt: now }).where(eq(orders.id, sourceId)),
+    ...(allocationId?[db.update(proxyAllocations).set({ expiresAt: previousAllocationExpiry }).where(eq(proxyAllocations.id, allocationId))]:[]),
+    db.update(wallets).set({ balance: balanceAfter, updatedAt: now }).where(eq(wallets.customerId, customer.id)),
+    refundInsert,
+    db.update(orders).set({
+      status: "refunded",
+      updatedAt: now,
+      adminNote: `${renewal.adminNote || ""}\n[RENEWAL_REJECTED_AT]${now.toISOString()}`.trim(),
+    }).where(eq(orders.id, id)),
+  ] as any);
   await audit({ id: admin.id, role: admin.role }, "renewal.verify.reject", "order", id, { sourceOrderId: sourceId, allocationId: allocationId || null, refund, restoredExpiry: previousSourceExpiry }, req);
   return NextResponse.json({ ok: true, action, refund, expiresAt: previousSourceExpiry });
+  });
 }

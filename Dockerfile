@@ -1,4 +1,4 @@
-FROM docker.m.daocloud.io/library/node:22-bookworm-slim
+FROM docker.m.daocloud.io/library/node:22-bookworm-slim AS base
 
 WORKDIR /app
 
@@ -9,7 +9,12 @@ RUN pnpm install --frozen-lockfile --ignore-scripts \
     && pnpm rebuild esbuild sharp unrs-resolver workerd
 
 COPY . .
+RUN pnpm run build
+
+FROM base AS runtime
 
 EXPOSE 3000
 
-CMD ["pnpm", "exec", "vinext", "dev", "--hostname", "0.0.0.0"]
+ENV NODE_ENV=production
+ENV NODE_OPTIONS=--experimental-loader=/app/scripts/cloudflare-node-loader.mjs
+CMD ["pnpm", "exec", "vinext", "start", "--hostname", "0.0.0.0"]

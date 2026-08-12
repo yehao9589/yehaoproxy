@@ -1,8 +1,7 @@
 import {NextResponse} from "next/server";
 import {and, eq} from "drizzle-orm";
-import {env} from "cloudflare:workers";
 import {getCurrentCustomer} from "../../../../lib/auth";
-import {getDb} from "../../../../db";
+import {getDb,getRawDatabase} from "../../../../db";
 import {productOffers} from "../../../../db/schema";
 
 const DURATIONS = new Set([7, 30, 90]);
@@ -52,7 +51,7 @@ export async function POST(req: Request) {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  const d1 = (env as unknown as {DB: D1Database}).DB;
+  const d1 = getRawDatabase();
   const bundleId = `YH-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   const created = items.flatMap(item => {
     const offer = offerByKey.get(`${item.product}:${item.region}`)!;
@@ -77,7 +76,7 @@ export async function POST(req: Request) {
   ];
   const results = await d1.batch(statements);
   const stockResults = results.slice(0, requiredByKey.size);
-  if (stockResults.some(result => !result.success || Number(result.meta?.changes) !== 1)) {
+  if (stockResults.some((result: {success?:boolean;meta?:{changes?:number}}) => !result.success || Number(result.meta?.changes) !== 1)) {
     const stockEntries = Array.from(requiredByKey.entries());
     await d1.batch([
       d1.prepare("DELETE FROM orders WHERE id=?").bind(bundleId),

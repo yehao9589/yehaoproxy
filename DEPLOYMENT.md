@@ -1,55 +1,92 @@
-# YehaoProxy 部署清单
+# YehaoProxy 生产部署指南
+
+## 推荐方案
+
+正式环境推荐使用 `docker-compose.production.yml`：应用、MySQL、数据库桥接、定时任务、X-Panel 桥接和更新/备份服务会作为一套服务启动。SQLite 仍可用于本地开发或小型单机部署，但上线前必须在与正式环境相同的数据库驱动上完成一次全流程验收。
 
 ## 1. 环境要求
 
-- Node.js 22.13 或更高版本
-- Cloudflare Workers 兼容运行环境
-- Cloudflare D1 数据库
-- HTTPS 域名（正式登录和安全 Cookie 必需）
+- Linux 服务器、Docker Engine 和 Docker Compose v2
+- 已解析到服务器的 HTTPS 域名
+- 可拉取私有镜像的容器仓库凭据
+- Node.js 22.13 或更高版本（仅源码构建时需要）
 
-## 2. 必需配置
+## 2. 生产密钥
 
-复制 `.env.example` 并设置：
+复制 `.env.example` 为 `.env`，至少设置以下项目：
 
-- `INVENTORY_ENCRYPTION_KEY`：至少 32 位随机字符串。设置后不可随意更换，否则既有代理密码无法解密。
-- `ADMIN_EMAILS`：初始管理员邮箱，多个邮箱使用英文逗号分隔。
-- `PUBLIC_APP_URL`：正式网站地址，例如 `https://yehaoproxy.com`。
+- `YEHAOPROXY_IMAGE`：带固定版本标签的镜像，例如 `ghcr.io/owner/yehaoproxy:1.0.0`，不要在生产环境使用漂移的 `latest`。
+- `MYSQL_ROOT_PASSWORD`、`MYSQL_PASSWORD`：数据库独立强密码。
+- `MYSQL_BRIDGE_SECRET`：数据库桥接服务认证密钥，至少 32 位随机字符。
+- `INVENTORY_ENCRYPTION_KEY`：库存凭据加密密钥，至少 32 位；已有数据后不能随意更换。
+- `INSTALL_TOKEN`：首次安装页的部署密钥，至少 32 位。
+- `CRON_SECRET`：定时任务调用密钥。
+- `XPANEL_BRIDGE_SECRET`：X-Panel 桥接密钥。
+- `UPDATE_WEBHOOK_TOKEN`：在线更新与备份服务密钥。
+- `PUBLIC_APP_URL`：正式 HTTPS 地址。
 
-邮件与支付暂时可以留空，后台默认关闭。
+任何 `.env`、`.env.local`、`.backup.env` 文件都不能提交到 Git。备份包只包含数据库和上传目录，不包含这些密钥；服务器重建时要从独立的密码管理器恢复环境变量。
 
-## 3. 数据库迁移
+## 3. 首次启动
 
-按文件名顺序执行 `drizzle/` 目录中的 SQL，不能跳过中间迁移。部署前应备份现有数据库。
+```bash
+docker login ghcr.io
+docker compose -f docker-compose.production.yml pull
+docker compose -f docker-compose.production.yml up -d
+```
 
-数据库包含账号、会话、库存、订单、代理资产、钱包、优惠券、工单、通知、角色和审计日志。
+打开 `https://你的域名/install`，输入 `INSTALL_TOKEN`，选择 MySQL，测试连接后创建数据库和超级管理员。安装成功后入口会自动锁定，不能再次初始化。
 
-## 4. 初次上线
+然后检查：
 
-1. 执行数据库迁移。
-2. 配置 `INVENTORY_ENCRYPTION_KEY` 和 `ADMIN_EMAILS`。
-3. 部署应用并访问 `/api/health`。
-4. 确认 `database` 和 `encryptionConfigured` 均为 `true`。
-5. 创建管理员账号，并在数据库中将其 `customers.role` 改为 `admin`。
-6. 登录 `/admin`，导入第一批手动库存。
-7. 使用测试客户完成下单、钱包付款、后台发放和客户导出代理测试。
+```bash
+curl -fsS https://你的域名/api/health
+docker compose -f docker-compose.production.yml ps
+```
 
-## 5. 安全要求
+`/api/health` 必须返回 HTTP 200，并且 `database`、`encryptionConfigured` 均为 `true`。
 
-- 不要把任何密钥写入前端代码或提交到 Git。
-- 生产环境必须启用 HTTPS。
-- 定期备份 D1 数据库。
-- 定期检查后台“操作审计”和“风险事件”。
-- 修改库存加密密钥前必须完成密文迁移。
-- 正式上线前关闭 `/admin-preview` 和 `/dashboard-preview`。
+## 4. SQLite 模式
 
-## 6. 上线验收
+应用代码同时保留 `DATABASE_DRIVER=sqlite`。SQLite 适合本地开发、演示和低并发单机部署；必须持久化 `.wrangler/state`，否则重建容器会丢失数据。MySQL 更适合正式业务并发、事务和长期运维。
 
-- 注册、登录、退出和角色跳转正常。
-- 手动库存查重和加密正常。
-- 下单锁库后库存数量正确。
-- 取消订单能释放库存。
-- 钱包付款仅扣款一次。
-- 后台发放后客户能看到并导出代理。
-- 续费和更换申请状态正确。
-- 人工退款能回到客户钱包。
-- 工单、通知和审计日志可查询。
+SQLite 容器部署使用独立编排文件，不需要启动 MySQL：
+
+```bash
+docker compose -f docker-compose.sqlite.yml pull
+docker compose -f docker-compose.sqlite.yml up -d
+```
+
+首次打开安装页时选择 SQLite。后续在线更新、健康检查和备份恢复会沿用 `docker-compose.sqlite.yml`，不会误启动 MySQL 服务。
+
+两个驱动的 SQL 行为并不完全相同。任何数据库结构或订单/钱包逻辑改动，都要分别完成类型检查，并至少在正式采用的驱动上执行真实集成测试。
+
+## 5. 更新、备份与回滚
+
+- 后台“更新与备份”可以创建、下载、导入和恢复数据备份。
+- 在线更新只接受带明确版本标签的镜像。
+- 更新前会自动备份数据库和上传文件；新版本健康检查失败时自动恢复上一个镜像和数据。
+- 导入备份会校验压缩包路径并拒绝符号链接、目录穿越和非白名单文件。
+- 至少每天把备份复制到服务器之外，并定期在隔离环境演练恢复。
+
+私有 GitHub 仓库不影响部署。服务器或 CI 需要登录 GitHub Container Registry，或者配置只读 Deploy Token 后才能拉取私有镜像。
+
+## 6. 当前功能边界
+
+- 余额支付可以使用。
+- Stripe、支付宝、微信、USDT、PayPal 等真实外部支付适配器和回调验签尚未接入，因此后台会拒绝启用这些渠道，避免生成伪成功交易。
+- 邮件正式发送当前仅开放已配置密钥的 Resend；短信和供应商自动采购在真实适配器接入前不能启用。
+- 上线前必须选定实际支付渠道，并完成下单、异步回调、重复回调、退款和对账的沙箱测试。
+
+## 7. 上线验收清单
+
+1. 注册、登录、退出、会话过期跳转和管理员权限正常。
+2. 首次安装完成后 `/install` 不可再次修改系统。
+3. 商品价格由服务端计算，购物车参数不能篡改金额。
+4. 钱包付款、优惠券、重复点击、余额不足、订单关闭均按预期处理。
+5. 代理 IP 和节点分别完成购买、人工交付、续费、拒绝、退款和到期测试。
+6. 工单、售后、通知、定时任务和审计日志能够追溯具体操作者、对象和结果。
+7. 手动创建备份并在隔离环境恢复成功。
+8. 使用一个测试版本执行在线更新，并验证失败时自动回滚。
+9. 运行 `pnpm run build`、`pnpm test` 和 `pnpm audit --prod`。
+10. 压测 MySQL 连接池与钱包并发支付，确认没有重复扣款或重复开通。

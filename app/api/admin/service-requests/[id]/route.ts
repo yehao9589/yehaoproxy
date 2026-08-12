@@ -12,7 +12,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const admin = await requireAdminApi();
+  const admin = await requireAdminApi("requests");
   if (!admin) return NextResponse.json({ error: "无管理员权限" }, { status: 403 });
   const { id } = await params;
   const body = await req.json().catch(() => null);

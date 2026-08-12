@@ -11,6 +11,7 @@ export async function POST(request: Request) {
   if (!body || !["smtp", "resend", "ses", "aliyun"].includes(body.provider) || !body.fromName || !/^\S+@\S+\.\S+$/.test(body.fromEmail)) {
     return NextResponse.json({error: "邮件配置不完整"}, {status: 400});
   }
+  if(body.enabled&&body.provider!=="resend")return NextResponse.json({error:"当前生产运行层仅支持 Resend，其他邮件渠道只能保存为停用状态"},{status:409});
   const now = new Date();
   const values={
     id: "primary",

@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   const user = await getCurrentCustomer();
   if (!user) return NextResponse.json({ error: "请先登录" }, { status: 401 });
   const body = await req.json().catch(() => null);
-  const ids = [...new Set((Array.isArray(body?.ids) ? body.ids : []).map(String))].slice(0, 200);
+  const ids: string[] = [...new Set<string>((Array.isArray(body?.ids) ? body.ids : []).map((value: unknown) => String(value)))].slice(0, 200);
   const action = String(body?.action || "");
   if (!ids.length) return NextResponse.json({ error: "请选择代理" }, { status: 400 });
   const db = getDb();
@@ -28,7 +28,10 @@ export async function POST(req: Request) {
     if (!username && !password) return NextResponse.json({ error: "请填写新用户名或密码" }, { status: 400 });
     const updates: {username?: string; encryptedPassword?: string} = {};
     if (username) updates.username = username;
-    if (password) updates.encryptedPassword = await encryptCredential(password);
+    if (password) {
+      const encryptedPassword = await encryptCredential(password);
+      if (encryptedPassword) updates.encryptedPassword = encryptedPassword;
+    }
     await db.update(proxyAllocations).set(updates).where(inArray(proxyAllocations.id, ids));
     await audit({id:user.id,role:user.role}, "proxy.bulk_credentials", "proxy", null, {ids,count:ids.length,usernameChanged:!!username,passwordChanged:!!password}, req);
     return NextResponse.json({ok:true,updated:ids.length});

@@ -1,7 +1,6 @@
-import { env } from "cloudflare:workers";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { getDb } from "../../../db";
+import { getDb, getRawDatabase } from "../../../db";
 import { orders, productOffers, proxyAllocations, serviceRequests } from "../../../db/schema";
 import { getCurrentCustomer } from "../../../lib/auth";
 import { billingCycleFromNote } from "../../../lib/billing-period";
@@ -48,7 +47,7 @@ export async function POST(req: Request) {
   const amount = Number((unit * quantity).toFixed(2));
   const now = Math.floor(Date.now() / 1000);
   const id = `YH-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
-  const d1 = (env as unknown as { DB: D1Database }).DB;
+  const d1 = getRawDatabase();
   const result = await d1.batch([
     d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,admin_note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'USD','pending',?,?,?)")
       .bind(id, user.email, product, region, quantity, durationDays, amount, `[BILLING_CYCLE]${offer.billingCycle}`, now, now),
@@ -102,7 +101,7 @@ export async function GET() {
     const renewalOf=adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1]?.trim()||null;
     const bundleItems=(()=>{const raw=adminNote?.match(/\[BUNDLE_ITEMS\]([^\n]+)/)?.[1];if(!raw)return null;try{return JSON.parse(decodeURIComponent(raw))}catch{return null}})();
     const sourceIds=renewalOf?[renewalOf]:bundleItems?.length?bundleItems.map((item:{id:string})=>item.id):[order.id];
-    const resources=sourceIds.flatMap((id:string)=>allocationsByOrder.get(id)||[]).map(resource=>({id:resource.id,orderId:resource.orderId,ip:`${resource.host}:${resource.port}`,wifiName:resource.wifiName||null,country:rows.find(item=>item.id===resource.orderId)?.region||order.region,city:resource.note?.match(/\[CITY\]([^\n]*)/)?.[1]?.trim()||null,protocol:resource.protocol,status:resource.status}));
+    const resources=sourceIds.flatMap((id:string)=>allocationsByOrder.get(id)||[]).map((resource:typeof allocationRows[number])=>({id:resource.id,orderId:resource.orderId,ip:`${resource.host}:${resource.port}`,wifiName:resource.wifiName||null,country:rows.find(item=>item.id===resource.orderId)?.region||order.region,city:resource.note?.match(/\[CITY\]([^\n]*)/)?.[1]?.trim()||null,protocol:resource.protocol,status:resource.status}));
     return {
       ...order,
       billingCycle: billingCycleFromNote(adminNote),

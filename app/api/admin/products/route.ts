@@ -6,12 +6,12 @@ import {productOffers} from "../../../../db/schema";
 import {getProductTypes} from "../../../../lib/product-types";
 
 export async function GET() {
-  if (!await requireAdminApi()) return NextResponse.json({error: "无管理员权限"}, {status: 403});
+  if (!await requireAdminApi("products")) return NextResponse.json({error: "无商品管理权限"}, {status: 403});
   return NextResponse.json({items: await getDb().select().from(productOffers).orderBy(asc(productOffers.sortOrder)),productTypes:await getProductTypes()});
 }
 
 export async function POST(req: Request) {
-  if (!await requireAdminApi()) return NextResponse.json({error: "无管理员权限"}, {status: 403});
+  if (!await requireAdminApi("products")) return NextResponse.json({error: "无商品管理权限"}, {status: 403});
   const body = await req.json().catch(() => null);
   const product = String(body?.product || "");
   const types=await getProductTypes(),type=types.find(x=>x.id===product&&x.enabled),isNode=type?.category==="node";

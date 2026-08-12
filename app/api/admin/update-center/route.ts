@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApi } from "../../../../lib/admin-auth";
+import { isSuperAdmin, requireAdminApi } from "../../../../lib/admin-auth";
 import { audit } from "../../../../lib/audit";
 import {
   defaultUpdateSettings,
@@ -9,12 +9,13 @@ import {
 } from "../../../../lib/update-center";
 
 const currentVersion = process.env.APP_VERSION || process.env.IMAGE_TAG || "0.1.0-dev";
+type ExecutorResult={error?:string;record?:{id?:string;[key:string]:unknown};[key:string]:unknown};
 
 function text(value: unknown, max = 500) {
   return String(value ?? "").trim().slice(0, max);
 }
 
-const webhookHeaders=()=>process.env.UPDATE_WEBHOOK_TOKEN?{authorization:`Bearer ${process.env.UPDATE_WEBHOOK_TOKEN}`}:{ };
+const webhookHeaders=():Record<string,string>=>process.env.UPDATE_WEBHOOK_TOKEN?{authorization:`Bearer ${process.env.UPDATE_WEBHOOK_TOKEN}`}:{ };
 
 export async function GET(request:Request) {
   if (!(await requireAdminApi("settings"))) {
@@ -56,7 +57,7 @@ export async function GET(request:Request) {
 export async function POST(request: Request) {
   const admin = await requireAdminApi("settings");
   if (!admin) return NextResponse.json({ error: "无更新中心权限" }, { status: 403 });
-  if (admin.email.toLowerCase() !== "admin") {
+  if (!isSuperAdmin(admin)) {
     return NextResponse.json({ error: "仅超级管理员可以修改或触发系统更新" }, { status: 403 });
   }
   const contentType=request.headers.get("content-type")||"";
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
     if(!webhook)return NextResponse.json({error:"备份执行器尚未配置"},{status:409});
     if(!fileName.toLowerCase().endsWith(".tar.gz"))return NextResponse.json({error:"只支持 .tar.gz 备份文件"},{status:400});
     const response=await fetch(`${webhook.replace(/\/$/,"")}/import`,{method:"POST",headers:{...webhookHeaders(),"content-type":"application/gzip","x-backup-filename":fileName,...(request.headers.get("content-length")?{"content-length":request.headers.get("content-length")!}:{})},body:request.body});
-    const result=await response.json().catch(()=>({})) as any;if(!response.ok)return NextResponse.json({error:result.error||"备份文件导入失败"},{status:502});
+    const result=await response.json().catch(()=>({})) as ExecutorResult;if(!response.ok)return NextResponse.json({error:result.error||"备份文件导入失败"},{status:502});
     await audit(admin,"backup.import","system_backup",result.record?.id||null,{fileName},request);return NextResponse.json(result,{status:201});
   }
   const body = await request.json().catch(() => null);
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
   const settings = await getUpdateSettings();
   if(action==="backup"){
     const webhook=process.env.UPDATE_WEBHOOK_URL;if(!webhook)return NextResponse.json({error:"备份执行器尚未配置"},{status:409});
-    const response=await fetch(webhook,{method:"POST",headers:{"content-type":"application/json",...webhookHeaders()},body:JSON.stringify({action:"backup",requestedBy:admin.email})});const result=await response.json().catch(()=>({})) as any;
+    const response=await fetch(webhook,{method:"POST",headers:{"content-type":"application/json",...webhookHeaders()},body:JSON.stringify({action:"backup",requestedBy:admin.email})});const result=await response.json().catch(()=>({})) as ExecutorResult;
     if(!response.ok)return NextResponse.json({error:result.error||"创建备份失败"},{status:502});await audit(admin,"backup.create","system_backup",result.record?.id||null,result.record||{},request);return NextResponse.json(result,{status:201});
   }
   if (action === "check") {

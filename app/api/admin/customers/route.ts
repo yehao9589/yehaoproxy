@@ -5,7 +5,7 @@ import { getDb } from "../../../../db";
 import { customers, wallets } from "../../../../db/schema";
 
 export async function GET(req: Request) {
-  if (!await requireAdminApi()) return NextResponse.json({ error: "无管理员权限" }, { status: 403 });
+  if (!await requireAdminApi("customers")) return NextResponse.json({ error: "无客户管理权限" }, { status: 403 });
   const url = new URL(req.url);
   const search = url.searchParams.get("search");
   const page = Math.max(1, Number(url.searchParams.get("page") || 1));

@@ -1,0 +1,86 @@
+services:
+  yehaoproxy:
+    image: ${YEHAOPROXY_IMAGE:?请配置带版本标签的 YEHAOPROXY_IMAGE}
+    command: ["node", "scripts/sqlite-runner.mjs"]
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: ""
+      CONTAINER: "true"
+      DATABASE_DRIVER: sqlite
+      INVENTORY_ENCRYPTION_KEY: ${INVENTORY_ENCRYPTION_KEY:?请配置 INVENTORY_ENCRYPTION_KEY}
+      INSTALL_TOKEN: ${INSTALL_TOKEN:?请配置 INSTALL_TOKEN}
+      CRON_SECRET: ${CRON_SECRET:?请配置 CRON_SECRET}
+      XPANEL_BRIDGE_URL: http://xpanel-bridge:8787
+      XPANEL_BRIDGE_SECRET: ${XPANEL_BRIDGE_SECRET:?请配置 XPANEL_BRIDGE_SECRET}
+      UPDATE_WEBHOOK_URL: http://updater:8788
+      UPDATE_WEBHOOK_TOKEN: ${UPDATE_WEBHOOK_TOKEN:?请配置 UPDATE_WEBHOOK_TOKEN}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?请配置 PUBLIC_APP_URL}
+      APP_VERSION: ${APP_VERSION:-latest}
+      IMAGE_REPOSITORY: ${YEHAOPROXY_IMAGE}
+    depends_on:
+      xpanel-bridge:
+        condition: service_healthy
+    volumes:
+      - sqlite_data:/app/.wrangler/state
+      - uploads:/app/public/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  scheduler:
+    image: ${YEHAOPROXY_IMAGE:?请配置带版本标签的 YEHAOPROXY_IMAGE}
+    command: ["node", "scripts/cron-runner.mjs"]
+    environment:
+      CRON_URL: http://yehaoproxy:3000/api/cron/reminders
+      CRON_SECRET: ${CRON_SECRET:?请配置 CRON_SECRET}
+      CRON_INTERVAL_MS: ${CRON_INTERVAL_MS:-60000}
+    depends_on:
+      yehaoproxy:
+        condition: service_healthy
+    restart: unless-stopped
+
+  xpanel-bridge:
+    image: ${YEHAOPROXY_IMAGE:?请配置带版本标签的 YEHAOPROXY_IMAGE}
+    command: ["node", "scripts/xpanel-bridge.mjs"]
+    environment:
+      PORT: 8787
+      XPANEL_BRIDGE_SECRET: ${XPANEL_BRIDGE_SECRET:?请配置 XPANEL_BRIDGE_SECRET}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  updater:
+    build:
+      context: .
+      dockerfile: Dockerfile.updater
+    environment:
+      PORT: 8788
+      UPDATE_WEBHOOK_TOKEN: ${UPDATE_WEBHOOK_TOKEN:?请配置 UPDATE_WEBHOOK_TOKEN}
+      UPDATE_PROJECT_DIR: /workspace
+      UPDATE_BACKUP_DIR: /backups
+      UPDATE_HEALTH_URL: http://yehaoproxy:3000/api/health
+      UPDATE_COMPOSE_FILE: docker-compose.sqlite.yml
+      UPDATE_SERVICES: yehaoproxy scheduler xpanel-bridge
+      YEHAOPROXY_IMAGE: ${YEHAOPROXY_IMAGE}
+      DATABASE_DRIVER: sqlite
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace
+      - sqlite_data:/workspace/.wrangler/state
+      - uploads:/workspace/public/uploads
+      - update_backups:/backups
+    restart: unless-stopped
+
+volumes:
+  sqlite_data:
+  uploads:
+  update_backups:

@@ -34,7 +34,6 @@ const names: Record<string,string> = {
   "service.replace.complete":"执行并完成 IP 更换",
   "service.traffic_reset.complete":"执行并完成流量重置",
   "service.traffic_reset.failed":"流量重置执行失败",
-  "service.traffic_reset.failed":"流量重置执行失败",
   "service.renew.create":"提交服务续费申请",
   "service.renew.complete":"执行并完成服务续费",
   "service.renew.verify":"核验服务续费结果",

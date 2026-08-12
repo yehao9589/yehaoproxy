@@ -1,3 +1,42 @@
-import { NextResponse } from "next/server";import { desc } from "drizzle-orm";import { requireAdminApi } from "../../../../lib/admin-auth";import { audit } from "../../../../lib/audit";import { getDb } from "../../../../db";import { coupons } from "../../../../db/schema";
-export async function GET(){if(!await requireAdminApi())return NextResponse.json({error:"无管理员权限"},{status:403});return NextResponse.json({items:await getDb().select().from(coupons).orderBy(desc(coupons.createdAt)).limit(500)})}
-export async function POST(req:Request){const admin=await requireAdminApi();if(!admin)return NextResponse.json({error:"无管理员权限"},{status:403});const b=await req.json().catch(()=>null),code=String(b?.code||"").trim().toUpperCase(),type=String(b?.type||""),value=Number(b?.value),minAmount=Number(b?.minAmount||0),maxDiscount=b?.maxDiscount===""||b?.maxDiscount==null?null:Number(b.maxDiscount),totalLimit=b?.totalLimit===""||b?.totalLimit==null?null:Number(b.totalLimit);if(!/^[A-Z0-9_-]{3,30}$/.test(code))return NextResponse.json({error:"优惠码必须为 3–30 位英文大写字母、数字、下划线或短横线"},{status:400});if(!["fixed","percent"].includes(type))return NextResponse.json({error:"请选择有效的优惠类型"},{status:400});if(!Number.isFinite(value)||value<=0)return NextResponse.json({error:"优惠值必须大于 0"},{status:400});if(type==="percent"&&value>100)return NextResponse.json({error:"百分比优惠不能超过 100%"},{status:400});if(!Number.isFinite(minAmount)||minAmount<0)return NextResponse.json({error:"最低消费不能小于 0"},{status:400});if(maxDiscount!==null&&(!Number.isFinite(maxDiscount)||maxDiscount<=0))return NextResponse.json({error:"最大优惠必须大于 0，或留空表示不限"},{status:400});if(totalLimit!==null&&(!Number.isInteger(totalLimit)||totalLimit<1))return NextResponse.json({error:"总使用次数必须是大于 0 的整数，或留空表示不限"},{status:400});const startsAt=b?.startsAt?new Date(b.startsAt):null,expiresAt=b?.expiresAt?new Date(b.expiresAt):null;if(startsAt&&expiresAt&&expiresAt<=startsAt)return NextResponse.json({error:"到期时间必须晚于开始时间"},{status:400});const id=crypto.randomUUID(),now=new Date();try{await getDb().insert(coupons).values({id,code,type:type as "fixed"|"percent",value,minAmount,maxDiscount,totalLimit,usedCount:0,enabled:true,startsAt,expiresAt,createdAt:now})}catch{return NextResponse.json({error:"优惠码已存在，请更换一个优惠码"},{status:409})}await audit({id:admin.id,role:admin.role},"coupon.create","coupon",id,{code,type,value},req);return NextResponse.json({id,code},{status:201})}
+import { desc } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { getDb } from "../../../../db";
+import { coupons } from "../../../../db/schema";
+import { requireAdminApi } from "../../../../lib/admin-auth";
+import { audit } from "../../../../lib/audit";
+
+export async function GET() {
+  if (!await requireAdminApi("coupons")) return NextResponse.json({ error: "无优惠券管理权限" }, { status: 403 });
+  return NextResponse.json({ items: await getDb().select().from(coupons).orderBy(desc(coupons.createdAt)).limit(500) });
+}
+
+export async function POST(req: Request) {
+  const admin = await requireAdminApi("coupons");
+  if (!admin) return NextResponse.json({ error: "无优惠券管理权限" }, { status: 403 });
+  const body = await req.json().catch(() => null);
+  const code = String(body?.code || "").trim().toUpperCase();
+  const type = String(body?.type || "");
+  const value = Number(body?.value);
+  const minAmount = Number(body?.minAmount || 0);
+  const maxDiscount = body?.maxDiscount === "" || body?.maxDiscount == null ? null : Number(body.maxDiscount);
+  const totalLimit = body?.totalLimit === "" || body?.totalLimit == null ? null : Number(body.totalLimit);
+  if (!/^[A-Z0-9_-]{3,30}$/.test(code)) return NextResponse.json({ error: "优惠码必须为 3–30 位英文大写字母、数字、下划线或短横线" }, { status: 400 });
+  if (!["fixed", "percent"].includes(type)) return NextResponse.json({ error: "请选择有效的优惠类型" }, { status: 400 });
+  if (!Number.isFinite(value) || value <= 0) return NextResponse.json({ error: "优惠值必须大于 0" }, { status: 400 });
+  if (type === "percent" && value > 100) return NextResponse.json({ error: "百分比优惠不能超过 100%" }, { status: 400 });
+  if (!Number.isFinite(minAmount) || minAmount < 0) return NextResponse.json({ error: "最低消费不能小于 0" }, { status: 400 });
+  if (maxDiscount !== null && (!Number.isFinite(maxDiscount) || maxDiscount <= 0)) return NextResponse.json({ error: "最大优惠必须大于 0，或留空表示不限" }, { status: 400 });
+  if (totalLimit !== null && (!Number.isInteger(totalLimit) || totalLimit < 1)) return NextResponse.json({ error: "总使用次数必须是大于 0 的整数，或留空表示不限" }, { status: 400 });
+  const startsAt = body?.startsAt ? new Date(body.startsAt) : null;
+  const expiresAt = body?.expiresAt ? new Date(body.expiresAt) : null;
+  if (startsAt && expiresAt && expiresAt <= startsAt) return NextResponse.json({ error: "到期时间必须晚于开始时间" }, { status: 400 });
+  const id = crypto.randomUUID();
+  const now = new Date();
+  try {
+    await getDb().insert(coupons).values({ id, code, type: type as "fixed" | "percent", value, minAmount, maxDiscount, totalLimit, usedCount: 0, enabled: true, startsAt, expiresAt, createdAt: now });
+  } catch {
+    return NextResponse.json({ error: "优惠码已存在，请更换一个优惠码" }, { status: 409 });
+  }
+  await audit({ id: admin.id, role: admin.role }, "coupon.create", "coupon", id, { code, type, value }, req);
+  return NextResponse.json({ id, code }, { status: 201 });
+}

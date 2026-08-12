@@ -32,7 +32,7 @@ export default function CustomerIdFormatEnhancer() {
           drawer.dataset.customerId = id;
         }
 
-        const number = displayId(id);
+        const number = displayId(id || "");
         const headerText = `${email} · 客户编号 ${number}`;
         if (profile && profile.textContent !== headerText) profile.textContent = headerText;
 

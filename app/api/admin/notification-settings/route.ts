@@ -16,6 +16,31 @@ export const DEFAULT_TEMPLATES = [
   {id: "after_sale", name: "售后申请进度", scene: "售后通知", enabled: true, emailEnabled: true, smsEnabled: false, emailSubject: "售后申请状态更新", emailBody: "订单 {{orderId}} 的售后申请状态已更新，请登录客户中心查看。", smsBody: "【YehaoProxy】订单{{orderId}}的售后申请状态已更新。"},
 ];
 
+type NotificationTemplateInput = {
+  id?: unknown;
+  name?: unknown;
+  scene?: unknown;
+  enabled?: unknown;
+  emailEnabled?: unknown;
+  smsEnabled?: unknown;
+  emailSubject?: unknown;
+  emailBody?: unknown;
+  smsBody?: unknown;
+};
+
+type NotificationSettingsInput = {
+  kind?: unknown;
+  provider?: unknown;
+  enabled?: unknown;
+  signName?: unknown;
+  credentialRef?: unknown;
+  secretRef?: unknown;
+  region?: unknown;
+  endpoint?: unknown;
+  senderId?: unknown;
+  templates?: NotificationTemplateInput[];
+};
+
 export async function GET() {
   if (!await requireAdminApi("settings")) return NextResponse.json({error: "无系统设置权限"}, {status: 403});
   const db = getDb();
@@ -33,11 +58,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   if (!await requireAdminApi("settings")) return NextResponse.json({error: "无系统设置权限"}, {status: 403});
-  const body = await request.json().catch(() => null);
-  const db = getDb();
+  const body = await request.json().catch(() => null) as NotificationSettingsInput | null;
   const now = new Date();
   if (body?.kind === "sms") {
-    if (!["aliyun", "tencent", "twilio", "generic"].includes(body.provider)) return NextResponse.json({error: "短信服务商无效"}, {status: 400});
+    if (!["aliyun", "tencent", "twilio", "generic"].includes(String(body.provider))) return NextResponse.json({error: "短信服务商无效"}, {status: 400});
     const config = {
       provider: String(body.provider),
       enabled: Boolean(body.enabled),
@@ -48,13 +72,14 @@ export async function POST(request: Request) {
       endpoint: String(body.endpoint || ""),
       senderId: String(body.senderId || ""),
     };
-    if (config.enabled && !config.signName) return NextResponse.json({error: "启用短信前请填写短信签名"}, {status: 400});
+    if(config.enabled)return NextResponse.json({error:"短信发送适配器尚未实现，当前只能保存停用配置"},{status:409});
     await setSystemOption("sms_provider_config",JSON.stringify(config),now);
     return NextResponse.json({ok: true, config});
   }
   if (body?.kind === "templates") {
     if (!Array.isArray(body.templates) || !body.templates.length) return NextResponse.json({error: "模板数据无效"}, {status: 400});
-    const templates = body.templates.map((item: any) => ({
+    if(body.templates.some(item=>item?.smsEnabled===true))return NextResponse.json({error:"短信发送适配器尚未实现，模板暂不能启用短信通道"},{status:409});
+    const templates = body.templates.map(item => ({
       id: String(item.id),
       name: String(item.name).slice(0, 50),
       scene: String(item.scene).slice(0, 30),

@@ -47,6 +47,7 @@ services:
       dockerfile: Dockerfile
     container_name: yehaoproxy-local
     working_dir: /app
+    command: ["pnpm", "exec", "vinext", "dev", "--hostname", "0.0.0.0"]
     ports:
       - "3000:3000"
     environment:

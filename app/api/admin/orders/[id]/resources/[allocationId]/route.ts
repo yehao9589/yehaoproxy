@@ -10,7 +10,7 @@ import {audit} from "../../../../../../../lib/audit";
 function adminDate(value:unknown){const raw=String(value||"").trim();return new Date(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(raw)?`${raw}+08:00`:raw)}
 
 export async function GET(req:Request,{params}:{params:Promise<{id:string;allocationId:string}>}){
-  if(!await requireAdminApi())return NextResponse.json({error:"无管理员权限"},{status:403});
+  if(!await requireAdminApi("orders"))return NextResponse.json({error:"无订单管理权限"},{status:403});
   const {id,allocationId}=await params,u=new URL(req.url),db=getDb();
   const lookup=allocationId==="by-address"?and(eq(proxyAllocations.orderId,id),eq(proxyAllocations.host,u.searchParams.get("host")||""),eq(proxyAllocations.port,Number(u.searchParams.get("port")))):and(eq(proxyAllocations.id,allocationId),eq(proxyAllocations.orderId,id));
   const [row]=await db.select().from(proxyAllocations).where(lookup).limit(1);

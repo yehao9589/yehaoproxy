@@ -6,7 +6,7 @@ import {productOffers} from "../../../../../db/schema";
 import {getProductTypes} from "../../../../../lib/product-types";
 
 export async function PATCH(req: Request, {params}: {params: Promise<{id: string}>}) {
-  if (!await requireAdminApi()) {
+  if (!await requireAdminApi("products")) {
     return NextResponse.json({error: "无管理员权限"}, {status: 403});
   }
 

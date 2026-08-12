@@ -8,7 +8,7 @@ import { auditLogs, authSessions, customers, notifications, orders, proxyAllocat
 import { AFTER_SALES_TICKET_CATEGORIES } from "../../../../../lib/ticket-categories";
 
 export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){
-  if(!await requireAdminApi())return NextResponse.json({error:"无管理员权限"},{status:403});
+  if(!await requireAdminApi("customers"))return NextResponse.json({error:"无客户管理权限"},{status:403});
   const{id}=await params,db=getDb(),[customer]=await db.select().from(customers).where(eq(customers.id,id)).limit(1);
   if(!customer||customer.role!=="customer")return NextResponse.json({error:"客户不存在"},{status:404});
   const [wallet]=await db.select().from(wallets).where(eq(wallets.customerId,id)).limit(1);
@@ -27,7 +27,7 @@ export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){
 }
 
 export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
-  const admin=await requireAdminApi();
+  const admin=await requireAdminApi("customers");
   if(!admin)return NextResponse.json({error:"无管理员权限"},{status:403});
   const{id}=await params,b=await req.json().catch(()=>null),db=getDb();
   const[target]=await db.select().from(customers).where(eq(customers.id,id)).limit(1);

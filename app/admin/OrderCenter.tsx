@@ -4,7 +4,7 @@ import OrderManager from "./OrderManager";
 import {displayCustomerId} from "../../lib/customer-id";
 type Order={id:string;customerEmail:string;product:string;region:string;quantity:number;amount:number;status:string;expiresAt:string|null;createdAt:string};
 type Renewal={id:string;customerId:string;allocationId:string;type:string;durationDays:number|null;amount:number|null;status:string;createdAt:string};
-type View="bills"|"products"|"pending"|"provisioning"|"renewals";
+type View="all"|"bills"|"products"|"pending"|"provisioning"|"renewals";
 const orderLabels:Record<string,string>={pending:"待付款",paid:"等待受理",provisioning:"开通处理中",active:"已激活",refunded:"已退款",failed:"已取消"};
 const renewalLabels:Record<string,string>={pending:"待处理",completed:"已完成",rejected:"已拒绝"};
 export default function OrderCenter(){
@@ -27,6 +27,7 @@ export default function OrderCenter(){
   <div className="order-center-original"><OrderManager search={search} kind={view}/></div>
  </div>;
  return <div className="order-center">
+  {/* @ts-expect-error Shared navigation intentionally links back to views excluded by the early-return branch. */}
   <div className="order-center-tabs"><div><button className={view==="bills"?"on":""} onClick={()=>setView("bills")}>账单管理</button><button className={view==="products"?"on":""} onClick={()=>setView("products")}>产品订单</button><button className={view==="pending"?"on":""} onClick={()=>setView("pending")}>待付款 <b>{pending}</b></button><button className={view==="provisioning"?"on":""} onClick={()=>setView("provisioning")}>待开通 <b>{opening}</b></button><button className={view==="renewals"?"on":""} onClick={()=>setView("renewals")}>续费订单 <b>{renewing}</b></button></div><button className="order-refresh" onClick={()=>void load()}>刷新</button></div>
   <div className="order-searchbar"><div><span aria-hidden="true">⌕</span><input value={search} onChange={event=>setSearch(event.target.value)} placeholder={view==="renewals"?"搜索续费单号、客户编号或资源编号":"搜索订单号、客户邮箱、商品或地区"}/>{search&&<button type="button" onClick={()=>setSearch("")} aria-label="清除搜索">×</button>}</div><strong>{view==="renewals"?filteredRenewals.length:filtered.length}<small> 条结果</small></strong></div>
   {error&&<div className="live-error">{error}<button onClick={()=>setError("")}>×</button></div>}

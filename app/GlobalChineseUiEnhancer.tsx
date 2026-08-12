@@ -58,7 +58,6 @@ const exact: Record<string, string> = {
   recharge: "充值",
   refund: "退款",
   adjustment: "人工调账",
-  renewal: "续费",
   credit: "信用额",
   balance: "余额",
   manual: "人工处理",
@@ -78,7 +77,6 @@ const exact: Record<string, string> = {
   system: "系统",
 
   general: "一般问题",
-  technical: "技术问题",
   billing: "财务问题",
   sales: "售前咨询",
   abuse: "滥用投诉",

@@ -1,7 +1,6 @@
-import {env} from "cloudflare:workers";
 import {and,eq} from "drizzle-orm";
 import {NextResponse} from "next/server";
-import {getDb} from "../../../../db";
+import {getDb,getRawDatabase} from "../../../../db";
 import {orders,productOffers} from "../../../../db/schema";
 import {audit} from "../../../../lib/audit";
 import {getCurrentCustomer} from "../../../../lib/auth";
@@ -21,7 +20,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     ?all.filter(item=>item.adminNote?.includes(`[BUNDLE_PARENT]${id}`))
     :[];
   const stockItems=children.length?children:[order];
-  const d1=(env as unknown as{DB:D1Database}).DB;
+  const d1=getRawDatabase();
   const now=Math.floor(Date.now()/1000);
   const stockStatements=[];
   for(const item of stockItems){

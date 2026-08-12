@@ -5,7 +5,7 @@ import { getDb } from "../../../../db";
 import { customers, orders, walletTransactions } from "../../../../db/schema";
 
 export async function GET(){
- if(!await requireAdminApi())return NextResponse.json({error:"无管理员权限"},{status:403});
+ if(!await requireAdminApi("overview"))return NextResponse.json({error:"无运营概览权限"},{status:403});
  const db=getDb(),[orderRows,transactions,customerRows]=await Promise.all([db.select().from(orders).orderBy(desc(orders.createdAt)),db.select().from(walletTransactions).orderBy(desc(walletTransactions.createdAt)).limit(100),db.select({id:customers.id,email:customers.email,name:customers.name}).from(customers).where(eq(customers.role,"customer"))]);
  const paid=new Set(["paid","provisioning","active"]),revenue=orderRows.filter(x=>paid.has(x.status)).reduce((s,x)=>s+x.amount,0),refunded=orderRows.filter(x=>x.status==="refunded").reduce((s,x)=>s+x.amount,0);
  const customerMap=new Map<string,{email:string;orders:number;spent:number;quantity:number}>();for(const x of orderRows){const row=customerMap.get(x.customerEmail)||{email:x.customerEmail,orders:0,spent:0,quantity:0};row.orders++;row.quantity+=x.quantity;if(paid.has(x.status))row.spent+=x.amount;customerMap.set(x.customerEmail,row)}

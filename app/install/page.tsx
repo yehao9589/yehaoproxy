@@ -8,7 +8,7 @@ type Status = {
   databaseBinding: boolean;
   runtime: "mysql" | "sqlite";
   mysqlSupported: boolean;
-  admin?: { email: string } | null;
+  installationTokenRequired: boolean;
 };
 
 type DatabaseType = "mysql" | "sqlite";
@@ -24,6 +24,7 @@ export default function InstallPage() {
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
   const [done, setDone] = useState(false);
+  const [installToken, setInstallToken] = useState("");
   const [mysqlConfig, setMysqlConfig] = useState({
     mysqlHost: "mysql",
     mysqlPort: "3306",
@@ -39,9 +40,6 @@ export default function InstallPage() {
       .then((value: Status) => {
         setStatus(value);
         if (!value.installed && value.runtime === "sqlite") setDatabaseType("sqlite");
-        if (value.installed) {
-          setMessage("当前为预览模式：可以检查 MySQL 连接和查看全部步骤，但不会覆盖现有数据。");
-        }
       });
   }, []);
 
@@ -57,7 +55,7 @@ export default function InstallPage() {
       const response = await fetch("/api/install", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "test-mysql", ...mysqlConfig }),
+        body: JSON.stringify({ action: "test-mysql", installToken, ...mysqlConfig }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "连接失败");
@@ -89,6 +87,7 @@ export default function InstallPage() {
           databaseType,
           databaseMode: mode,
           registrationEnabled: raw.registrationEnabled === "on",
+          installToken,
         }),
       });
       const body = await response.json();
@@ -106,6 +105,18 @@ export default function InstallPage() {
   }
   if (done) {
     return <main className="installer-shell"><section className="installer-complete"><i>✓</i><h1>部署配置完成</h1><p>数据库、超级管理员和站点基础信息已经初始化。</p><a href="/login">使用管理员账户登录</a></section></main>;
+  }
+  if (status.installed) {
+    return (
+      <main className="installer-shell">
+        <section className="installer-complete">
+          <i>✓</i>
+          <h1>系统已完成安装</h1>
+          <p>为保护数据库与管理员账户，首次部署入口已经锁定。</p>
+          <a href="/login">前往登录</a>
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -173,6 +184,14 @@ export default function InstallPage() {
                   <div className="installer-note sqlite-note"><b>无需额外配置</b><span>本地自动使用持久化 SQLite；Cloudflare 部署时可绑定 D1。</span></div>
                 )}
               </section>
+              {status.installationTokenRequired && (
+                <section className="installer-config-section connection">
+                  <div className="installer-section-title"><i>4</i><span><b>部署授权</b><small>防止未授权用户初始化或探测数据库</small></span></div>
+                  <div className="installer-mysql-form">
+                    <label className="wide">部署密钥<input type="password" value={installToken} onChange={(event) => setInstallToken(event.target.value)} placeholder="服务器环境变量 INSTALL_TOKEN" /></label>
+                  </div>
+                </section>
+              )}
               <footer><button onClick={() => setStep(1)}>上一步</button><button className="primary" onClick={() => setStep(3)}>下一步：创建管理员</button></footer>
             </div>
           )}
