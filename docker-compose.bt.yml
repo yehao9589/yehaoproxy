@@ -1,0 +1,102 @@
+services:
+  mysql-bridge:
+    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:pre-release}
+    command: ["node", "scripts/mysql-bridge.mjs"]
+    network_mode: host
+    environment:
+      PORT: 8789
+      # 首次启动可留空，由 /install 向导检测并保存宝塔 MySQL 配置。
+      DATABASE_URL: ${DATABASE_URL:-}
+      MYSQL_BRIDGE_SECRET: ${MYSQL_BRIDGE_SECRET:?请配置 MYSQL_BRIDGE_SECRET}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8789/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  xpanel-bridge:
+    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:pre-release}
+    command: ["node", "scripts/xpanel-bridge.mjs"]
+    environment:
+      PORT: 8787
+      XPANEL_BRIDGE_SECRET: ${XPANEL_BRIDGE_SECRET:?请配置 XPANEL_BRIDGE_SECRET}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  yehaoproxy:
+    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:pre-release}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      NODE_ENV: production
+      CONTAINER: "true"
+      DATABASE_DRIVER: mysql
+      MYSQL_BRIDGE_URL: http://host.docker.internal:8789
+      MYSQL_BRIDGE_SECRET: ${MYSQL_BRIDGE_SECRET:?请配置 MYSQL_BRIDGE_SECRET}
+      INVENTORY_ENCRYPTION_KEY: ${INVENTORY_ENCRYPTION_KEY:?请配置 INVENTORY_ENCRYPTION_KEY}
+      INSTALL_TOKEN: ${INSTALL_TOKEN:?请配置 INSTALL_TOKEN}
+      CRON_SECRET: ${CRON_SECRET:?请配置 CRON_SECRET}
+      XPANEL_BRIDGE_URL: http://xpanel-bridge:8787
+      XPANEL_BRIDGE_SECRET: ${XPANEL_BRIDGE_SECRET:?请配置 XPANEL_BRIDGE_SECRET}
+      UPDATE_WEBHOOK_URL: http://updater:8788
+      UPDATE_WEBHOOK_TOKEN: ${UPDATE_WEBHOOK_TOKEN:?请配置 UPDATE_WEBHOOK_TOKEN}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?请配置 PUBLIC_APP_URL}
+      APP_VERSION: ${APP_VERSION:-pre-release}
+      IMAGE_REPOSITORY: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:pre-release}
+    depends_on:
+      xpanel-bridge:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/public/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  scheduler:
+    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:pre-release}
+    command: ["node", "scripts/cron-runner.mjs"]
+    environment:
+      CRON_URL: http://yehaoproxy:3000/api/cron/reminders
+      CRON_SECRET: ${CRON_SECRET:?请配置 CRON_SECRET}
+      CRON_INTERVAL_MS: ${CRON_INTERVAL_MS:-60000}
+    depends_on:
+      yehaoproxy:
+        condition: service_healthy
+    restart: unless-stopped
+
+  updater:
+    image: ${YEHAOPROXY_UPDATER_IMAGE:-ghcr.io/yehao9589/yehaoproxy-updater:pre-release}
+    network_mode: host
+    environment:
+      PORT: 8788
+      UPDATE_WEBHOOK_TOKEN: ${UPDATE_WEBHOOK_TOKEN:?请配置 UPDATE_WEBHOOK_TOKEN}
+      UPDATE_PROJECT_DIR: /workspace
+      UPDATE_BACKUP_DIR: /backups
+      UPDATE_HEALTH_URL: http://127.0.0.1:${APP_PORT:-3000}/api/health
+      UPDATE_COMPOSE_FILE: docker-compose.bt.yml
+      UPDATE_SERVICES: yehaoproxy scheduler xpanel-bridge mysql-bridge
+      YEHAOPROXY_IMAGE: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:pre-release}
+      DATABASE_DRIVER: mysql
+      # 首次启动可留空；安装向导完成后由更新执行器写入 .env。
+      DATABASE_URL: ${DATABASE_URL:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace
+      - uploads:/workspace/public/uploads
+      - update_backups:/backups
+    restart: unless-stopped
+
+volumes:
+  uploads:
+  update_backups:

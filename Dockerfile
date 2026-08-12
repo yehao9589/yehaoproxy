@@ -17,4 +17,4 @@ EXPOSE 3000
 
 ENV NODE_ENV=production
 ENV NODE_OPTIONS=--experimental-loader=/app/scripts/cloudflare-node-loader.mjs
-CMD ["pnpm", "exec", "vinext", "start", "--hostname", "0.0.0.0"]
+CMD ["node", "node_modules/vinext/dist/cli.js", "start", "--hostname", "0.0.0.0"]
