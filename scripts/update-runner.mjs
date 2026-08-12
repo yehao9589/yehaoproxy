@@ -93,6 +93,13 @@ async function activeDatabaseDriver() {
 }
 
 async function databaseConnectionUrl() {
+  if (process.env.RUNTIME_ENV_FILE) {
+    try {
+      const content = await readFile(process.env.RUNTIME_ENV_FILE, "utf8");
+      const match = content.match(/^DATABASE_URL=(.+)$/m);
+      if (match?.[1]) return match[1].trim();
+    } catch { /* first installation has no runtime file */ }
+  }
   try {
     const content = await readFile(join(workspace, ".backup.env"), "utf8");
     const match = content.match(/^DATABASE_URL=(.+)$/m);

@@ -1,0 +1,12 @@
+{
+  "version": "pre-release",
+  "publishedAt": "2026-08-13",
+  "image": "ghcr.io/yehao9589/yehaoproxy:pre-release",
+  "releaseNotes": "首次宝塔单容器预发布版本：支持安装向导、外部 MySQL、手动完整备份、备份下载与恢复。",
+  "releases": [{
+    "version": "pre-release",
+    "publishedAt": "2026-08-13",
+    "title": "宝塔单容器预发布版",
+    "notes": ["支持宝塔单容器部署", "支持已有 MySQL 数据库自动初始化", "增加系统完整备份、下载和恢复", "更新来源改为随部署自动识别"]
+  }]
+}

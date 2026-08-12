@@ -1,4 +1,4 @@
-import {createServer} from "node:http";
+import {createServer,request as httpRequest} from "node:http";
 import {spawn} from "node:child_process";
 import {mkdir,readFile,rename,writeFile} from "node:fs/promises";
 import {dirname} from "node:path";
@@ -41,6 +41,11 @@ async function bootOne(name){
     ...common,DATABASE_DRIVER:"mysql",MYSQL_BRIDGE_URL:"http://127.0.0.1:8789",XPANEL_BRIDGE_URL:"http://127.0.0.1:8787",UPDATE_WEBHOOK_URL:"http://127.0.0.1:8788",
   });
   if(name==="scheduler")start(name,"node",["scripts/cron-runner.mjs"],{CRON_URL:"http://127.0.0.1:3000/api/cron/reminders"});
+  if(name==="backup")start(name,"node",["scripts/update-runner.mjs"],{
+    PORT:"8790",UPDATE_PROJECT_DIR:"/app",UPDATE_BACKUP_DIR:"/app/backups",
+    UPDATE_WEBHOOK_TOKEN:token,RUNTIME_ENV_FILE:runtimeFile,UPDATE_SERVICES:"",
+    UPDATE_HEALTH_URL:"http://127.0.0.1:3000/api/health",
+  });
 }
 
 async function restartRuntime(){
@@ -49,7 +54,7 @@ async function restartRuntime(){
   await new Promise(resolve=>setTimeout(resolve,1200));
   children.clear();
   restarting=false;
-  for(const name of ["mysql","xpanel","web","scheduler"])await bootOne(name);
+  for(const name of ["mysql","xpanel","web","scheduler","backup"])await bootOne(name);
 }
 
 async function body(req){let value="";for await(const chunk of req){value+=chunk;if(value.length>200000)throw new Error("请求过大")}return JSON.parse(value||"{}")}
@@ -59,6 +64,13 @@ createServer(async(req,res)=>{
   try{
     if(req.url==="/health")return json(res,200,{ready:true,mode:"single-container"});
     if(req.headers.authorization!==`Bearer ${token}`)return json(res,401,{error:"更新执行器认证失败"});
+    if((req.headers["content-type"]||"").includes("application/gzip")){
+      const proxy=httpRequest({hostname:"127.0.0.1",port:8790,path:req.url,method:req.method,headers:{...req.headers,host:"127.0.0.1:8790"}},upstream=>{
+        res.writeHead(upstream.statusCode||502,upstream.headers);upstream.pipe(res);
+      });
+      proxy.on("error",error=>json(res,502,{error:`备份服务暂不可用：${error.message}`}));
+      req.pipe(proxy);return;
+    }
     const input=await body(req);
     if(req.method==="POST"&&input.action==="configure-database"){
       if(input.driver!=="mysql"||!input.databaseUrl)throw new Error("MySQL 数据库配置无效");
@@ -69,11 +81,15 @@ createServer(async(req,res)=>{
       setTimeout(()=>void restartRuntime(),250);
       return json(res,200,{ok:true,restarting:true});
     }
-    return json(res,404,{error:"单容器模式仅保留数据库配置接口；在线更新请使用宝塔更新镜像"});
+    const proxy=httpRequest({hostname:"127.0.0.1",port:8790,path:req.url,method:req.method,headers:{...req.headers,host:"127.0.0.1:8790"}},upstream=>{
+      res.writeHead(upstream.statusCode||502,upstream.headers);upstream.pipe(res);
+    });
+    proxy.on("error",error=>json(res,502,{error:`备份服务暂不可用：${error.message}`}));
+    if(req.method==="POST")proxy.end(JSON.stringify(input));else proxy.end();
   }catch(error){return json(res,500,{error:error instanceof Error?error.message:"执行失败"})}
 }).listen(8788,"127.0.0.1",()=>console.log("YehaoProxy single-container controller listening on 8788"));
 
-for(const name of ["mysql","xpanel","web","scheduler"])await bootOne(name);
+for(const name of ["mysql","xpanel","web","scheduler","backup"])await bootOne(name);
 
 async function shutdown(){restarting=true;for(const child of children.values())child.kill("SIGTERM");process.exit(0)}
 process.on("SIGTERM",shutdown);process.on("SIGINT",shutdown);

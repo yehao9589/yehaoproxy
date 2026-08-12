@@ -40,7 +40,11 @@ export async function GET(request:Request) {
     } catch { /* executor remains unavailable */ }
   }
   return NextResponse.json({
-    settings: await getUpdateSettings(),
+    source: {
+      repository: defaultUpdateSettings.repository,
+      image: process.env.IMAGE_REPOSITORY || defaultUpdateSettings.image,
+      channel: process.env.UPDATE_CHANNEL || defaultUpdateSettings.channel,
+    },
     runtime: {
       currentVersion,
       image: process.env.IMAGE_REPOSITORY || "",
@@ -100,13 +104,11 @@ export async function POST(request: Request) {
     if(!response.ok)return NextResponse.json({error:result.error||"创建备份失败"},{status:502});await audit(admin,"backup.create","system_backup",result.record?.id||null,result.record||{},request);return NextResponse.json(result,{status:201});
   }
   if (action === "check") {
-    if (!settings.manifestUrl) {
-      return NextResponse.json({ error: "请先配置版本清单地址" }, { status: 400 });
-    }
+    const manifestUrl=process.env.UPDATE_MANIFEST_URL||defaultUpdateSettings.manifestUrl;
     try {
       const headers: Record<string, string> = { accept: "application/json" };
       if (process.env.GITEE_ACCESS_TOKEN) headers.Authorization = `token ${process.env.GITEE_ACCESS_TOKEN}`;
-      const response = await fetch(settings.manifestUrl, { headers, cache: "no-store" });
+      const response = await fetch(manifestUrl, { headers, cache: "no-store" });
       if (!response.ok) throw new Error(`远程服务器返回 ${response.status}`);
       const manifest = await response.json();
       const remoteVersion = text(manifest.version, 60);
@@ -120,6 +122,7 @@ export async function POST(request: Request) {
         releaseNotes: text(manifest.releaseNotes || manifest.notes, 4000),
         image: text(manifest.image, 300),
         publishedAt: text(manifest.publishedAt, 80),
+        releases: Array.isArray(manifest.releases) ? manifest.releases.slice(0, 20) : [],
       });
     } catch (error) {
       return NextResponse.json({ error: `检查更新失败：${error instanceof Error ? error.message : "未知错误"}` }, { status: 502 });
