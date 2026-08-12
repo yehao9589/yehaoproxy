@@ -29,16 +29,15 @@ YehaoProxy 是一个面向代理 IP 与节点服务销售场景的全栈业务�
 
 ## Docker 部署
 
-宝塔面板已经创建 MySQL 数据库时，可直接使用 `docker-compose.bt.yml`，无需再启动 MySQL 容器：
+宝塔面板推荐使用单容器部署，MySQL 直接使用宝塔创建的数据库：
 
 ```bash
-cp .env.bt.example .env
-docker compose -f docker-compose.bt.yml up -d
+docker compose -f docker-compose.single.yml up -d
 ```
 
-宝塔专用编排通过宿主机网络访问本地 MySQL，无需修改数据库的 `Localhost` 权限，也不要在服务器防火墙中将 `3306` 端口开放给公网。
+该方案在宝塔中只显示一个 `yehaoproxy` 容器。网站、MySQL 桥接、X-Panel 桥接和定时任务在容器内部统一运行；宝塔数据库可以保持 `Localhost` 权限，也不要向公网开放 `3306`。
 
-首次启动时 `DATABASE_URL` 可以留空。打开 `/install`，在安装向导中填写 `127.0.0.1`、宝塔数据库名称、用户名和密码；连接测试与初始化成功后，系统会将连接配置保存到服务器 `.env` 并自动重启相关服务。
+首次启动后打开 `/install`，在安装向导中填写 `127.0.0.1`、宝塔数据库名称、用户名和密码；连接测试与初始化成功后，系统会保存运行配置并自动重启相关进程。完整步骤见 [部署指南](./DEPLOYMENT.md)。
 
 ### 1. 获取代码
 

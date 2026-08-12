@@ -1,93 +1,167 @@
-# YehaoProxy 生产部署指南
+# YehaoProxy 部署指南
 
-## 推荐方案
+## 推荐方案：宝塔 MySQL + 单容器
 
-正式环境推荐使用 `docker-compose.production.yml`：应用、MySQL、数据库桥接、定时任务、X-Panel 桥接和更新/备份服务会作为一套服务启动。SQLite 仍可用于本地开发或小型单机部署，但上线前必须在与正式环境相同的数据库驱动上完成一次全流程验收。
+已在宝塔面板实机验证的推荐结构：
 
-## 1. 环境要求
+- 宝塔负责 MySQL、反向代理、域名和证书。
+- Docker 只运行一个 `yehaoproxy` 容器。
+- 网站、MySQL 桥接、X-Panel 桥接和定时任务由容器内启动器统一管理。
+- 数据库连接在首次安装向导中填写，不写入 Compose，也不提交仓库。
+- 正式更新使用宝塔的“更新镜像”；更新前先备份数据库和持久化目录。
 
-- Linux 服务器、Docker Engine 和 Docker Compose v2
-- 已解析到服务器的 HTTPS 域名
-- 可拉取私有镜像的容器仓库凭据
-- Node.js 22.13 或更高版本（仅源码构建时需要）
+仓库中的部署文件为 `docker-compose.single.yml`。旧的 `docker-compose.bt.yml` 是多容器兼容方案，不作为宝塔首选。
 
-## 2. 生产密钥
+## 1. 宝塔环境
 
-复制 `.env.example` 为 `.env`，至少设置以下项目：
+需要安装：
 
-- `YEHAOPROXY_IMAGE`：应用镜像。预发布测试使用 `ghcr.io/yehao9589/yehaoproxy:pre-release`，正式环境使用明确的 `v1.0.0` 等版本标签。
-- `YEHAOPROXY_UPDATER_IMAGE`：更新器镜像。预发布测试使用 `ghcr.io/yehao9589/yehaoproxy-updater:pre-release`。
-- `MYSQL_ROOT_PASSWORD`、`MYSQL_PASSWORD`：数据库独立强密码。
-- `MYSQL_BRIDGE_SECRET`：数据库桥接服务认证密钥，至少 32 位随机字符。
-- `INVENTORY_ENCRYPTION_KEY`：库存凭据加密密钥，至少 32 位；已有数据后不能随意更换。
-- `INSTALL_TOKEN`：首次安装页的部署密钥，至少 32 位。
-- `CRON_SECRET`：定时任务调用密钥。
-- `XPANEL_BRIDGE_SECRET`：X-Panel 桥接密钥。
-- `UPDATE_WEBHOOK_TOKEN`：在线更新与备份服务密钥。
-- `PUBLIC_APP_URL`：正式 HTTPS 地址。
+- Docker 管理器及 Docker Compose
+- MySQL 5.7 或 MySQL 8（推荐 MySQL 8）
+- 可选：Nginx，用于绑定域名、HTTPS 和反向代理
 
-任何 `.env`、`.env.local`、`.backup.env` 文件都不能提交到 Git。备份包只包含数据库和上传目录，不包含这些密钥；服务器重建时要从独立的密码管理器恢复环境变量。
+服务器至少预留 2 GB 内存。不要向公网开放 MySQL 的 `3306` 端口。
 
-## 3. 首次启动
+## 2. 创建数据库
 
-```bash
-docker login ghcr.io
-docker compose -f docker-compose.production.yml pull
-docker compose -f docker-compose.production.yml up -d
+在宝塔“数据库”中新建：
+
+- 数据库名称：自定义，例如 `yehaoproxy`
+- 用户名：建议与数据库同名
+- 密码：使用宝塔生成的强密码
+- 访问权限：`Localhost`
+- 字符集：`utf8mb4`
+
+单容器使用宿主机网络访问宝塔 MySQL，因此数据库可以继续保持 `Localhost` 权限。
+
+## 3. 添加容器编排
+
+进入“Docker → 容器编排 → 添加容器编排”：
+
+1. 编排名称填写 `yehaoproxy`。
+2. Compose 内容粘贴仓库中的 `docker-compose.single.yml`。
+3. `.env` 内容按下面模板填写。
+4. 每个密钥都必须单独生成，至少 32 字符，不要复用。
+
+```dotenv
+YEHAOPROXY_IMAGE=ghcr.io/yehao9589/yehaoproxy:pre-release
+PUBLIC_APP_URL=http://服务器IP:3000
+APP_VERSION=pre-release
+INVENTORY_ENCRYPTION_KEY=独立随机密钥
+INSTALL_TOKEN=独立随机部署密钥
+MYSQL_BRIDGE_SECRET=独立随机密钥
+CRON_SECRET=独立随机密钥
+XPANEL_BRIDGE_SECRET=独立随机密钥
+UPDATE_WEBHOOK_TOKEN=独立随机密钥
+CRON_INTERVAL_MS=60000
 ```
 
-打开 `https://你的域名/install`，输入 `INSTALL_TOKEN`，选择 MySQL，测试连接后创建数据库和超级管理员。安装成功后入口会自动锁定，不能再次初始化。
+正式发布后应把镜像标签从 `pre-release` 换成固定版本，例如 `v1.0.0`，避免不可控升级。
 
-然后检查：
+## 4. 持久化目录
 
-```bash
-curl -fsS https://你的域名/api/health
-docker compose -f docker-compose.production.yml ps
+单容器默认使用：
+
+```text
+/www/wwwroot/yehaoproxy/data
+/www/wwwroot/yehaoproxy/uploads
+/www/wwwroot/yehaoproxy/backups
 ```
 
-`/api/health` 必须返回 HTTP 200，并且 `database`、`encryptionConfigured` 均为 `true`。
+- `data`：安装向导保存的运行配置。
+- `uploads`：站点上传文件。
+- `backups`：备份文件。
 
-## 4. SQLite 模式
+删除或重建容器不会删除这些宿主机目录。迁移服务器时必须与 MySQL 备份一起迁移。
 
-应用代码同时保留 `DATABASE_DRIVER=sqlite`。SQLite 适合本地开发、演示和低并发单机部署；必须持久化 `.wrangler/state`，否则重建容器会丢失数据。MySQL 更适合正式业务并发、事务和长期运维。
+## 5. 首次安装
 
-SQLite 容器部署使用独立编排文件，不需要启动 MySQL：
+容器显示“运行中”后访问：
 
-```bash
-docker compose -f docker-compose.sqlite.yml pull
-docker compose -f docker-compose.sqlite.yml up -d
+```text
+http://服务器IP:3000/install
 ```
 
-首次打开安装页时选择 SQLite。后续在线更新、健康检查和备份恢复会沿用 `docker-compose.sqlite.yml`，不会误启动 MySQL 服务。
+安装向导中选择 MySQL，并填写：
 
-两个驱动的 SQL 行为并不完全相同。任何数据库结构或订单/钱包逻辑改动，都要分别完成类型检查，并至少在正式采用的驱动上执行真实集成测试。
+- 主机：`127.0.0.1`
+- 端口：`3306`
+- 数据库名称：宝塔创建的名称
+- 用户名：宝塔数据库用户名
+- 密码：宝塔数据库密码
+- 部署密钥：Compose `.env` 中的 `INSTALL_TOKEN`
 
-## 5. 更新、备份与回滚
+先点击测试连接，成功后再建立管理员和站点。初始化完成后，数据库配置会写入 `/app/data/runtime.env`，相关子进程自动重启，安装入口随后锁定。
 
-- 后台“更新与备份”可以创建、下载、导入和恢复数据备份。
-- 在线更新只接受带明确版本标签的镜像。
-- 更新前会自动备份数据库和上传文件；新版本健康检查失败时自动恢复上一个镜像和数据。
-- 导入备份会校验压缩包路径并拒绝符号链接、目录穿越和非白名单文件。
-- 至少每天把备份复制到服务器之外，并定期在隔离环境演练恢复。
+## 6. 域名与 HTTPS
 
-仓库内的 `.github/workflows/publish-images.yml` 会在测试分支、主分支和版本标签推送时自动发布 GHCR 镜像。首次发布后如果镜像包仍显示 Private，需要在 GitHub 仓库的 Packages 页面进入两个镜像的 Package settings，将可见性改成 Public；源码仓库公开并不一定会自动改变既有镜像包的可见性。
+安装验证完成后，在宝塔网站中创建域名并反向代理到：
 
-## 6. 当前功能边界
+```text
+http://127.0.0.1:3000
+```
 
-- 余额支付可以使用。
-- Stripe、支付宝、微信、USDT、PayPal 等真实外部支付适配器和回调验签尚未接入，因此后台会拒绝启用这些渠道，避免生成伪成功交易。
-- 邮件正式发送当前仅开放已配置密钥的 Resend；短信和供应商自动采购在真实适配器接入前不能启用。
-- 上线前必须选定实际支付渠道，并完成下单、异步回调、重复回调、退款和对账的沙箱测试。
+申请 HTTPS 证书后，把 `PUBLIC_APP_URL` 改成正式的 `https://域名`，保存编排并重启容器。公网防火墙无需长期开放 `3000`，只允许 Nginx 从本机反向代理即可。
 
-## 7. 上线验收清单
+## 7. 更新
 
-1. 注册、登录、退出、会话过期跳转和管理员权限正常。
-2. 首次安装完成后 `/install` 不可再次修改系统。
-3. 商品价格由服务端计算，购物车参数不能篡改金额。
-4. 钱包付款、优惠券、重复点击、余额不足、订单关闭均按预期处理。
-5. 代理 IP 和节点分别完成购买、人工交付、续费、拒绝、退款和到期测试。
-6. 工单、售后、通知、定时任务和审计日志能够追溯具体操作者、对象和结果。
-7. 手动创建备份并在隔离环境恢复成功。
-8. 使用一个测试版本执行在线更新，并验证失败时自动回滚。
-9. 运行 `pnpm run build`、`pnpm test` 和 `pnpm audit --prod`。
-10. 压测 MySQL 连接池与钱包并发支付，确认没有重复扣款或重复开通。
+测试分支镜像更新流程：
+
+1. GitHub Actions 构建 `ghcr.io/yehao9589/yehaoproxy:pre-release`。
+2. 先备份宝塔 MySQL 和三个持久化目录。
+3. 在宝塔容器编排点击“更新镜像”。
+4. 确认容器重新创建后检查日志和 `/api/health`。
+
+生产环境必须使用固定版本标签。升级失败时，把镜像标签改回旧版本并重建，然后按需要恢复数据库备份。
+
+## 8. 备份与恢复
+
+至少备份：
+
+- 宝塔 MySQL 数据库
+- `/www/wwwroot/yehaoproxy/data`
+- `/www/wwwroot/yehaoproxy/uploads`
+- `/www/wwwroot/yehaoproxy/backups`
+- Compose `.env` 中的全部密钥（保存在独立密码管理器，不放进普通备份包）
+
+数据库与文件备份应定期复制到服务器外，并在隔离环境进行恢复演练。
+
+## 9. 常见问题
+
+### 容器很多
+
+宝塔推荐使用 `docker-compose.single.yml`，最终只会显示一个 `yehaoproxy` 容器。不要使用旧的多容器编排作为常规宝塔部署方案。
+
+### 安装向导打不开
+
+检查容器日志是否出现 `Production server running at http://0.0.0.0:3000`，并确认服务器安全组临时允许访问 `3000`。
+
+### 安装前日志提示数据库连接失败
+
+首次安装前尚未保存数据库地址时可能出现等待数据库的日志；只要网站和 `/install` 能打开即可。完成安装后该错误应消失。
+
+### 宝塔仍使用旧镜像
+
+点击“更新镜像”后保存并重建编排。若仍未更新，在宝塔终端执行拉取并强制重建：
+
+```bash
+docker pull ghcr.io/yehao9589/yehaoproxy:pre-release
+docker compose up -d --force-recreate
+```
+
+### 安全要求
+
+- 不在聊天、仓库、截图或日志中公开数据库密码和部署密钥。
+- 密码意外暴露后立即在宝塔改密，并同步更新安装配置。
+- `INVENTORY_ENCRYPTION_KEY` 在产生加密业务数据后不能随意更换。
+
+## 10. 上线验收
+
+1. `/api/health` 返回 HTTP 200。
+2. 注册、登录、退出和会话失效跳转正常。
+3. 管理员权限与审计日志正常。
+4. 商品、购物车、账单、余额支付和优惠券完成测试。
+5. 代理 IP、节点购买、人工交付、续费、售后、退款和到期完成测试。
+6. 邮件、定时任务、X-Panel 和流量同步完成真实环境测试。
+7. MySQL 及文件备份可以在隔离环境恢复。
+8. 固定版本镜像可以升级和回退。
