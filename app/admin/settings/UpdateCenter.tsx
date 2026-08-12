@@ -40,6 +40,11 @@ export default function UpdateCenter(){
     setBusy("import");const response=await fetch("/api/admin/update-center",{method:"POST",headers:{"content-type":"application/gzip","x-backup-filename":file.name},body:file});
     const value=await response.json();setBusy("");if(!response.ok){setMessage(value.error||"导入失败");return}setMessage("备份文件已导入");await load();
   }
+  async function deleteBackup(id:string){
+    if(!confirm(`确定永久删除备份 ${id} 吗？删除后无法恢复。`))return;
+    const value=await call({action:"delete-backup",backupId:id});
+    if(value){setMessage("备份已删除");await load()}
+  }
   const statuses:Record<string,string>={backed_up:"可恢复",rolling_back:"正在恢复",restored:"恢复成功",restore_failed:"恢复失败",completed:"更新成功"};
   const kinds:Record<string,string>={manual:"手动备份",update:"更新前备份",safety:"恢复前保护点",imported:"导入备份"};
   const releases=result?.releases?.length?result.releases:(result?[{version:result.remoteVersion,publishedAt:result.publishedAt,title:"当前发布版本",notes:result.releaseNotes.split("\n").filter(Boolean)}]:[]);
@@ -63,7 +68,7 @@ export default function UpdateCenter(){
     <section className="setting-card update-history system-backup-card">
       <div className="setting-title"><div><h2>系统备份与灾难恢复</h2><p>备份宝塔 MySQL 数据、上传文件及校验信息，可下载到本地保存。</p></div><span>{data.executor.history.length} 个恢复点</span></div>
       <div className="backup-actions"><button className="primary" disabled={!data.executor.ready||Boolean(busy)} onClick={createBackup}>{busy==="backup"?"正在备份…":"立即创建备份"}</button><label className={busy==="import"?"disabled":""}>导入备份文件<input type="file" accept=".gz,application/gzip" disabled={!data.executor.ready||Boolean(busy)} onChange={event=>{const file=event.target.files?.[0];if(file)void importBackup(file);event.currentTarget.value=""}}/></label><small>重大修改或更新镜像前，建议先创建并下载备份。</small></div>
-      {!data.executor.ready?<div className="update-empty">备份服务尚未就绪，请更新到包含单容器备份服务的最新镜像。</div>:!data.executor.history.length?<div className="update-empty">暂无备份，建议现在创建第一个恢复点。</div>:<div className="update-history-list">{data.executor.history.map(item=><article key={item.id}><span className={`update-history-status ${item.status}`}>{statuses[item.status]||item.status}</span><div><b>{item.id}<em>{kinds[item.kind||""]||"系统备份"}</em></b><small>{new Date(item.createdAt).toLocaleString("zh-CN",{hour12:false})} · {item.database==="mysql"?"MySQL 数据库":"SQLite 数据库"}</small><p>{item.message}{item.checksum?` · 校验 ${item.checksum.slice(0,12)}`:""}</p></div><div className="backup-row-actions"><a href={`/api/admin/update-center?download=${encodeURIComponent(item.id)}`}>下载</a><button disabled={data.executor.running} onClick={()=>rollback(item.id)}>恢复</button></div></article>)}</div>}
+      {!data.executor.ready?<div className="update-empty">备份服务尚未就绪，请更新到包含单容器备份服务的最新镜像。</div>:!data.executor.history.length?<div className="update-empty">暂无备份，建议现在创建第一个恢复点。</div>:<div className="update-history-list">{data.executor.history.map(item=><article key={item.id}><span className={`update-history-status ${item.status}`}>{statuses[item.status]||item.status}</span><div><b>{item.id}<em>{kinds[item.kind||""]||"系统备份"}</em></b><small>{new Date(item.createdAt).toLocaleString("zh-CN",{hour12:false})} · {item.database==="mysql"?"MySQL 数据库":"SQLite 数据库"}</small><p>{item.message}{item.checksum?` · 校验 ${item.checksum.slice(0,12)}`:""}</p></div><div className="backup-row-actions"><a href={`/api/admin/update-center?download=${encodeURIComponent(item.id)}`}>下载</a><button disabled={data.executor.running} onClick={()=>rollback(item.id)}>恢复</button><button className="danger" disabled={data.executor.running||["updating","rolling_back"].includes(item.status)} onClick={()=>deleteBackup(item.id)}>删除</button></div></article>)}</div>}
     </section>
   </div>;
 }

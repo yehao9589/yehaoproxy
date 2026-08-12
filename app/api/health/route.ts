@@ -23,7 +23,7 @@ export async function GET() {
       const[row]=await getDb().select().from(emailProviders).where(eq(emailProviders.id,"primary")).limit(1);
       const secretName=row?.credentialRef||"EMAIL_API_KEY";
       const runtime=env as unknown as Record<string,unknown>;
-      emailEnabled=Boolean(row?.enabled&&row.provider==="resend"&&String(runtime[secretName]||process.env[secretName]||""));
+      emailEnabled=Boolean(row?.enabled&&["resend","sendgrid","smtp"].includes(row.provider)&&String(runtime[secretName]||process.env[secretName]||""));
     }catch{}
   }
   const ready=database&&encryptionConfigured;

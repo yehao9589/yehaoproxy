@@ -164,5 +164,16 @@ export async function POST(request: Request) {
     await audit(admin, "update.rollback", "system_update", backupId, result.record || {}, request);
     return NextResponse.json({ ok: true, message: "已恢复所选备份版本", record: result.record });
   }
+  if (action === "delete-backup") {
+    const webhook = process.env.UPDATE_WEBHOOK_URL;
+    const backupId = text(body.backupId, 80);
+    if (!webhook) return NextResponse.json({ error: "备份服务尚未配置" }, { status: 409 });
+    if (!backupId) return NextResponse.json({ error: "请选择需要删除的备份" }, { status: 400 });
+    const response = await fetch(webhook, { method: "POST", headers: { "content-type": "application/json", ...webhookHeaders() }, body: JSON.stringify({ action: "delete-backup", backupId, requestedBy: admin.email }) });
+    const result = await response.json().catch(() => ({})) as ExecutorResult;
+    if (!response.ok) return NextResponse.json({ error: result.error || "删除备份失败" }, { status: response.status });
+    await audit(admin, "backup.delete", "system_backup", backupId, {}, request);
+    return NextResponse.json({ ok: true, message: "备份已删除" });
+  }
   return NextResponse.json({ error: "未知操作" }, { status: 400 });
 }

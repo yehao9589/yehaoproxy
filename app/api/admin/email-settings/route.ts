@@ -8,10 +8,12 @@ import {upsertRecord} from "../../../../lib/db-upsert";
 export async function POST(request: Request) {
   if (!await requireAdminApi("settings")) return NextResponse.json({error: "无系统设置权限"}, {status: 403});
   const body = await request.json().catch(() => null);
-  if (!body || !["smtp", "resend", "ses", "aliyun"].includes(body.provider) || !body.fromName || !/^\S+@\S+\.\S+$/.test(body.fromEmail)) {
+  if (!body || !["smtp", "resend", "sendgrid"].includes(body.provider) || !body.fromName || !/^\S+@\S+\.\S+$/.test(body.fromEmail)) {
     return NextResponse.json({error: "邮件配置不完整"}, {status: 400});
   }
-  if(body.enabled&&body.provider!=="resend")return NextResponse.json({error:"当前生产运行层仅支持 Resend，其他邮件渠道只能保存为停用状态"},{status:409});
+  if(body.enabled&&!["resend","sendgrid","smtp"].includes(body.provider))return NextResponse.json({error:"该邮件服务商暂不支持启用"},{status:409});
+  if(body.provider==="smtp"&&(!body.host||!Number.isInteger(Number(body.port))||Number(body.port)<1||Number(body.port)>65535||!body.username||!body.credentialRef))return NextResponse.json({error:"SMTP 需要填写服务器、端口、账号和密码环境变量"},{status:400});
+  if(["resend","sendgrid"].includes(body.provider)&&!body.credentialRef)return NextResponse.json({error:"请填写 API Key 环境变量名称"},{status:400});
   const now = new Date();
   const values={
     id: "primary",

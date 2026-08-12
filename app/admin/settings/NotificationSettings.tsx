@@ -41,6 +41,7 @@ const providerNames: Record<string, string> = {
   smtp: "自定义 SMTP",
   ses: "Amazon SES",
   aliyun: "阿里云邮件",
+  sendgrid: "SendGrid",
   tencent: "腾讯云短信",
   twilio: "Twilio",
   generic: "通用 HTTP",
@@ -53,6 +54,7 @@ export default function NotificationSettings() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
   const [editingChannel, setEditingChannel] = useState<"email" | "sms" | null>(null);
+  const [emailProvider,setEmailProvider]=useState("resend");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -154,7 +156,7 @@ export default function NotificationSettings() {
         <div className="notify-head-actions">
           <button type="button" className="notify-btn secondary" onClick={() => notify("测试任务已提交，正式部署后将调用实际接口")}>发送测试</button>
           {view !== "templates" && (
-            <button type="button" className="notify-btn primary" onClick={() => setEditingChannel(view)}>配置接口</button>
+            <button type="button" className="notify-btn primary" onClick={() => {setEmailProvider(email?.provider||"resend");setEditingChannel(view)}}>配置接口</button>
           )}
         </div>
       </header>
@@ -215,7 +217,7 @@ export default function NotificationSettings() {
             detail: email?.fromName || "YehaoProxy",
             enabled: Boolean(email?.enabled),
           }]}
-          onEdit={() => setEditingChannel("email")}
+          onEdit={() => {setEmailProvider(email?.provider||"resend");setEditingChannel("email")}}
         />
       )}
 
@@ -271,15 +273,17 @@ export default function NotificationSettings() {
             <div className="notify-drawer-body">
               <div className="notify-enable-row"><div><b>启用邮件发送</b><small>配置并测试成功后开启</small></div><input name="enabled" type="checkbox" defaultChecked={email?.enabled}/></div>
               <div className="notify-form-grid two">
-                <label>服务商<select name="provider" defaultValue={email?.provider || "resend"}><option value="resend">Resend</option><option value="smtp">自定义 SMTP</option><option value="ses">Amazon SES</option><option value="aliyun">阿里云邮件</option></select></label>
+                <label>服务商<select name="provider" value={emailProvider} onChange={event=>setEmailProvider(event.target.value)}><option value="resend">Resend</option><option value="sendgrid">SendGrid</option><option value="smtp">自定义 SMTP</option></select></label>
                 <label>发件人名称<input name="fromName" defaultValue={email?.fromName || "YehaoProxy"} required/></label>
                 <label>发件邮箱<input name="fromEmail" type="email" defaultValue={email?.fromEmail || ""} placeholder="noreply@example.com" required/></label>
-                <label>账号 / 用户名<input name="username" defaultValue={email?.username || ""}/></label>
-                <label>密钥环境变量<input name="credentialRef" defaultValue={email?.credentialRef || "EMAIL_API_KEY"}/></label>
-                <label>SMTP 主机<input name="host" defaultValue={email?.host || ""} placeholder="smtp.example.com"/></label>
-                <label>SMTP 端口<input name="port" type="number" defaultValue={email?.port || 465}/></label>
-                <label>区域<input name="region" defaultValue={email?.region || ""} placeholder="仅 SES / 阿里云使用"/></label>
+                {emailProvider==="smtp"?<>
+                  <label>SMTP 服务器<input name="host" defaultValue={email?.provider==="smtp"?email?.host||"":""} placeholder="smtp.example.com" required/></label>
+                  <label>端口<input name="port" type="number" defaultValue={email?.provider==="smtp"?email?.port||465:465} min="1" max="65535" required/></label>
+                  <label>登录账号<input name="username" defaultValue={email?.provider==="smtp"?email?.username||"":""} required/></label>
+                  <label>密码环境变量<input name="credentialRef" defaultValue={email?.provider==="smtp"?email?.credentialRef||"SMTP_PASSWORD":"SMTP_PASSWORD"} required/></label>
+                </>:<label>{emailProvider==="resend"?"Resend API Key 环境变量":"SendGrid API Key 环境变量"}<input name="credentialRef" defaultValue={email?.provider===emailProvider?email?.credentialRef||"EMAIL_API_KEY":"EMAIL_API_KEY"} required/></label>}
               </div>
+              <div className="setting-note">{emailProvider==="smtp"?"465 端口使用 SSL；587 等其他端口使用 STARTTLS。密码只从服务器环境变量读取。":"API Key 只从服务器环境变量读取，后台不会保存明文密钥。"}</div>
             </div>
             <footer className="notify-drawer-foot"><button type="button" className="notify-btn secondary" onClick={() => setEditingChannel(null)}>取消</button><button className="notify-btn primary">保存接口</button></footer>
           </form>

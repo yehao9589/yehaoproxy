@@ -243,6 +243,17 @@ async function rollback(id) {
   try { return await restore(record); } finally { running = false; }
 }
 
+async function deleteBackup(id) {
+  if (running) throw new Error("当前有备份或恢复任务正在执行，请稍后再删除");
+  const rows = await history();
+  const record = rows.find((item) => item.id === id);
+  if (!record) throw new Error("备份记录不存在");
+  if (["updating", "rolling_back"].includes(record.status)) throw new Error("该备份正在使用，暂时不能删除");
+  if (record.archive) await unlink(record.archive).catch((error) => { if (error?.code !== "ENOENT") throw error; });
+  await saveHistory(rows.filter((item) => item.id !== id));
+  return { id };
+}
+
 async function importBackup(req, fileName) {
   const safe = basename(fileName || "system-backup.tar.gz");
   if (!/\.tar\.gz$/i.test(safe)) throw new Error("只支持 .tar.gz 备份文件");
@@ -347,6 +358,9 @@ createServer(async (req, res) => {
     if (body.action === "rollback") {
       void rollback(String(body.backupId || "")).catch((error) => console.error("restore failed", error));
       return json(res, 202, { ok: true, message: "恢复任务已受理" });
+    }
+    if (body.action === "delete-backup") {
+      return json(res, 200, { ok: true, record: await deleteBackup(String(body.backupId || "")) });
     }
     if (body.action === "update") {
       void update(body).catch((error) => console.error("update failed", error));
