@@ -15,7 +15,8 @@
 
 复制 `.env.example` 为 `.env`，至少设置以下项目：
 
-- `YEHAOPROXY_IMAGE`：带固定版本标签的镜像，例如 `ghcr.io/owner/yehaoproxy:1.0.0`，不要在生产环境使用漂移的 `latest`。
+- `YEHAOPROXY_IMAGE`：应用镜像。预发布测试使用 `ghcr.io/yehao9589/yehaoproxy:pre-release`，正式环境使用明确的 `v1.0.0` 等版本标签。
+- `YEHAOPROXY_UPDATER_IMAGE`：更新器镜像。预发布测试使用 `ghcr.io/yehao9589/yehaoproxy-updater:pre-release`。
 - `MYSQL_ROOT_PASSWORD`、`MYSQL_PASSWORD`：数据库独立强密码。
 - `MYSQL_BRIDGE_SECRET`：数据库桥接服务认证密钥，至少 32 位随机字符。
 - `INVENTORY_ENCRYPTION_KEY`：库存凭据加密密钥，至少 32 位；已有数据后不能随意更换。
@@ -69,7 +70,7 @@ docker compose -f docker-compose.sqlite.yml up -d
 - 导入备份会校验压缩包路径并拒绝符号链接、目录穿越和非白名单文件。
 - 至少每天把备份复制到服务器之外，并定期在隔离环境演练恢复。
 
-私有 GitHub 仓库不影响部署。服务器或 CI 需要登录 GitHub Container Registry，或者配置只读 Deploy Token 后才能拉取私有镜像。
+仓库内的 `.github/workflows/publish-images.yml` 会在测试分支、主分支和版本标签推送时自动发布 GHCR 镜像。首次发布后如果镜像包仍显示 Private，需要在 GitHub 仓库的 Packages 页面进入两个镜像的 Package settings，将可见性改成 Public；源码仓库公开并不一定会自动改变既有镜像包的可见性。
 
 ## 6. 当前功能边界
 

@@ -94,9 +94,7 @@ services:
     restart: unless-stopped
 
   updater:
-    build:
-      context: .
-      dockerfile: Dockerfile.updater
+    image: ${YEHAOPROXY_UPDATER_IMAGE:-ghcr.io/yehao9589/yehaoproxy-updater:pre-release}
     environment:
       PORT: 8788
       UPDATE_WEBHOOK_TOKEN: ${UPDATE_WEBHOOK_TOKEN:?请配置 UPDATE_WEBHOOK_TOKEN}
