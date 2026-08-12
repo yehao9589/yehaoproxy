@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 type Backup={id:string;kind?:string;status:string;createdAt:string;message:string;checksum?:string;database?:string};
 type Release={version:string;publishedAt?:string;title?:string;notes?:string[]};
 type Data={runtime:{currentVersion:string;image:string;commit:string;deployment:string};source:{repository:string;image:string;channel:string};executor:{ready:boolean;running:boolean;history:Backup[]}};
-type CheckResult={currentVersion:string;remoteVersion:string;hasUpdate:boolean;releaseNotes:string;publishedAt:string;releases?:Release[]};
+type CheckResult={currentVersion:string;remoteVersion:string;hasUpdate:boolean;releaseNotes:string;publishedAt:string;currentCommit?:string;remoteCommit?:string;releases?:Release[]};
 
 export default function UpdateCenter(){
   const [data,setData]=useState<Data|null>(null);
@@ -61,6 +61,7 @@ export default function UpdateCenter(){
 
     <section className="setting-card release-notes-card">
       <div className="setting-title"><div><h2>版本更新说明</h2><p>更新源由系统根据当前部署方式自动识别，无需手动填写仓库、分支或镜像地址。</p></div><span>{result?`${result.remoteVersion}${result.hasUpdate?" 可更新":" 已是最新"}`:"点击上方检查"}</span></div>
+      {result&&<div className="update-commit-compare"><span>当前构建 <code>{result.currentCommit?.slice(0,8)||"旧版未记录"}</code></span><i>→</i><span>远端构建 <code>{result.remoteCommit?.slice(0,8)||"未获取"}</code></span></div>}
       {!releases.length?<div className="update-empty">点击“检查更新”读取最新版本及更新内容。</div>:<div className="release-timeline">{releases.map(item=><article key={`${item.version}-${item.publishedAt||""}`}><div><b>{item.version}</b><time>{item.publishedAt||"未标注日期"}</time></div><section><h3>{item.title||"版本更新"}</h3><ul>{(item.notes||[]).map((note,index)=><li key={`${item.version}-${index}`}>{note}</li>)}</ul></section></article>)}</div>}
       <div className="managed-update-note">检测到新版本后，请在宝塔容器编排中点击“更新镜像”。系统数据保存在挂载目录中，不会随容器重建丢失。</div>
     </section>

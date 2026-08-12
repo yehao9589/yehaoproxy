@@ -9,6 +9,7 @@ import {
 } from "../../../../lib/update-center";
 
 const currentVersion = process.env.APP_VERSION || process.env.IMAGE_TAG || "0.1.0-dev";
+const currentCommit = process.env.APP_COMMIT || "";
 type ExecutorResult={error?:string;record?:{id?:string;[key:string]:unknown};[key:string]:unknown};
 
 function text(value: unknown, max = 500) {
@@ -113,12 +114,20 @@ export async function POST(request: Request) {
       const manifest = await response.json();
       const remoteVersion = text(manifest.version, 60);
       if (!remoteVersion) throw new Error("版本清单缺少 version 字段");
-      await audit(admin, "update.check", "system_update", remoteVersion, { currentVersion }, request);
+      let remoteCommit=text(manifest.commit,80);
+      try{
+        const commitResponse=await fetch("https://api.github.com/repos/yehao9589/yehaoproxy/commits/codex%2Fpre-release-hardening",{headers:{accept:"application/vnd.github+json","user-agent":"YehaoProxy-Update-Checker"},cache:"no-store"});
+        if(commitResponse.ok){const commitData=await commitResponse.json();remoteCommit=text(commitData.sha,80)}
+      }catch{/* version manifest remains the fallback */}
+      const hasUpdate=remoteCommit?remoteCommit!==currentCommit:remoteVersion!==currentVersion;
+      await audit(admin, "update.check", "system_update", remoteVersion, { currentVersion,currentCommit,remoteCommit }, request);
       return NextResponse.json({
         ok: true,
         currentVersion,
         remoteVersion,
-        hasUpdate: remoteVersion !== currentVersion,
+        hasUpdate,
+        currentCommit,
+        remoteCommit,
         releaseNotes: text(manifest.releaseNotes || manifest.notes, 4000),
         image: text(manifest.image, 300),
         publishedAt: text(manifest.publishedAt, 80),
