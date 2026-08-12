@@ -13,7 +13,6 @@ examples
 tests
 .agents
 .codex
-.openai
 .github
 *.md
 *.cmd
