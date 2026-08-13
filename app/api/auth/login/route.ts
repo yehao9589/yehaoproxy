@@ -26,6 +26,6 @@ export async function POST(req: Request) {
   const session = await createSession(customer.id, req);
   await audit({ id: customer.id, role: customer.role }, "auth.login.success", "auth", customer.id, { email: customer.email }, req);
   const response = NextResponse.json({ ok: true, role: customer.role });
-  response.cookies.set("yh_session", session.token, { httpOnly: true, secure: new URL(req.url).protocol === "https:", sameSite: "lax", path: "/", expires: session.expires });
+  response.cookies.set("yh_session", session.token, { httpOnly: true, secure: new URL(req.url).protocol === "https:", sameSite: "lax", path: "/", maxAge: 30 * 24 * 60 * 60 });
   return response;
 }

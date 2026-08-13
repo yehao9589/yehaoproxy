@@ -1,7 +1,7 @@
 import {desc,eq,inArray} from "drizzle-orm";
 import {NextResponse} from "next/server";
 import {getDb} from "../../../../db";
-import {adminMemberships,adminRoles,customers} from "../../../../db/schema";
+import {adminMemberships,adminRoles,authSessions,customers} from "../../../../db/schema";
 import {ALL_ADMIN_PERMISSIONS} from "../../../../lib/admin-permissions";
 import {isSuperAdmin,requireAdminApi} from "../../../../lib/admin-auth";
 import {audit} from "../../../../lib/audit";
@@ -53,6 +53,14 @@ export async function PATCH(req:Request){
   const body=await req.json().catch(()=>null),id=String(body?.id||""),db=getDb();
   const [target]=await db.select().from(customers).where(eq(customers.id,id)).limit(1);
   if(!target||target.role!=="admin")return NextResponse.json({error:"管理员不存在"},{status:404});
+  const password=String(body?.password||"");
+  if(password){
+    if(password.length<8)return NextResponse.json({error:"新密码至少需要 8 位"},{status:400});
+    await db.update(customers).set({passwordHash:await hashPassword(password)}).where(eq(customers.id,id));
+    await db.delete(authSessions).where(eq(authSessions.customerId,id));
+    await audit(operator,"admin.password.update","admin",id,{sessionsRevoked:true},req);
+    return NextResponse.json({ok:true,sessionsRevoked:true});
+  }
   if(isSuperAdmin(target))return NextResponse.json({error:"超级管理员账户不可降级、停用或修改权限"},{status:409});
   const permissions=cleanPermissions(body?.permissions),status=body?.status==="suspended"?"suspended":"active";
   const [membership]=await db.select().from(adminMemberships).where(eq(adminMemberships.customerId,id)).limit(1),now=new Date();

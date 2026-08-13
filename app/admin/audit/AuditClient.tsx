@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-type Log = { id:string; logNo:number; actorId:string; actorName?:string|null; actorEmail?:string|null; resourceCustomerName?:string|null; resourceDisplay?:string|null; actorRole:string; action:string; resourceType:string; resourceId:string|null; detail:string|null; ipAddress:string|null; createdAt:string };
+type Log = { id:string; logNo:string; actorId:string; actorName?:string|null; actorEmail?:string|null; resourceCustomerName?:string|null; resourceDisplay?:string|null; actorRole:string; action:string; resourceType:string; resourceId:string|null; detail:string|null; ipAddress:string|null; createdAt:string };
 type Category = "all" | "login" | "system" | "email" | "scheduled";
 const categories: Category[] = ["all", "login", "system", "email", "scheduled"];
 const meta: Record<Category,{label:string;icon:string;desc:string}> = {
