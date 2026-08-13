@@ -2,7 +2,7 @@
 
 import {useEffect, useMemo, useState} from "react";
 
-type View = "templates" | "email" | "sms";
+type View = "email-templates" | "sms-templates" | "email" | "sms";
 type Template = {
   id: string;
   name: string;
@@ -48,7 +48,7 @@ const providerNames: Record<string, string> = {
 };
 
 export default function NotificationSettings() {
-  const [view, setView] = useState<View>("templates");
+  const [view, setView] = useState<View>("email-templates");
   const [email, setEmail] = useState<any>(null);
   const [sms, setSms] = useState<Sms>(emptySms);
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -56,6 +56,9 @@ export default function NotificationSettings() {
   const [editingChannel, setEditingChannel] = useState<"email" | "sms" | null>(null);
   const [emailProvider,setEmailProvider]=useState("resend");
   const [message, setMessage] = useState("");
+  const [testTo,setTestTo]=useState("");
+  const [testingEmail,setTestingEmail]=useState(false);
+  const [testResult,setTestResult]=useState<{ok:boolean;text:string}|null>(null);
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -103,13 +106,20 @@ export default function NotificationSettings() {
   }
 
   async function testEmail(){
-    if(!email?.enabled)return notify("请先保存并启用邮件接口");
-    const session=await fetch("/api/admin/session").then(response=>response.json()).catch(()=>null);
-    const to=window.prompt("测试邮件发送到哪个邮箱？",session?.email||email?.fromEmail||"");
-    if(!to)return;
-    notify("正在发送测试邮件…");
-    const response=await fetch("/api/admin/email-settings/test",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({to})});
-    const data=await response.json();notify(response.ok?data.message:data.error||"测试邮件发送失败");
+    if(testingEmail)return;
+    if(!email?.enabled){setTestResult({ok:false,text:"邮件接口尚未启用，请先保存并启用接口。"});return}
+    const to=testTo.trim()||email?.fromEmail||"";
+    if(!/^\S+@\S+\.\S+$/.test(to)){setTestResult({ok:false,text:"请先填写有效的测试收件邮箱。"});return}
+    setTestingEmail(true);setTestResult(null);notify("正在连接邮件服务商并发送测试邮件…");
+    try{
+      const response=await fetch("/api/admin/email-settings/test",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({to})});
+      const raw=await response.text();let data:any={};try{data=raw?JSON.parse(raw):{}}catch{data={error:raw}}
+      const text=response.ok?(data.message||`测试邮件已发送至 ${to}`):(data.error||`发送失败（HTTP ${response.status}）`);
+      setTestResult({ok:response.ok,text});notify(text);
+    }catch(error){
+      const text=error instanceof Error?`无法连接测试接口：${error.message}`:"无法连接测试接口";
+      setTestResult({ok:false,text});notify(text);
+    }finally{setTestingEmail(false)}
   }
 
   async function saveSms(event: React.FormEvent<HTMLFormElement>) {
@@ -164,9 +174,9 @@ export default function NotificationSettings() {
           <p>统一管理邮件、短信接口与客户触达模板</p>
         </div>
         <div className="notify-head-actions">
-          <button type="button" className="notify-btn secondary" onClick={() => void testEmail()}>发送测试</button>
-          {view !== "templates" && (
-            <button type="button" className="notify-btn primary" onClick={() => {setEmailProvider(email?.provider||"resend");setEditingChannel(view)}}>配置接口</button>
+          {view === "email" && <button type="button" className="notify-btn secondary" disabled={testingEmail} onClick={() => void testEmail()}>{testingEmail?"发送中…":"发送测试"}</button>}
+          {(view === "email" || view === "sms") && (
+            <button type="button" className="notify-btn primary" onClick={() => {if(view==="email")setEmailProvider(email?.provider||"resend");setEditingChannel(view)}}>配置接口</button>
           )}
         </div>
       </header>
@@ -178,34 +188,33 @@ export default function NotificationSettings() {
       </div>
 
       <nav className="notify-nav">
-        <button className={view === "templates" ? "on" : ""} onClick={() => setView("templates")}>通知模板</button>
+        <button className={view === "email-templates" ? "on" : ""} onClick={() => setView("email-templates")}>邮件模板</button>
+        <button className={view === "sms-templates" ? "on" : ""} onClick={() => setView("sms-templates")}>短信模板</button>
         <button className={view === "email" ? "on" : ""} onClick={() => setView("email")}>邮件接口</button>
         <button className={view === "sms" ? "on" : ""} onClick={() => setView("sms")}>短信接口</button>
       </nav>
 
       {loading ? <div className="notify-loading">正在读取通知配置…</div> : null}
 
-      {!loading && view === "templates" && (
+      {!loading && (view === "email-templates" || view === "sms-templates") && (
         <section className="notify-panel">
           <div className="notify-panel-head">
-            <div><h3>通知模板</h3><p>按业务场景启停通知，并分别维护邮件与短信内容</p></div>
+            <div><h3>{view==="email-templates"?"邮件模板":"短信模板"}</h3><p>{view==="email-templates"?"维护邮件标题、正文，并实时预览品牌邮件最终效果":"独立维护短信正文；未配置短信接口时不会发送"}</p></div>
             <div className="notify-filter"><span>共 {templates.length} 个模板</span><button type="button">语言：简体中文</button></div>
           </div>
           <div className="notify-table-wrap">
             <table className="notify-table">
-              <thead><tr><th>状态</th><th>模板名称</th><th>业务场景</th><th>邮件标题</th><th>发送渠道</th><th>操作</th></tr></thead>
+              <thead><tr><th>状态</th><th>模板名称</th><th>业务场景</th><th>{view==="email-templates"?"邮件标题":"短信内容"}</th><th>渠道状态</th><th>操作</th></tr></thead>
               <tbody>
                 {templates.map(item => (
                   <tr key={item.id}>
                     <td><button aria-label={`${item.name}状态`} className={`notify-switch ${item.enabled === false ? "" : "on"}`} onClick={() => void toggleTemplate(item.id)}><i/></button></td>
                     <td><button className="notify-template-link" onClick={() => setEditingTemplate(item.id)}>{item.name}</button><small>{item.id}</small></td>
                     <td><span className="notify-scene">{item.scene}</span></td>
-                    <td className="notify-subject">{item.emailSubject}</td>
+                    <td className="notify-subject">{view==="email-templates"?item.emailSubject:item.smsBody}</td>
                     <td>
                       <div className="notify-channels">
-                        {item.emailEnabled !== false && <span className="active">邮件</span>}
-                        {item.smsEnabled === true && <span className="active sms">短信</span>}
-                        {item.emailEnabled === false && item.smsEnabled !== true && <span className="off">未选择</span>}
+                        {view==="email-templates"?(item.emailEnabled !== false?<span className="active">邮件已启用</span>:<span className="off">邮件已关闭</span>):(item.smsEnabled === true?<span className="active sms">短信已启用</span>:<span className="off">短信已关闭</span>)}
                       </div>
                     </td>
                     <td><button className="notify-action" onClick={() => setEditingTemplate(item.id)}>编辑</button></td>
@@ -218,7 +227,7 @@ export default function NotificationSettings() {
       )}
 
       {!loading && view === "email" && (
-        <ChannelTable
+        <><section className="notify-test-panel"><div><b>发送测试邮件</b><small>发送真实邮件并返回服务商的成功或错误状态</small></div><input type="email" value={testTo} onChange={event=>setTestTo(event.target.value)} placeholder={email?.fromEmail||"请输入测试收件邮箱"}/><button type="button" className="notify-btn primary" disabled={testingEmail} onClick={()=>void testEmail()}>{testingEmail?"正在发送…":"发送测试"}</button>{testResult&&<p className={testResult.ok?"ok":"error"}>{testResult.text}</p>}</section><ChannelTable
           title="邮件发送接口"
           description="系统邮件、验证码和服务提醒统一通过主接口发送"
           rows={[{
@@ -228,7 +237,7 @@ export default function NotificationSettings() {
             enabled: Boolean(email?.enabled),
           }]}
           onEdit={() => {setEmailProvider(email?.provider||"resend");setEditingChannel("email")}}
-        />
+        /></>
       )}
 
       {!loading && view === "sms" && (
@@ -254,22 +263,12 @@ export default function NotificationSettings() {
                 <label>模板名称<input value={current.name} onChange={event => updateTemplate(current.id, "name", event.target.value)}/></label>
                 <label>业务场景<input value={current.scene} onChange={event => updateTemplate(current.id, "scene", event.target.value)}/></label>
               </div>
-              <div className="notify-channel-choice">
-                <div><b>发送渠道</b><small>邮件为默认主通道；短信仅在接口已配置并启用时发送</small></div>
-                <label className={current.emailEnabled !== false ? "selected" : ""}>
-                  <input type="checkbox" checked={current.emailEnabled !== false} onChange={event => updateTemplate(current.id, "emailEnabled", event.target.checked)}/>
-                  <span><b>邮件</b><small>默认启用</small></span>
-                </label>
-                <label className={current.smsEnabled === true ? "selected" : ""}>
-                  <input type="checkbox" checked={current.smsEnabled === true} onChange={event => updateTemplate(current.id, "smsEnabled", event.target.checked)}/>
-                  <span><b>短信</b><small>{sms.enabled ? "接口已启用" : "接口未启用"}</small></span>
-                </label>
+              <div className="notify-channel-choice single">
+                <div><b>{view==="email-templates"?"邮件发送状态":"短信发送状态"}</b><small>{view==="email-templates"?"启用后，此业务场景会通过已配置的邮件接口发送":"短信接口为可选功能，接口未配置时建议保持关闭"}</small></div>
+                {view==="email-templates"?<label className={current.emailEnabled !== false ? "selected" : ""}><input type="checkbox" checked={current.emailEnabled !== false} onChange={event => updateTemplate(current.id, "emailEnabled", event.target.checked)}/><span><b>启用邮件</b><small>{email?.enabled?"接口已启用":"接口未启用"}</small></span></label>:<label className={current.smsEnabled === true ? "selected" : ""}><input type="checkbox" checked={current.smsEnabled === true} onChange={event => updateTemplate(current.id, "smsEnabled", event.target.checked)}/><span><b>启用短信</b><small>{sms.enabled?"接口已启用":"接口未启用"}</small></span></label>}
               </div>
               <div className="notify-vars"><b>可用变量</b>{["{{code}}", "{{orderId}}", "{{product}}", "{{days}}", "{{expiresAt}}", "{{customerName}}"].map(item => <code key={item}>{item}</code>)}</div>
-              <label className="notify-field">邮件标题<input value={current.emailSubject} onChange={event => updateTemplate(current.id, "emailSubject", event.target.value)}/></label>
-              <label className="notify-field">邮件正文<textarea rows={8} value={current.emailBody} onChange={event => updateTemplate(current.id, "emailBody", event.target.value)}/></label>
-              <label className="notify-field">短信正文 <small>{current.smsBody.length}/500</small><textarea rows={4} maxLength={500} value={current.smsBody} onChange={event => updateTemplate(current.id, "smsBody", event.target.value)}/></label>
-              <div className="notify-preview"><b>短信预览</b><p>{preview(current.smsBody)}</p></div>
+              {view==="email-templates"?<><label className="notify-field">邮件标题<input value={current.emailSubject} onChange={event => updateTemplate(current.id, "emailSubject", event.target.value)}/></label><label className="notify-field">邮件正文<textarea rows={8} value={current.emailBody} onChange={event => updateTemplate(current.id, "emailBody", event.target.value)}/></label><EmailPreview template={current}/></>:<><label className="notify-field">短信正文 <small>{current.smsBody.length}/500</small><textarea rows={5} maxLength={500} value={current.smsBody} onChange={event => updateTemplate(current.id, "smsBody", event.target.value)}/></label><div className="notify-preview"><b>短信预览</b><p>{preview(current.smsBody)}</p></div></>}
             </div>
             <footer className="notify-drawer-foot"><button className="notify-btn secondary" onClick={() => setEditingTemplate(null)}>取消</button><button className="notify-btn primary" onClick={() => void persistTemplates()}>保存模板</button></footer>
           </section>
@@ -346,4 +345,8 @@ function preview(text: string) {
     .replaceAll("{{days}}", "3")
     .replaceAll("{{expiresAt}}", "2026-08-01 12:00")
     .replaceAll("{{customerName}}", "客户");
+}
+
+function EmailPreview({template}:{template:Template}){
+  return <div className="notify-email-preview"><div className="mail-brand"><i>Y</i><b>YehaoProxy</b><span>安全 · 稳定 · 专业</span></div><div className="mail-content"><small>SERVICE NOTIFICATION</small><h3>{preview(template.emailSubject)}</h3><p>尊敬的客户：</p><div>{preview(template.emailBody)}</div><section><b>商品与服务详情</b><dl><dt>订单编号</dt><dd>YH-A82D19</dd><dt>商品 / 服务</dt><dd>静态住宅 IP</dd><dt>到期时间</dt><dd>2026-08-01 12:00</dd></dl></section><button type="button">进入客户中心</button></div><footer>此邮件由 YehaoProxy 系统自动发送，请勿直接回复。</footer></div>
 }
