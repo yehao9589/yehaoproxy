@@ -17,7 +17,7 @@ export async function GET(){
     db.select().from(orders).where(eq(orders.status,"provisioning")),
   ]);
   const expiring=active.filter(x=>x.expiresAt&&x.expiresAt.getTime()>now.getTime()&&x.expiresAt.getTime()-now.getTime()<=7*86400000).length;
-  const lastRun=last?JSON.parse(last.value):null;
+  let lastRun=null;try{lastRun=last?JSON.parse(last.value):null}catch{/* 兼容旧版或损坏的运行记录 */}
   let runnerInfo:{source?:string;ranAt?:string}={};try{runnerInfo=runner?JSON.parse(runner.value):{}}catch{}
   const selectedMode=modeRow?.value==="baota"?"baota":"container";
   const source=runnerInfo.source||(process.env.CONTAINER==="true"?"container":"unknown");
