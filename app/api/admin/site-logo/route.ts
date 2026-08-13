@@ -17,7 +17,7 @@ function uploadDirectory() {
 }
 
 function localLogoPath(url: string) {
-  if (!/^\/uploads\/site\/logo-[a-zA-Z0-9.-]+$/.test(url)) return null;
+  if (!/^\/(?:uploads\/site|api\/site-logo)\/logo-[a-zA-Z0-9.-]+$/.test(url)) return null;
   return path.join(uploadDirectory(), path.basename(url));
 }
 
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       await mkdir(directory, { recursive: true });
       const filename = `logo-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${extension}`;
       await writeFile(path.join(directory, filename), bytes);
-      config.logoUrl = `/uploads/site/${filename}`;
+      config.logoUrl = `/api/site-logo/${filename}`;
     } catch (error) {
       const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
       const message = error instanceof Error ? error.message : "";

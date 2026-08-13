@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   const minAmount = Number(body?.minAmount || 0);
   const maxDiscount = body?.maxDiscount === "" || body?.maxDiscount == null ? null : Number(body.maxDiscount);
   const totalLimit = body?.totalLimit === "" || body?.totalLimit == null ? null : Number(body.totalLimit);
-  if (!validCouponCode(code)) return NextResponse.json({ error: "优惠码需为 3–30 位字母、数字、下划线或短横线" }, { status: 400 });
+  if (!validCouponCode(code)) return NextResponse.json({ error: "优惠码需为 3–30 位字母、数字、百分号、下划线或短横线" }, { status: 400 });
   if (!["fixed", "percent"].includes(type)) return NextResponse.json({ error: "请选择有效的优惠类型" }, { status: 400 });
   if (!Number.isFinite(value) || value <= 0) return NextResponse.json({ error: "优惠值必须大于 0" }, { status: 400 });
   if (type === "percent" && value > 100) return NextResponse.json({ error: "百分比优惠不能超过 100%" }, { status: 400 });

@@ -4,6 +4,7 @@ import {setSystemOption} from "./db-upsert";
 import {customers,notifications,orders,systemOptions} from "../db/schema";
 import {sendTransactionalEmail} from "./email";
 import {runTicketAutomation} from "./ticket-automation";
+import {brandedEmail} from "./branded-email";
 
 export type ReminderConfig={
   enabled:boolean;
@@ -27,7 +28,6 @@ export async function getReminderConfig(){
 }
 
 function productName(value:string){return ({"static-isp":"静态住宅 IP","static-residential":"静态住宅 IP","dynamic-residential":"动态住宅代理","datacenter":"数据中心代理","soft-router":"软路由中转","computer-node":"电脑节点"} as Record<string,string>)[value]||value}
-function emailHtml(title:string,body:string,link:string){return `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#24384d"><h2>${title}</h2><p style="line-height:1.8">${body}</p><p><a href="${link}" style="display:inline-block;padding:11px 18px;background:#1266e3;color:#fff;text-decoration:none;border-radius:8px">进入客户中心</a></p><p style="color:#8494a4;font-size:12px">此邮件由 YehaoProxy 服务提醒系统自动发送。</p></div>`}
 
 export async function runScheduledReminders(origin:string){
   const config=await getReminderConfig(),ticketAutomation=await runTicketAutomation(origin),result={scanned:0,created:0,emailed:0,emailFailed:0,skipped:0,ticketAutomation};
@@ -56,7 +56,7 @@ export async function runScheduledReminders(origin:string){
     let delivered=false;
     if(config.siteEnabled&&!siteRecord){await db.insert(notifications).values({id:crypto.randomUUID(),customerId:customer.id,type,title,body,link,read:false,createdAt:now});result.created++;delivered=true}
     if(config.emailEnabled&&!emailRecord)try{
-      await sendTransactionalEmail(customer.email,title,emailHtml(title,body,`${origin}${link}`));
+      await sendTransactionalEmail(customer.email,title,await brandedEmail({title,eyebrow:key.startsWith("expiry")||key==="expired"?"SERVICE EXPIRY":"ORDER UPDATE",greeting:`尊敬的 ${customer.name||customer.email}：`,body,actionLabel:key.startsWith("expiry")||key==="expired"?"立即续费":"查看我的服务",actionUrl:`${origin}${link}`,details:[{label:"订单编号",value:order.id,accent:true},{label:"商品 / 服务",value:productName(order.product)},{label:"服务地区",value:order.region},{label:"购买数量",value:`${order.quantity} 个`},{label:"服务周期",value:`${order.durationDays} 天`},{label:"到期时间",value:order.expiresAt?.toLocaleString("zh-CN",{hour12:false})||"等待开通"}],notice:key.startsWith("expiry")||key==="expired"?"为避免服务中断，请在到期前完成续费。":"服务进度发生变化后，我们会继续通过邮件和站内通知告知你。"}));
       await db.insert(systemOptions).values({key:emailMarker,value:now.toISOString(),updatedAt:now});
       result.emailed++;delivered=true;
     }catch{result.emailFailed++}

@@ -102,6 +102,16 @@ export default function NotificationSettings() {
     }
   }
 
+  async function testEmail(){
+    if(!email?.enabled)return notify("请先保存并启用邮件接口");
+    const session=await fetch("/api/admin/session").then(response=>response.json()).catch(()=>null);
+    const to=window.prompt("测试邮件发送到哪个邮箱？",session?.email||email?.fromEmail||"");
+    if(!to)return;
+    notify("正在发送测试邮件…");
+    const response=await fetch("/api/admin/email-settings/test",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({to})});
+    const data=await response.json();notify(response.ok?data.message:data.error||"测试邮件发送失败");
+  }
+
   async function saveSms(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const response = await fetch("/api/admin/notification-settings", {
@@ -154,7 +164,7 @@ export default function NotificationSettings() {
           <p>统一管理邮件、短信接口与客户触达模板</p>
         </div>
         <div className="notify-head-actions">
-          <button type="button" className="notify-btn secondary" onClick={() => notify("测试任务已提交，正式部署后将调用实际接口")}>发送测试</button>
+          <button type="button" className="notify-btn secondary" onClick={() => void testEmail()}>发送测试</button>
           {view !== "templates" && (
             <button type="button" className="notify-btn primary" onClick={() => {setEmailProvider(email?.provider||"resend");setEditingChannel(view)}}>配置接口</button>
           )}
@@ -280,10 +290,10 @@ export default function NotificationSettings() {
                   <label>SMTP 服务器<input name="host" defaultValue={email?.provider==="smtp"?email?.host||"":""} placeholder="smtp.example.com" required/></label>
                   <label>端口<input name="port" type="number" defaultValue={email?.provider==="smtp"?email?.port||465:465} min="1" max="65535" required/></label>
                   <label>登录账号<input name="username" defaultValue={email?.provider==="smtp"?email?.username||"":""} required/></label>
-                  <label>密码环境变量<input name="credentialRef" defaultValue={email?.provider==="smtp"?email?.credentialRef||"SMTP_PASSWORD":"SMTP_PASSWORD"} required/></label>
-                </>:<label>{emailProvider==="resend"?"Resend API Key 环境变量":"SendGrid API Key 环境变量"}<input name="credentialRef" defaultValue={email?.provider===emailProvider?email?.credentialRef||"EMAIL_API_KEY":"EMAIL_API_KEY"} required/></label>}
+                  <label>SMTP 授权码<input name="secret" type="password" placeholder={email?.credentialConfigured?"已配置；留空保持不变":"请输入授权码或应用专用密码"}/></label>
+                </>:<label>{emailProvider==="resend"?"Resend API Key":"SendGrid API Key"}<input name="secret" type="password" placeholder={email?.credentialConfigured?"已配置；留空保持不变":"请输入 API Key"}/></label>}
               </div>
-              <div className="setting-note">{emailProvider==="smtp"?"465 端口使用 SSL；587 等其他端口使用 STARTTLS。密码只从服务器环境变量读取。":"API Key 只从服务器环境变量读取，后台不会保存明文密钥。"}</div>
+              <div className="setting-note">{emailProvider==="smtp"?"465 端口使用 SSL；587 等其他端口使用 STARTTLS。授权码会加密保存，不会明文显示。":"API Key 会使用系统加密密钥加密保存，不会明文显示。"}</div>
             </div>
             <footer className="notify-drawer-foot"><button type="button" className="notify-btn secondary" onClick={() => setEditingChannel(null)}>取消</button><button className="notify-btn primary">保存接口</button></footer>
           </form>

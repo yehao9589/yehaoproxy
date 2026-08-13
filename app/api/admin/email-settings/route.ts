@@ -4,6 +4,7 @@ import {getDb} from "../../../../db";
 import {emailProviders} from "../../../../db/schema";
 import {requireAdminApi} from "../../../../lib/admin-auth";
 import {upsertRecord} from "../../../../lib/db-upsert";
+import {encryptCredential} from "../../../../lib/inventory-crypto";
 
 export async function POST(request: Request) {
   if (!await requireAdminApi("settings")) return NextResponse.json({error: "无系统设置权限"}, {status: 403});
@@ -12,8 +13,10 @@ export async function POST(request: Request) {
     return NextResponse.json({error: "邮件配置不完整"}, {status: 400});
   }
   if(body.enabled&&!["resend","sendgrid","smtp"].includes(body.provider))return NextResponse.json({error:"该邮件服务商暂不支持启用"},{status:409});
-  if(body.provider==="smtp"&&(!body.host||!Number.isInteger(Number(body.port))||Number(body.port)<1||Number(body.port)>65535||!body.username||!body.credentialRef))return NextResponse.json({error:"SMTP 需要填写服务器、端口、账号和密码环境变量"},{status:400});
-  if(["resend","sendgrid"].includes(body.provider)&&!body.credentialRef)return NextResponse.json({error:"请填写 API Key 环境变量名称"},{status:400});
+  const [current]=await getDb().select().from(emailProviders).where(eq(emailProviders.id,"primary")).limit(1);
+  const suppliedSecret=String(body.secret||"").trim(),credentialRef=suppliedSecret?await encryptCredential(suppliedSecret):current?.credentialRef||null;
+  if(body.provider==="smtp"&&(!body.host||!Number.isInteger(Number(body.port))||Number(body.port)<1||Number(body.port)>65535||!body.username||!credentialRef))return NextResponse.json({error:"SMTP 需要填写服务器、端口、账号和授权码"},{status:400});
+  if(["resend","sendgrid"].includes(body.provider)&&!credentialRef)return NextResponse.json({error:"请填写 API Key"},{status:400});
   const now = new Date();
   const values={
     id: "primary",
@@ -24,7 +27,7 @@ export async function POST(request: Request) {
     host: body.host ? String(body.host) : null,
     port: body.port ? Number(body.port) : null,
     username: body.username ? String(body.username) : null,
-    credentialRef: body.credentialRef ? String(body.credentialRef) : null,
+    credentialRef,
     region: body.region ? String(body.region) : null,
     updatedAt: now,
   };
@@ -36,7 +39,7 @@ export async function POST(request: Request) {
       host: body.host ? String(body.host) : null,
       port: body.port ? Number(body.port) : null,
       username: body.username ? String(body.username) : null,
-      credentialRef: body.credentialRef ? String(body.credentialRef) : null,
+      credentialRef,
       region: body.region ? String(body.region) : null,
       updatedAt: now,
   });
@@ -46,5 +49,5 @@ export async function POST(request: Request) {
 export async function GET() {
   if (!await requireAdminApi("settings")) return NextResponse.json({error: "无系统设置权限"}, {status: 403});
   const [row] = await getDb().select().from(emailProviders).where(eq(emailProviders.id, "primary")).limit(1);
-  return NextResponse.json(row || null);
+  return NextResponse.json(row?{...row,credentialRef:undefined,credentialConfigured:Boolean(row.credentialRef)}:null);
 }

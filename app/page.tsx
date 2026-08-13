@@ -88,7 +88,7 @@ export default function Home() {
     });
   }, [saleOffers, product]);
   const visibleProducts = products.filter(item => item.category === category);
-  const currentProduct = products.find(item => item.id === product)!;
+  const currentProduct = products.find(item => item.id === product) || products[0] || defaultProducts[0];
   const isNode = currentProduct.category === "node";
   const selectedRegion = regions[selected] || regions[0] || defaultRegions[0];
   const orderRegion = isNode ? "GLOBAL" : selectedRegion.code;
@@ -97,7 +97,7 @@ export default function Home() {
   const periodText=(days:number)=>billingCycle==="calendar-month"?(days===90?"3 个自然月":"1 个自然月"):`${days} 天`;
   const durationPrice=(offer:CatalogOffer|undefined,days:number)=>offer?(days===7?offer.price7:days===90?offer.price90:offer.price30):null;
   const durationAvailable=(days:number)=>saleOffers===null||Boolean(currentOffer&&Number(durationPrice(currentOffer,days))>=0);
-  const fallbackUnitPrice = (isNode ? 29.9 : regions[selected].price) * (duration === 7 ? .35 : duration === 30 ? 1 : 2.55);
+  const fallbackUnitPrice = (isNode ? 29.9 : selectedRegion.price) * (duration === 7 ? .35 : duration === 30 ? 1 : 2.55);
   const unitPrice = currentOffer
     ? duration === 7 ? currentOffer.price7 : duration === 90 ? currentOffer.price90 : currentOffer.price30
     : fallbackUnitPrice;
