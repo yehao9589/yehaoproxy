@@ -4,6 +4,7 @@ import { getDb } from "../../../../db";
 import { coupons } from "../../../../db/schema";
 import { requireAdminApi } from "../../../../lib/admin-auth";
 import { audit } from "../../../../lib/audit";
+import { normalizeCouponCode, validCouponCode } from "../../../../lib/coupon-code";
 
 export async function GET() {
   if (!await requireAdminApi("coupons")) return NextResponse.json({ error: "无优惠券管理权限" }, { status: 403 });
@@ -14,13 +15,13 @@ export async function POST(req: Request) {
   const admin = await requireAdminApi("coupons");
   if (!admin) return NextResponse.json({ error: "无优惠券管理权限" }, { status: 403 });
   const body = await req.json().catch(() => null);
-  const code = String(body?.code || "").trim().toUpperCase();
+  const code = normalizeCouponCode(body?.code);
   const type = String(body?.type || "");
   const value = Number(body?.value);
   const minAmount = Number(body?.minAmount || 0);
   const maxDiscount = body?.maxDiscount === "" || body?.maxDiscount == null ? null : Number(body.maxDiscount);
   const totalLimit = body?.totalLimit === "" || body?.totalLimit == null ? null : Number(body.totalLimit);
-  if (!/^[A-Z0-9_-]{3,30}$/.test(code)) return NextResponse.json({ error: "优惠码必须为 3–30 位英文大写字母、数字、下划线或短横线" }, { status: 400 });
+  if (!validCouponCode(code)) return NextResponse.json({ error: "优惠码需为 3–30 位字母、数字、下划线或短横线" }, { status: 400 });
   if (!["fixed", "percent"].includes(type)) return NextResponse.json({ error: "请选择有效的优惠类型" }, { status: 400 });
   if (!Number.isFinite(value) || value <= 0) return NextResponse.json({ error: "优惠值必须大于 0" }, { status: 400 });
   if (type === "percent" && value > 100) return NextResponse.json({ error: "百分比优惠不能超过 100%" }, { status: 400 });

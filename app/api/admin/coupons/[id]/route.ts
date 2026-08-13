@@ -4,6 +4,7 @@ import { getDb } from "../../../../../db";
 import { coupons } from "../../../../../db/schema";
 import { requireAdminApi } from "../../../../../lib/admin-auth";
 import { audit } from "../../../../../lib/audit";
+import { normalizeCouponCode, validCouponCode } from "../../../../../lib/coupon-code";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdminApi("coupons");
@@ -13,7 +14,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const db = getDb();
   const [current] = await db.select().from(coupons).where(eq(coupons.id, id)).limit(1);
   if (!current) return NextResponse.json({ error: "优惠券不存在" }, { status: 404 });
-  const code = String(body?.code || "").trim().toUpperCase();
+  const code = normalizeCouponCode(body?.code);
   const type = String(body?.type || "");
   const value = Number(body?.value);
   const minAmount = Number(body?.minAmount || 0);
@@ -22,7 +23,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const startsAt = body?.startsAt ? new Date(body.startsAt) : null;
   const expiresAt = body?.expiresAt ? new Date(body.expiresAt) : null;
   const enabled = body?.enabled === true || body?.enabled === "true" || body?.enabled === "on";
-  if (!/^[A-Z0-9_-]{3,30}$/.test(code)) return NextResponse.json({ error: "优惠码必须为 3–30 位英文大写字母、数字、下划线或短横线" }, { status: 400 });
+  if (!validCouponCode(code)) return NextResponse.json({ error: "优惠码需为 3–30 位字母、数字、下划线或短横线" }, { status: 400 });
   if (!["fixed", "percent"].includes(type) || !Number.isFinite(value) || value <= 0) return NextResponse.json({ error: "优惠类型或优惠值无效" }, { status: 400 });
   if (type === "percent" && value > 100) return NextResponse.json({ error: "百分比优惠不能超过 100%" }, { status: 400 });
   if (!Number.isFinite(minAmount) || minAmount < 0 || maxDiscount !== null && (!Number.isFinite(maxDiscount) || maxDiscount <= 0) || totalLimit !== null && (!Number.isInteger(totalLimit) || totalLimit < 1)) return NextResponse.json({ error: "消费门槛、最大优惠或使用次数无效" }, { status: 400 });
