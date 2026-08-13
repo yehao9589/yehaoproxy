@@ -9,4 +9,5 @@ CRON_SECRET="${CRON_SECRET:?请设置与服务器一致的 CRON_SECRET}"
 curl --fail --silent --show-error \
   --request POST \
   --header "Authorization: Bearer ${CRON_SECRET}" \
+  --header "X-YehaoProxy-Scheduler: baota" \
   "${DOMAIN%/}/api/cron/reminders"

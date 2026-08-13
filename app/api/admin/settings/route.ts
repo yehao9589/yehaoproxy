@@ -1,9 +1,10 @@
-import {asc} from "drizzle-orm";
+import {asc,eq} from "drizzle-orm";
 import {NextResponse} from "next/server";
 import {getDb} from "../../../../db";
 import {paymentGateways,suppliers,systemOptions} from "../../../../db/schema";
 import {requireAdminApi} from "../../../../lib/admin-auth";
 import {setSystemOption,upsertRecord} from "../../../../lib/db-upsert";
+import {encryptCredential} from "../../../../lib/inventory-crypto";
 
 export async function GET(){
   if(!await requireAdminApi("settings"))return NextResponse.json({error:"无系统设置权限"},{status:403});
@@ -22,9 +23,15 @@ export async function POST(req:Request){
   if(!b||!["payment","supplier"].includes(b.kind)||!b.id)return NextResponse.json({error:"配置参数无效"},{status:400});
   if(b.kind==="payment"){
     if(!["stripe","alipay","wechat","usdt","paypal"].includes(b.type))return NextResponse.json({error:"支付类型无效"},{status:400});
-    if(b.enabled)return NextResponse.json({error:"真实支付适配器和回调验签尚未完成，当前禁止启用此渠道"},{status:409});
-    const reserved=new Set(["kind","id","name","type","enabled","priority","currencies","secretRef","webhookSecretRef"]),configuration=JSON.stringify(Object.fromEntries(Object.entries(b).filter(([key])=>!reserved.has(key))));
-    const values={id:String(b.id),name:String(b.name||b.id),type:b.type,enabled:Boolean(b.enabled),priority:Number(b.priority||100),supportedCurrencies:String(b.currencies||"USD"),secretRef:b.secretRef?String(b.secretRef):null,webhookSecretRef:b.webhookSecretRef?String(b.webhookSecretRef):null,configuration,createdAt:now,updatedAt:now};
+    if(b.enabled&&b.type!=="alipay")return NextResponse.json({error:"该支付适配器和回调验签尚未完成，当前禁止启用此渠道"},{status:409});
+    const[current]=await getDb().select().from(paymentGateways).where(eq(paymentGateways.id,String(b.id))).limit(1);
+    const reserved=new Set(["kind","id","name","type","enabled","priority","currencies","secretRef","webhookSecretRef","secret","alipayPublicKey","environment"]),rawConfiguration=Object.fromEntries(Object.entries(b).filter(([key])=>!reserved.has(key)));
+    if(b.type==="alipay")for(const key of ["pageEnabled","wapEnabled","precreateEnabled"])rawConfiguration[key]=String(rawConfiguration[key])==="true";
+    const configuration=JSON.stringify(rawConfiguration);
+    const secretRef=b.type==="alipay"?(b.secret?await encryptCredential(String(b.secret)):current?.secretRef||null):b.secretRef?String(b.secretRef):current?.secretRef||null;
+    const webhookSecretRef=b.type==="alipay"?(b.alipayPublicKey?await encryptCredential(String(b.alipayPublicKey)):current?.webhookSecretRef||null):b.webhookSecretRef?String(b.webhookSecretRef):current?.webhookSecretRef||null;
+    if(b.type==="alipay"&&b.enabled&&(!String(b.appId||"").trim()||!secretRef||!webhookSecretRef))return NextResponse.json({error:"启用支付宝前，请完整填写应用 ID、应用私钥和支付宝公钥"},{status:400});
+    const values={id:String(b.id),name:String(b.name||b.id),type:b.type,enabled:Boolean(b.enabled),priority:Number(b.priority||100),supportedCurrencies:b.type==="alipay"?"CNY":String(b.currencies||"USD"),secretRef,webhookSecretRef,configuration,createdAt:now,updatedAt:now};
     const {createdAt,...updates}=values;await upsertRecord(paymentGateways,paymentGateways.id,values.id,values,updates);
   }else{
     if(b.enabled)return NextResponse.json({error:"供应商适配器尚未接入，当前禁止启用自动采购"},{status:409});

@@ -3,10 +3,14 @@ import { auditLogs } from "../db/schema";
 
 function clientIp(request: Request) {
   const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const standardForwarded = request.headers.get("forwarded")?.match(/(?:^|;)\s*for=(?:"?\[)?([^\]";,]+)/i)?.[1]?.trim();
   const ip = request.headers.get("cf-connecting-ip")
     || forwarded
     || request.headers.get("x-real-ip")
-    || request.headers.get("true-client-ip");
+    || request.headers.get("true-client-ip")
+    || request.headers.get("x-client-ip")
+    || request.headers.get("x-cluster-client-ip")
+    || standardForwarded;
   if (ip) return ip;
   const hostname = new URL(request.url).hostname;
   return hostname === "localhost" || hostname === "127.0.0.1" ? "127.0.0.1" : null;

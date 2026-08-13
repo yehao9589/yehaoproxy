@@ -74,7 +74,7 @@ export async function GET(req: Request) {
   const email = Number(emailRows[0]?.value || 0);
   const scheduled = Number(scheduledRows[0]?.value || 0);
   const customerMap=new Map(customerRows.map(customer=>[customer.id,customer])),proxyMap=new Map(proxyRows.map(proxy=>[proxy.id,`${proxy.host}:${proxy.port}`]));
-  const displayProxy=(id:unknown)=>proxyMap.get(String(id||""))||`资源 #${String(id||"").slice(0,8)}`;
+  const displayProxy=(id:unknown)=>proxyMap.get(String(id||""))||"历史资源（已删除或已更换）";
   const enrichDetail=(raw:string|null)=>{if(!raw)return raw;try{const value=JSON.parse(raw);for(const key of ["allocationId","resourceId"]){if(value[key])value[key]=displayProxy(value[key])}if(Array.isArray(value.allocationIds))value.allocationIds=value.allocationIds.map(displayProxy);return JSON.stringify(value)}catch{return raw}};
   const namedItems=items.map(item=>({...item,logNo:item.id.slice(0,8).toUpperCase(),detail:enrichDetail(item.detail),resourceDisplay:item.resourceType==="proxy"&&item.resourceId?displayProxy(item.resourceId):null,actorName:customerMap.get(item.actorId)?.name||null,actorEmail:customerMap.get(item.actorId)?.email||null,resourceCustomerName:item.resourceType==="customer"&&item.resourceId?customerMap.get(item.resourceId)?.name||null:null}));
   return NextResponse.json({

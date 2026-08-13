@@ -2,6 +2,7 @@
 
 import {useEffect, useState} from "react";
 import {createPortal} from "react-dom";
+import CustomerCreateTool from "./CustomerCreateTool";
 
 type Customer = {id: string; email: string; name: string | null; role?: string};
 
@@ -76,6 +77,7 @@ export default function CustomerPasswordTool() {
   }
 
   return <>
+    <CustomerCreateTool/>
     {portalTarget && createPortal(<button className="customer-password-entry" onClick={showForCurrentCustomer}>修改密码</button>, portalTarget)}
     {open && <div className="modal customer-password-modal">
       <form onSubmit={submit}>
