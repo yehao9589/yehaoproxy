@@ -1,7 +1,7 @@
 import {asc,eq} from "drizzle-orm";
 import {NextResponse} from "next/server";
 import {getDb} from "../../../../db";
-import {paymentGateways,suppliers,systemOptions} from "../../../../db/schema";
+import {paymentGateways,paymentTransactions,suppliers,systemOptions} from "../../../../db/schema";
 import {requireAdminApi} from "../../../../lib/admin-auth";
 import {setSystemOption,upsertRecord} from "../../../../lib/db-upsert";
 import {encryptCredential} from "../../../../lib/inventory-crypto";
@@ -22,6 +22,14 @@ export async function POST(req:Request){
   }
   if(!b||!["payment","supplier"].includes(b.kind)||!b.id)return NextResponse.json({error:"配置参数无效"},{status:400});
   if(b.kind==="payment"){
+    if(b.action==="delete"){
+      const id=String(b.id),[gateway]=await getDb().select().from(paymentGateways).where(eq(paymentGateways.id,id)).limit(1);
+      if(!gateway)return NextResponse.json({error:"支付渠道不存在"},{status:404});
+      const[transaction]=await getDb().select({id:paymentTransactions.id}).from(paymentTransactions).where(eq(paymentTransactions.gatewayId,id)).limit(1);
+      if(transaction)return NextResponse.json({error:"该渠道已有支付流水，不能删除；可以关闭渠道以保留历史账单关联"},{status:409});
+      await getDb().delete(paymentGateways).where(eq(paymentGateways.id,id));
+      return NextResponse.json({ok:true,message:"支付渠道已删除"});
+    }
     if(!["stripe","alipay","wechat","usdt","paypal"].includes(b.type))return NextResponse.json({error:"支付类型无效"},{status:400});
     if(b.enabled&&b.type!=="alipay")return NextResponse.json({error:"该支付适配器和回调验签尚未完成，当前禁止启用此渠道"},{status:409});
     const[current]=await getDb().select().from(paymentGateways).where(eq(paymentGateways.id,String(b.id))).limit(1);
