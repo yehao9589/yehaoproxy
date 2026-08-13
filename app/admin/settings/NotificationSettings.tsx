@@ -24,6 +24,7 @@ type Sms = {
   endpoint: string;
   senderId: string;
 };
+type Brand={siteName:string;logoText:string;logoUrl:string};
 
 const emptySms: Sms = {
   provider: "aliyun",
@@ -59,6 +60,7 @@ export default function NotificationSettings() {
   const [testTo,setTestTo]=useState("");
   const [testingEmail,setTestingEmail]=useState(false);
   const [testResult,setTestResult]=useState<{ok:boolean;text:string}|null>(null);
+  const [brand,setBrand]=useState<Brand>({siteName:"YehaoProxy",logoText:"Y",logoUrl:""});
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -82,6 +84,7 @@ export default function NotificationSettings() {
 
   useEffect(() => {
     void load();
+    fetch("/api/site-config",{cache:"no-store"}).then(response=>response.ok?response.json():null).then(data=>data&&setBrand(current=>({...current,...data}))).catch(()=>undefined);
   }, []);
 
   function notify(text: string) {
@@ -268,7 +271,7 @@ export default function NotificationSettings() {
                 {view==="email-templates"?<label className={current.emailEnabled !== false ? "selected" : ""}><input type="checkbox" checked={current.emailEnabled !== false} onChange={event => updateTemplate(current.id, "emailEnabled", event.target.checked)}/><span><b>启用邮件</b><small>{email?.enabled?"接口已启用":"接口未启用"}</small></span></label>:<label className={current.smsEnabled === true ? "selected" : ""}><input type="checkbox" checked={current.smsEnabled === true} onChange={event => updateTemplate(current.id, "smsEnabled", event.target.checked)}/><span><b>启用短信</b><small>{sms.enabled?"接口已启用":"接口未启用"}</small></span></label>}
               </div>
               <div className="notify-vars"><b>可用变量</b>{["{{code}}", "{{orderId}}", "{{product}}", "{{days}}", "{{expiresAt}}", "{{customerName}}"].map(item => <code key={item}>{item}</code>)}</div>
-              {view==="email-templates"?<><label className="notify-field">邮件标题<input value={current.emailSubject} onChange={event => updateTemplate(current.id, "emailSubject", event.target.value)}/></label><label className="notify-field">邮件正文<textarea rows={8} value={current.emailBody} onChange={event => updateTemplate(current.id, "emailBody", event.target.value)}/></label><EmailPreview template={current}/></>:<><label className="notify-field">短信正文 <small>{current.smsBody.length}/500</small><textarea rows={5} maxLength={500} value={current.smsBody} onChange={event => updateTemplate(current.id, "smsBody", event.target.value)}/></label><div className="notify-preview"><b>短信预览</b><p>{preview(current.smsBody)}</p></div></>}
+              {view==="email-templates"?<><label className="notify-field">邮件标题<input value={current.emailSubject} onChange={event => updateTemplate(current.id, "emailSubject", event.target.value)}/></label><label className="notify-field">邮件正文<textarea rows={8} value={current.emailBody} onChange={event => updateTemplate(current.id, "emailBody", event.target.value)}/></label><EmailPreview template={current} brand={brand}/></>:<><label className="notify-field">短信正文 <small>{current.smsBody.length}/500</small><textarea rows={5} maxLength={500} value={current.smsBody} onChange={event => updateTemplate(current.id, "smsBody", event.target.value)}/></label><div className="notify-preview"><b>短信预览</b><p>{preview(current.smsBody)}</p></div></>}
             </div>
             <footer className="notify-drawer-foot"><button className="notify-btn secondary" onClick={() => setEditingTemplate(null)}>取消</button><button className="notify-btn primary" onClick={() => void persistTemplates()}>保存模板</button></footer>
           </section>
@@ -347,6 +350,7 @@ function preview(text: string) {
     .replaceAll("{{customerName}}", "客户");
 }
 
-function EmailPreview({template}:{template:Template}){
-  return <div className="notify-email-preview"><div className="mail-brand"><i>Y</i><b>YehaoProxy</b><span>安全 · 稳定 · 专业</span></div><div className="mail-content"><small>SERVICE NOTIFICATION</small><h3>{preview(template.emailSubject)}</h3><p>尊敬的客户：</p><div>{preview(template.emailBody)}</div><section><b>商品与服务详情</b><dl><dt>订单编号</dt><dd>YH-A82D19</dd><dt>商品 / 服务</dt><dd>静态住宅 IP</dd><dt>到期时间</dt><dd>2026-08-01 12:00</dd></dl></section><button type="button">进入客户中心</button></div><footer>此邮件由 YehaoProxy 系统自动发送，请勿直接回复。</footer></div>
+function EmailPreview({template,brand}:{template:Template;brand:Brand}){
+  const accountTemplate=["register_code","reset_password"].includes(template.id);
+  return <div className="notify-email-preview"><div className="mail-brand">{brand.logoUrl?<img src={brand.logoUrl} alt=""/>:<i>{brand.logoText||"Y"}</i>}<b>{brand.siteName}</b><span>安全 · 稳定 · 专业</span></div><div className="mail-content"><small>{accountTemplate?"ACCOUNT SECURITY":"SERVICE NOTIFICATION"}</small><h3>{preview(template.emailSubject)}</h3><p>尊敬的客户：</p><div>{preview(template.emailBody)}</div>{accountTemplate?<div className="mail-code">628193<small>验证码 10 分钟内有效</small></div>:<><section><b>商品与服务详情</b><dl><dt>订单编号</dt><dd>YH-A82D19</dd><dt>商品 / 服务</dt><dd>静态住宅 IP</dd><dt>到期时间</dt><dd>2026-08-01 12:00</dd></dl></section><button type="button">进入客户中心</button></>}</div><footer>此邮件由 {brand.siteName} 系统自动发送，请勿直接回复。</footer></div>
 }

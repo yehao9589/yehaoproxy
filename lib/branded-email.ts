@@ -5,8 +5,8 @@ export type EmailDetail={label:string;value:string|number|undefined|null;accent?
 
 export async function brandedEmail(input:{title:string;eyebrow?:string;greeting?:string;body:string;actionLabel?:string;actionUrl?:string;details?:EmailDetail[];code?:string;notice?:string}){
   const site=await getSiteConfig();
-  let origin="";
-  try{origin=input.actionUrl?new URL(input.actionUrl).origin:""}catch{/* 相对地址不影响邮件正文 */}
+  let origin=String(process.env.PUBLIC_APP_URL||"").replace(/\/$/,"");
+  try{if(input.actionUrl)origin=new URL(input.actionUrl,origin||undefined).origin}catch{/* 使用部署时配置的公网地址 */}
   const logo=site.logoUrl?(site.logoUrl.startsWith("http")||site.logoUrl.startsWith("data:")?site.logoUrl:`${origin}${site.logoUrl}`):"";
   const details=(input.details||[]).filter(item=>item.value!==null&&item.value!==undefined&&item.value!=="");
   return `<!doctype html><html><body style="margin:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',Arial,sans-serif;color:#172b42"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1f5f9;padding:36px 12px"><tr><td align="center"><table role="presentation" width="620" cellspacing="0" cellpadding="0" style="max-width:620px;width:100%;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 18px 55px rgba(15,36,62,.12)">
