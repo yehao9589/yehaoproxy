@@ -1,2 +1,37 @@
-.setting-card footer button.primary{background:#1266e3!important;color:#fff!important;border:0!important;box-shadow:0 4px 12px #1266e333}.setting-card footer button.primary:hover{background:#0d55c4!important}.payment-type-picker{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px}.payment-type-picker button{border:1px solid #dce4ec;background:#fff;border-radius:8px;padding:10px;color:#617489;cursor:pointer}.payment-type-picker button.on{border-color:#1266e3;background:#eaf3ff;color:#1266e3;font-weight:700}@media(max-width:800px){.payment-type-picker{grid-template-columns:repeat(2,1fr)}}
+.settings-stack:has(.payment-type-picker){gap:18px}
+.settings-stack:has(.payment-type-picker)>.setting-card{padding:0;border:1px solid #dce6f1;border-radius:16px;overflow:hidden;box-shadow:0 10px 32px rgba(35,66,101,.06)}
+.settings-stack:has(.payment-type-picker)>.setting-card>.setting-title{margin:0;padding:22px 24px;border-bottom:1px solid #e8eef5;background:linear-gradient(135deg,#f9fbfe,#f1f7ff)}
+.settings-stack:has(.payment-type-picker)>.setting-card>.setting-title h2{font-size:19px;color:#172d47;letter-spacing:.2px}
+.settings-stack:has(.payment-type-picker)>.setting-card>.setting-title p{font-size:12px;line-height:1.6;color:#71859a}
+.settings-stack:has(.payment-type-picker)>.setting-card>.setting-title>span{padding:6px 11px;background:#e7f2ff;border:1px solid #cde3fa;color:#1469c7;font-size:11px;font-weight:700}
+.settings-stack:has(.payment-type-picker) .channel-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;padding:18px 22px 22px;background:#fff}
+.settings-stack:has(.payment-type-picker) .channel-list article{position:relative;display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"dot name status" "dot name edit";align-items:center;gap:3px 12px;min-height:90px;padding:17px;border:1px solid #dfe8f2;border-radius:13px;background:linear-gradient(145deg,#fff,#f9fbfd);transition:.18s ease}
+.settings-stack:has(.payment-type-picker) .channel-list article:hover{border-color:#b8d3f1;box-shadow:0 8px 20px rgba(42,92,145,.09);transform:translateY(-1px)}
+.settings-stack:has(.payment-type-picker) .channel-list i{grid-area:dot;width:13px;height:13px;box-shadow:0 0 0 5px #f0f3f6}
+.settings-stack:has(.payment-type-picker) .channel-list i.ok{background:#18a873;box-shadow:0 0 0 5px #e6f7f0}
+.settings-stack:has(.payment-type-picker) .channel-list div{grid-area:name;min-width:0}
+.settings-stack:has(.payment-type-picker) .channel-list b{font-size:14px;color:#1c344f}
+.settings-stack:has(.payment-type-picker) .channel-list small{margin-top:7px;font-size:11px;color:#7a8ea3}
+.settings-stack:has(.payment-type-picker) .channel-list em{grid-area:status;justify-self:end;padding:5px 9px;border:1px solid #e0e6ed;background:#f4f6f8;color:#687b8e;font-size:10px;font-weight:700}
+.settings-stack:has(.payment-type-picker) .channel-list i.ok~em{border-color:#c7eddc;background:#eaf9f2;color:#13875c}
+.channel-edit{grid-area:edit;justify-self:end;height:29px;padding:0;border:0;background:transparent;color:#1266d8;font-size:11px;font-weight:700;cursor:pointer}.channel-edit:hover{color:#084fae;text-decoration:underline}
+.settings-stack:has(.payment-type-picker)>form.setting-card{padding:0 24px 24px}
+.settings-stack:has(.payment-type-picker)>form.setting-card>.setting-title{margin:0 -24px 20px;padding:22px 24px;background:#fff}
+.payment-type-picker{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:0 0 22px;padding:5px;border:1px solid #e1e8f0;border-radius:12px;background:#f3f6f9}
+.payment-type-picker button{min-height:42px;border:0;background:transparent;border-radius:9px;padding:9px;color:#667b90;font-size:12px;font-weight:600;cursor:pointer;transition:.16s ease}
+.payment-type-picker button:hover{background:#fff;color:#315d8d}.payment-type-picker button.on{background:#fff;color:#1266d8;font-weight:750;box-shadow:0 2px 8px rgba(34,72,113,.12)}
+.settings-stack:has(.payment-type-picker) .setting-grid{gap:17px 18px;padding:20px;border:1px solid #e1e9f1;border-radius:13px;background:#f9fbfd}
+.settings-stack:has(.payment-type-picker) .setting-grid label{gap:8px;color:#415a73;font-size:12px;font-weight:650}
+.settings-stack:has(.payment-type-picker) .setting-grid input,.settings-stack:has(.payment-type-picker) .setting-grid select,.settings-stack:has(.payment-type-picker) .setting-grid textarea{width:100%;min-height:44px;box-sizing:border-box;border:1px solid #cfdce8;border-radius:9px;padding:11px 13px;background:#fff;color:#20384f;font:inherit;font-weight:500;outline:none;transition:.16s ease}
+.settings-stack:has(.payment-type-picker) .setting-grid textarea{min-height:112px;resize:vertical;line-height:1.55;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px}
+.settings-stack:has(.payment-type-picker) .setting-grid input:focus,.settings-stack:has(.payment-type-picker) .setting-grid select:focus,.settings-stack:has(.payment-type-picker) .setting-grid textarea:focus{border-color:#4c96e8;box-shadow:0 0 0 3px rgba(54,137,225,.12)}
+.settings-stack:has(.payment-type-picker) .setting-grid input[readonly]{background:#edf2f7;color:#6d8093;cursor:not-allowed}
 .setting-grid label:has(select[name="environment"]){display:none!important}
+.settings-stack:has(.payment-type-picker) .setting-switch.important{margin-top:18px;padding:16px 18px;border-color:#d7e7f7;background:linear-gradient(90deg,#f5faff,#fff)}
+.settings-stack:has(.payment-type-picker) .setting-switch b{font-size:13px;color:#233c56}.settings-stack:has(.payment-type-picker) .setting-switch small{font-size:11px;color:#788ca0}
+.settings-stack:has(.payment-type-picker) .setting-switch input{width:44px;height:24px;cursor:pointer}
+.settings-stack:has(.payment-type-picker) footer{gap:9px;padding-top:18px;border-top:1px solid #edf1f5}
+.settings-stack:has(.payment-type-picker) footer button{min-width:100px;height:40px;border:1px solid #d5e0eb!important;background:#fff;color:#4a6076;cursor:pointer}
+.settings-stack:has(.payment-type-picker) footer button.primary{background:#1266e3!important;color:#fff!important;border:0!important;box-shadow:0 5px 14px rgba(18,102,227,.22)}
+.settings-stack:has(.payment-type-picker) footer button.primary:hover{background:#0d55c4!important}
+@media(max-width:800px){.settings-stack:has(.payment-type-picker) .channel-list{grid-template-columns:1fr;padding:14px}.settings-stack:has(.payment-type-picker)>form.setting-card{padding:0 15px 18px}.settings-stack:has(.payment-type-picker)>form.setting-card>.setting-title{margin:0 -15px 16px;padding:18px 16px}.payment-type-picker{grid-template-columns:repeat(2,1fr)}.settings-stack:has(.payment-type-picker) .setting-grid{grid-template-columns:1fr;padding:15px}.settings-stack:has(.payment-type-picker) .setting-grid label.wide{grid-column:auto}}
