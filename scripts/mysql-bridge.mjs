@@ -14,7 +14,12 @@ async function body(req){let value="";for await(const chunk of req){value+=chunk
 function compatibleSql(sql){return String(sql).replace(/\bmax\(\s*0\s*,/gi,"GREATEST(0,")}
 function normalizeValue(value){
   if(Buffer.isBuffer(value))return value.toString("utf8");
+  if(ArrayBuffer.isView(value))return Buffer.from(value.buffer,value.byteOffset,value.byteLength).toString("utf8");
   if(value&&typeof value==="object"&&value.type==="Buffer"&&Array.isArray(value.data))return Buffer.from(value.data).toString("utf8");
+  if(value&&typeof value==="object"){
+    const numeric=Object.entries(value).filter(([key,item])=>/^\d+$/.test(key)&&Number.isFinite(Number(item))).sort((a,b)=>Number(a[0])-Number(b[0]));
+    if(numeric.length)return Buffer.from(numeric.map(([,item])=>Number(item))).toString("utf8");
+  }
   return value;
 }
 function normalizeRow(row){return Object.fromEntries(Object.entries(row).map(([key,value])=>[key,normalizeValue(value)]))}

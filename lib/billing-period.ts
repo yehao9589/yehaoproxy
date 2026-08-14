@@ -1,7 +1,8 @@
+import{databaseText}from"./database-text";
 export type BillingCycle="fixed-days"|"calendar-month";
 
 export function billingCycleFromNote(note:unknown):BillingCycle{
-  const text=typeof note==="string"?note:"";
+  const text=databaseText(note);
   return text.match(/\[BILLING_CYCLE\]([^\n]+)/)?.[1]?.trim()==="calendar-month"?"calendar-month":"fixed-days";
 }
 
