@@ -6,6 +6,7 @@ import {orders,proxyAllocations} from "../../../../../../../db/schema";
 import {decryptCredential,encryptCredential} from "../../../../../../../lib/inventory-crypto";
 import {normalizeCityName} from "../../../../../../../lib/cities";
 import {audit} from "../../../../../../../lib/audit";
+import {databaseText} from "../../../../../../../lib/database-text";
 
 function adminDate(value:unknown){const raw=String(value||"").trim();return new Date(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(raw)?`${raw}+08:00`:raw)}
 
@@ -35,4 +36,26 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string;allo
   const [order]=await db.select().from(orders).where(eq(orders.id,id)).limit(1);
   try{await db.update(proxyAllocations).set(updates).where(eq(proxyAllocations.id,row.id));await db.update(orders).set({expiresAt,region:country,updatedAt:new Date()}).where(eq(orders.id,id));await audit({id:admin.id,role:admin.role},"proxy.resource.update","proxy",row.id,{orderId:id,previousExpiresAt:row.expiresAt?.toISOString()||null,expiresAt:expiresAt.toISOString(),previousAddress:`${row.host}:${row.port}`,address:`${host}:${port}`,previousCountry:order?.region||null,country,previousCity:row.note?.match(/\[CITY\]([^\n]*)/)?.[1]||null,city,protocol,passwordChanged:Boolean(b?.password)},req);}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"资源保存失败"},{status:409})}
   return NextResponse.json({ok:true});
+}
+
+export async function DELETE(req:Request,{params}:{params:Promise<{id:string;allocationId:string}>}){
+  const admin=await requireAdminApi("orders");
+  if(!admin)return NextResponse.json({error:"无订单管理权限"},{status:403});
+  const{id,allocationId}=await params,db=getDb();
+  if(allocationId==="by-address")return NextResponse.json({error:"删除资源必须使用资源编号"},{status:400});
+  const[row]=await db.select().from(proxyAllocations).where(and(eq(proxyAllocations.id,allocationId),eq(proxyAllocations.orderId,id))).limit(1);
+  if(!row)return NextResponse.json({error:"已分配资源不存在"},{status:404});
+  const[order]=await db.select().from(orders).where(eq(orders.id,id)).limit(1);
+  if(!order)return NextResponse.json({error:"关联订单不存在"},{status:404});
+  const now=new Date();
+  await db.delete(proxyAllocations).where(and(eq(proxyAllocations.id,row.id),eq(proxyAllocations.orderId,id)));
+  const remaining=await db.select({id:proxyAllocations.id}).from(proxyAllocations).where(eq(proxyAllocations.orderId,id));
+  const incomplete=remaining.length<order.quantity;
+  if(incomplete&&["paid","provisioning","active"].includes(order.status)){
+    await db.update(orders).set({status:"provisioning",expiresAt:null,updatedAt:now}).where(eq(orders.id,id));
+    const parentId=databaseText(order.adminNote).match(/\[BUNDLE_PARENT\]([^\n]+)/)?.[1]?.trim();
+    if(parentId)await db.update(orders).set({status:"provisioning",expiresAt:null,updatedAt:now}).where(eq(orders.id,parentId));
+  }
+  await audit({id:admin.id,role:admin.role},"proxy.resource.delete","proxy",row.id,{orderId:id,address:`${row.host}:${row.port}`,remainingResources:remaining.length,requiredResources:order.quantity,status:incomplete?"provisioning":order.status},req);
+  return NextResponse.json({ok:true,remaining:remaining.length,required:order.quantity,status:incomplete?"provisioning":order.status});
 }

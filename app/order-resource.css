@@ -2,6 +2,22 @@
   grid-template-columns: minmax(170px,1.25fr) minmax(100px,.8fr) minmax(70px,.5fr) minmax(150px,1fr) minmax(78px,.6fr) auto;
   align-items: center;
 }
+
+.order-workspace .allocated-resource-section .resource-table > div {
+  grid-template-columns:minmax(190px,1.5fr) minmax(130px,.9fr) minmax(85px,.65fr) minmax(155px,1fr) auto auto;
+  align-items:center;
+}
+
+.resource-delete-button,.resource-edit-button{white-space:nowrap}
+.resource-delete-confirm{display:flex;align-items:center;gap:10px;margin-top:14px;padding:14px 16px;border:1px solid #fecaca;border-radius:12px;background:#fff7f7}
+.resource-delete-confirm>span{display:grid;gap:3px;flex:1;color:#7f1d1d}
+.resource-delete-confirm small{color:#9f1239;font-size:12px}
+
+@media(max-width:900px){
+  .order-workspace .allocated-resource-section .resource-table>div{grid-template-columns:1fr 1fr}
+  .resource-delete-confirm{align-items:stretch;flex-wrap:wrap}
+  .resource-delete-confirm>span{flex-basis:100%}
+}
 .order-workspace .resource-region,.order-workspace .resource-expiry{display:flex;flex-direction:column;gap:3px}.order-workspace .resource-region small,.order-workspace .resource-expiry small{color:#8291a3;font-size:11px}.order-workspace .resource-region b,.order-workspace .resource-expiry b{font-size:12px;font-weight:600;color:#334155}
 .order-workspace .resource-edit-button {
   justify-self: end;
