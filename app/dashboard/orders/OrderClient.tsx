@@ -2,6 +2,7 @@
 import {useEffect,useState} from "react";
 import {countryName} from "../../../lib/countries";
 import Pagination from "../../Pagination";
+import {dashboardJson,invalidateDashboardData} from "../data-cache";
 
 type BundleItem={id:string;product:string;region:string;quantity:number;durationDays:number;amount:number};
 type OrderResource={id:string;orderId:string;ip:string;wifiName:string|null;country:string;city:string|null;protocol:string;status:string};
@@ -47,15 +48,15 @@ export default function OrderClient(){
   const items=allItems.slice(offset,offset+pageSize),serviceRequests=allServiceRequests.slice(offset,offset+pageSize);
   const orderStats={total:allItems.length,pending:allItems.filter(item=>item.status==="pending").length,opening:allItems.filter(item=>["paid","provisioning"].includes(item.status)).length,active:allItems.filter(item=>item.status==="active").length};
   useEffect(()=>setPage(1),[section,pageSize]);
-  async function load(){
+  async function load(force=false){
     setMessage("");
-    const ordersTask=fetch("/api/orders").then(async response=>({response,data:await response.json()}));
+    const ordersTask=dashboardJson<any>("/api/orders",{force});
     const requestsTask=fetch("/api/service-requests").then(async response=>({response,data:await response.json()}));
-    const {response:ordersResponse,data:ordersData}=await ordersTask;
-    if(!ordersResponse.ok)return setMessage(ordersData.error||"订单加载失败");
-    setItems(ordersData.items||[]);
+    const ordersResult=await ordersTask;
+    if(!ordersResult.ok)return setMessage(ordersResult.data.error||"订单加载失败");
+    setItems(ordersResult.data.items||[]);
     const requested=new URLSearchParams(location.search).get("order");
-    if(requested)setDetail((ordersData.items||[]).find((item:O)=>item.id===requested)||null);
+    if(requested)setDetail((ordersResult.data.items||[]).find((item:O)=>item.id===requested)||null);
     try{const {response,data}=await requestsTask;if(response.ok)setServiceRequests(data.items||[])}catch{}
   }
   useEffect(()=>{void load()},[]);
@@ -70,7 +71,7 @@ export default function OrderClient(){
     const response=await fetch(`/api/orders/${encodeURIComponent(order.id)}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({action:"cancel"})});
     const data=await response.json();setClosing(null);
     if(!response.ok)return setMessage(data.error||"关闭订单失败");
-    setDetail(null);setMessage(data.message||"订单已关闭");await load();
+    invalidateDashboardData();setDetail(null);setMessage(data.message||"订单已关闭");await load(true);
   }
   async function pay(order:O,coupon=couponCode){
     setPaying(order.id);setMessage("");

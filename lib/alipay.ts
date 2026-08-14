@@ -6,7 +6,7 @@ const encoder=new TextEncoder();
 function pemBody(value:string){return value.replace(/-----BEGIN [^-]+-----|-----END [^-]+-----|\s+/g,"")}
 function bytes(value:string){const raw=atob(pemBody(value));return Uint8Array.from(raw,char=>char.charCodeAt(0))}
 function base64(value:ArrayBuffer){let raw="";for(const byte of new Uint8Array(value))raw+=String.fromCharCode(byte);return btoa(raw)}
-function canonical(params:Record<string,string>){return Object.entries(params).filter(([key,value])=>key!=="sign"&&key!=="sign_type"&&value!=="").sort(([a],[b])=>a.localeCompare(b)).map(([key,value])=>`${key}=${value}`).join("&")}
+function canonical(params:Record<string,string>,excludeSignType=false){return Object.entries(params).filter(([key,value])=>key!=="sign"&&(!excludeSignType||key!=="sign_type")&&value!=="").sort(([a],[b])=>a.localeCompare(b)).map(([key,value])=>`${key}=${value}`).join("&")}
 export async function readAlipayConfig(row:{secretRef:string|null;webhookSecretRef:string|null;configuration:string|null}){
   let config:Record<string,unknown>={};try{config=JSON.parse(row.configuration||"{}")||{}}catch{}
   const privateKey=await decryptCredential(row.secretRef),alipayPublicKey=await decryptCredential(row.webhookSecretRef);
@@ -14,7 +14,7 @@ export async function readAlipayConfig(row:{secretRef:string|null;webhookSecretR
   return{appId:String(config.appId),privateKey,alipayPublicKey,pageEnabled:config.pageEnabled!==false,wapEnabled:config.wapEnabled!==false,precreateEnabled:Boolean(config.precreateEnabled)} satisfies AlipayConfig;
 }
 async function sign(params:Record<string,string>,privateKey:string){const key=await crypto.subtle.importKey("pkcs8",bytes(privateKey),{name:"RSASSA-PKCS1-v1_5",hash:"SHA-256"},false,["sign"]);return base64(await crypto.subtle.sign("RSASSA-PKCS1-v1_5",key,encoder.encode(canonical(params))))}
-export async function verifyAlipay(params:Record<string,string>,publicKey:string){const signature=params.sign;if(!signature)return false;const key=await crypto.subtle.importKey("spki",bytes(publicKey),{name:"RSASSA-PKCS1-v1_5",hash:"SHA-256"},false,["verify"]);return crypto.subtle.verify("RSASSA-PKCS1-v1_5",key,bytes(signature).buffer,encoder.encode(canonical(params)))}
+export async function verifyAlipay(params:Record<string,string>,publicKey:string){const signature=params.sign;if(!signature)return false;const key=await crypto.subtle.importKey("spki",bytes(publicKey),{name:"RSASSA-PKCS1-v1_5",hash:"SHA-256"},false,["verify"]);return crypto.subtle.verify("RSASSA-PKCS1-v1_5",key,bytes(signature).buffer,encoder.encode(canonical(params,true)))}
 export async function createAlipayCheckout(config:AlipayConfig,input:{orderId:string;amount:number;subject:string;origin:string;mobile:boolean}){
   const method=input.mobile&&config.wapEnabled?"alipay.trade.wap.pay":config.pageEnabled?"alipay.trade.page.pay":config.wapEnabled?"alipay.trade.wap.pay":"";
   if(!method)throw new Error("支付宝电脑网站支付和手机网站支付均未开启");

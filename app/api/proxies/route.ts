@@ -34,9 +34,8 @@ export async function GET(req: Request) {
 
   const [archiveOption] = await db.select().from(systemOptions).where(eq(systemOptions.key,"expiredServiceArchiveDays")).limit(1);
   const archiveDays = Number(archiveOption?.value || 30), archiveCutoff = Date.now() - archiveDays * 86400000;
-  const items = [];
-  for (const row of owned) {
-    if(row.allocation.expiresAt&&row.allocation.expiresAt.getTime()<archiveCutoff)continue;
+  const items = (await Promise.all(owned.map(async row => {
+    if(row.allocation.expiresAt&&row.allocation.expiresAt.getTime()<archiveCutoff)return null;
     const activatedMarker=row.allocation.note?.match(/\[ACTIVATED_AT\]([^\n]+)/)?.[1];
     const extractedAt=activatedMarker?new Date(activatedMarker):null;
     const replaceEligibleUntil = extractedAt ? new Date(extractedAt.getTime() + 3 * 86400000) : null;
@@ -50,7 +49,7 @@ export async function GET(req: Request) {
     const availableRenewalPeriods = billingCycle === "calendar-month"
       ? [30,60,90]
       : [row.price7 !== null && row.price7 >= 0 ? 7 : null,row.price30 !== null && row.price30 >= 0 ? 30 : null,row.price90 !== null && row.price90 >= 0 ? 90 : null].filter((value):value is number=>value!==null);
-    items.push({
+    return {
       ...row.allocation,
       note,
       password: reveal
@@ -74,7 +73,7 @@ export async function GET(req: Request) {
       extractedAt,
       replaceEligibleUntil,
       replaceEligible: Boolean(replaceEligibleUntil && new Date() <= replaceEligibleUntil),
-    });
-  }
+    };
+  }))).filter(Boolean);
   return NextResponse.json({ items });
 }
