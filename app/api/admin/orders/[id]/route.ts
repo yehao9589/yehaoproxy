@@ -46,6 +46,9 @@ export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){
     quantity:ipOrders.reduce((sum,item)=>sum+item.quantity,0),
     allocated:ipOrders.reduce((sum,item)=>sum+(allocationCountByOrder.get(item.id)||0),0),
     region:targetOrder?.region||order.region,
+    suggestedExpiresAt:targetOrder?addBillingPeriod(new Date(),targetOrder.durationDays,billingCycleFromNote(targetOrder.adminNote)).toISOString():null,
+    durationDays:targetOrder?.durationDays||0,
+    billingCycle:targetOrder?billingCycleFromNote(targetOrder.adminNote):null,
   };
   const payments=await db.select().from(paymentTransactions).where(eq(paymentTransactions.orderId,id));
   const subscriptionUrl=order.adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1]||null;

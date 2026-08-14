@@ -1,7 +1,8 @@
 export type BillingCycle="fixed-days"|"calendar-month";
 
-export function billingCycleFromNote(note:string|null|undefined):BillingCycle{
-  return note?.match(/\[BILLING_CYCLE\]([^\n]+)/)?.[1]?.trim()==="calendar-month"?"calendar-month":"fixed-days";
+export function billingCycleFromNote(note:unknown):BillingCycle{
+  const text=typeof note==="string"?note:"";
+  return text.match(/\[BILLING_CYCLE\]([^\n]+)/)?.[1]?.trim()==="calendar-month"?"calendar-month":"fixed-days";
 }
 
 export function periodLabel(durationDays:number,cycle:BillingCycle){

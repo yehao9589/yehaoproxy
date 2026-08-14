@@ -12,8 +12,14 @@ function config(input={},withDatabase=true){
 }
 async function body(req){let value="";for await(const chunk of req){value+=chunk;if(value.length>2_000_000)throw new Error("请求过大")}return value?JSON.parse(value):{}}
 function compatibleSql(sql){return String(sql).replace(/\bmax\(\s*0\s*,/gi,"GREATEST(0,")}
+function normalizeValue(value){
+  if(Buffer.isBuffer(value))return value.toString("utf8");
+  if(value&&typeof value==="object"&&value.type==="Buffer"&&Array.isArray(value.data))return Buffer.from(value.data).toString("utf8");
+  return value;
+}
+function normalizeRow(row){return Object.fromEntries(Object.entries(row).map(([key,value])=>[key,normalizeValue(value)]))}
 function normalized(rows){
-  if(Array.isArray(rows))return{rows,meta:{changes:0}};
+  if(Array.isArray(rows))return{rows:rows.map(normalizeRow),meta:{changes:0}};
   return{rows:[],meta:{changes:Number(rows?.affectedRows||0),last_row_id:Number(rows?.insertId||0)}};
 }
 async function query(sql,params=[],input={}){

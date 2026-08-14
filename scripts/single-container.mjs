@@ -8,6 +8,38 @@ const token=String(process.env.UPDATE_WEBHOOK_TOKEN||"");
 const children=new Map();
 let restarting=false;
 
+function normalizedIp(value){
+  const ip=String(value||"").trim();
+  if(!ip)return "unknown";
+  return ip.startsWith("::ffff:")?ip.slice(7):ip;
+}
+
+function requestIp(req){
+  const socketIp=normalizedIp(req.socket.remoteAddress);
+  const localProxy=socketIp==="127.0.0.1"||socketIp==="::1";
+  if(!localProxy)return socketIp;
+  const forwarded=String(req.headers["x-forwarded-for"]||"").split(",")[0]?.trim();
+  return normalizedIp(req.headers["cf-connecting-ip"]||forwarded||req.headers["x-real-ip"]||socketIp);
+}
+
+const gateway=createServer((req,res)=>{
+  const ip=requestIp(req),headers={...req.headers,host:"127.0.0.1:3001"};
+  delete headers["cf-connecting-ip"];
+  delete headers["true-client-ip"];
+  delete headers["x-client-ip"];
+  delete headers["x-cluster-client-ip"];
+  delete headers.forwarded;
+  headers["x-forwarded-for"]=ip;
+  headers["x-real-ip"]=ip;
+  const proxy=httpRequest({hostname:"127.0.0.1",port:3001,path:req.url,method:req.method,headers},upstream=>{
+    res.writeHead(upstream.statusCode||502,upstream.headers);
+    upstream.pipe(res);
+  });
+  proxy.on("error",error=>json(res,502,{error:`网站服务暂不可用：${error.message}`}));
+  req.pipe(proxy);
+});
+gateway.listen(3000,"0.0.0.0",()=>console.log("YehaoProxy public gateway listening on 3000"));
+
 async function runtimeEnv(){
   const values={};
   try{
@@ -37,7 +69,7 @@ async function bootOne(name){
   const common={...saved};
   if(name==="mysql")start(name,"node",["scripts/mysql-bridge.mjs"],{...common,PORT:"8789"});
   if(name==="xpanel")start(name,"node",["scripts/xpanel-bridge.mjs"],{PORT:"8787"});
-  if(name==="web")start(name,"node",["node_modules/vinext/dist/cli.js","start","--hostname","0.0.0.0"],{
+  if(name==="web")start(name,"node",["node_modules/vinext/dist/cli.js","start","--hostname","127.0.0.1","--port","3001"],{
     ...common,DATABASE_DRIVER:"mysql",MYSQL_BRIDGE_URL:"http://127.0.0.1:8789",XPANEL_BRIDGE_URL:"http://127.0.0.1:8787",UPDATE_WEBHOOK_URL:"http://127.0.0.1:8788",
   });
   if(name==="scheduler")start(name,"node",["scripts/cron-runner.mjs"],{CRON_URL:"http://127.0.0.1:3000/api/cron/reminders"});
@@ -91,5 +123,5 @@ createServer(async(req,res)=>{
 
 for(const name of ["mysql","xpanel","web","scheduler","backup"])await bootOne(name);
 
-async function shutdown(){restarting=true;for(const child of children.values())child.kill("SIGTERM");process.exit(0)}
+async function shutdown(){restarting=true;gateway.close();for(const child of children.values())child.kill("SIGTERM");process.exit(0)}
 process.on("SIGTERM",shutdown);process.on("SIGINT",shutdown);
