@@ -11,8 +11,7 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: "请先登录" }, { status: 401 });
   const reveal = new URL(req.url).searchParams.get("reveal") === "1";
   const db = getDb();
-  const owned = await db
-    .select({
+  const ownedQuery = db.select({
       allocation: proxyAllocations,
       product: orders.product,
       region: orders.region,
@@ -31,8 +30,11 @@ export async function GET(req: Request) {
     .where(and(eq(orders.customerEmail, user.email), eq(proxyAllocations.status, "active"), ne(orders.status, "refunded")))
     .orderBy(desc(orders.createdAt))
     .limit(1000);
-
-  const [archiveOption] = await db.select().from(systemOptions).where(eq(systemOptions.key,"expiredServiceArchiveDays")).limit(1);
+  const [owned, archiveRows] = await Promise.all([
+    ownedQuery,
+    db.select().from(systemOptions).where(eq(systemOptions.key,"expiredServiceArchiveDays")).limit(1),
+  ]);
+  const [archiveOption] = archiveRows;
   const archiveDays = Number(archiveOption?.value || 30), archiveCutoff = Date.now() - archiveDays * 86400000;
   const items = (await Promise.all(owned.map(async row => {
     if(row.allocation.expiresAt&&row.allocation.expiresAt.getTime()<archiveCutoff)return null;

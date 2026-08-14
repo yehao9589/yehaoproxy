@@ -93,21 +93,26 @@ export async function GET() {
   const allocationsByOrder=new Map<string,typeof allocationRows>();
   for(const allocation of allocationRows){const list=allocationsByOrder.get(allocation.orderId)||[];list.push(allocation);allocationsByOrder.set(allocation.orderId,list)}
   const requestById = new Map(requestRows.map((request) => [request.id, request]));
+  const orderRegionById = new Map(rows.map((order) => [order.id, order.region]));
+  const requestByOrderId = new Map<string, typeof requestRows[number]>();
+  const requestByAllocationId = new Map<string, typeof requestRows[number]>();
+  for (const request of requestRows) {
+    const relatedOrderId = String(request.reason || "").match(/YH-[A-Z0-9-]+/)?.[0];
+    if (relatedOrderId && !requestByOrderId.has(relatedOrderId)) requestByOrderId.set(relatedOrderId, request);
+    if (request.allocationId && !requestByAllocationId.has(request.allocationId)) requestByAllocationId.set(request.allocationId, request);
+  }
   const serviceRequestForOrder = (order: typeof rows[number]) => {
     const note = String(order.adminNote || "");
     const explicitId = note.match(/\[FREE_REPLACEMENT_REQUEST\]([^\n]+)/)?.[1]?.trim();
     if (explicitId && requestById.has(explicitId)) return requestById.get(explicitId)!;
     const targetId = note.match(/\[(?:REPLACE_ALLOCATION|RESET_OF|TARGET_ORDER)\]([^\n]+)/)?.[1]?.trim();
-    return requestRows.find((request) =>
-      String(request.reason || "").includes(order.id) ||
-      Boolean(targetId && request.allocationId === targetId),
-    ) || null;
+    return requestByOrderId.get(order.id) || (targetId ? requestByAllocationId.get(targetId) : null) || null;
   };
   const serialize = ({ adminNote, ...order }: typeof rows[number]) => {
     const renewalOf=adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1]?.trim()||null;
     const bundleItems=(()=>{const raw=adminNote?.match(/\[BUNDLE_ITEMS\]([^\n]+)/)?.[1];if(!raw)return null;try{return JSON.parse(decodeURIComponent(raw))}catch{return null}})();
     const sourceIds=renewalOf?[renewalOf]:bundleItems?.length?bundleItems.map((item:{id:string})=>item.id):[order.id];
-    const resources=sourceIds.flatMap((id:string)=>allocationsByOrder.get(id)||[]).map((resource:typeof allocationRows[number])=>({id:resource.id,orderId:resource.orderId,ip:`${resource.host}:${resource.port}`,wifiName:resource.wifiName||null,country:rows.find(item=>item.id===resource.orderId)?.region||order.region,city:resource.note?.match(/\[CITY\]([^\n]*)/)?.[1]?.trim()||null,protocol:resource.protocol,status:resource.status}));
+    const resources=sourceIds.flatMap((id:string)=>allocationsByOrder.get(id)||[]).map((resource:typeof allocationRows[number])=>({id:resource.id,orderId:resource.orderId,ip:`${resource.host}:${resource.port}`,wifiName:resource.wifiName||null,country:orderRegionById.get(resource.orderId)||order.region,city:resource.note?.match(/\[CITY\]([^\n]*)/)?.[1]?.trim()||null,protocol:resource.protocol,status:resource.status}));
     return {
       ...order,
       billingCycle: billingCycleFromNote(adminNote),

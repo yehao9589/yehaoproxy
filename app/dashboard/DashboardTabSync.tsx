@@ -9,6 +9,16 @@ export default function DashboardTabSync(){
     const loginUrl=()=>`/login?next=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}`;
     const originalFetch=window.fetch.bind(window);
     let redirecting=false;
+    let animationTimer=0;
+    const showPageLoading=()=>{
+      const content=document.querySelector<HTMLElement>(".console-content");
+      if(!content)return;
+      content.classList.remove("is-switching");
+      void content.offsetWidth;
+      content.classList.add("is-switching");
+      window.clearTimeout(animationTimer);
+      animationTimer=window.setTimeout(()=>content.classList.remove("is-switching"),750);
+    };
     const redirectToLogin=()=>{
       if(redirecting)return;
       redirecting=true;
@@ -29,6 +39,7 @@ export default function DashboardTabSync(){
       const buttons=document.querySelectorAll<HTMLButtonElement>(".console-menu > button");
       if(buttons[index]&&!buttons[index].classList.contains("on")){
         syncing=true;
+        showPageLoading();
         buttons[index].click();
         syncing=false;
       }
@@ -40,6 +51,7 @@ export default function DashboardTabSync(){
       const index=buttons.indexOf(button);
       const tab=tabs[index];
       if(!tab)return;
+      showPageLoading();
       const url=new URL(location.href);
       if(tab==="overview")url.searchParams.delete("tab");
       else url.searchParams.set("tab",tab);
@@ -67,6 +79,7 @@ export default function DashboardTabSync(){
     addEventListener("popstate",sync);
     return()=>{
       clearTimeout(timer);
+      clearTimeout(animationTimer);
       document.removeEventListener("click",remember);
       removeEventListener("popstate",sync);
       observer.disconnect();
