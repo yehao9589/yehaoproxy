@@ -89,3 +89,14 @@
 .flag-emoji{display:inline-grid;place-items:center;font-family:"Segoe UI Emoji","Apple Color Emoji",sans-serif;font-size:22px;line-height:1}
 .country-flag .flag-code,.selected-region .flag-code{display:grid;place-items:center;width:100%;height:100%;font-size:8px;font-weight:700;line-height:1;color:#64748b;background:#f8fafc}.selected-region>.flag-code{width:20px;height:13px;border:1px solid #d9e1e9;border-radius:2px}
 .compact-regions .country-flag .fi{display:block;width:100%;height:100%;background-size:cover}.config-title .selected-region>.fi{display:block;width:20px;height:13px;border:1px solid #d9e1e9;border-radius:2px;background-size:cover}
+.catalog-pending .store-category-tabs,
+.catalog-pending .horizontal-product-nav,
+.catalog-pending .store-commerce-grid,
+.catalog-empty .store-category-tabs,
+.catalog-empty .horizontal-product-nav,
+.catalog-empty .store-commerce-grid{display:none}
+.store-catalog-empty{margin-top:24px;padding:52px 24px;border:1px dashed #cfdceb;border-radius:18px;background:#fff;text-align:center;display:grid;gap:8px}.store-catalog-empty b{font-size:18px;color:#213550}.store-catalog-empty span{font-size:14px;color:#7d8ea5}
+.store-catalog-skeleton{margin-top:24px;padding:26px;border:1px solid #dce6f2;border-radius:18px;background:#fff;box-shadow:0 12px 34px rgba(25,55,95,.06)}
+.store-catalog-skeleton>div{display:flex;align-items:center;gap:14px}.store-catalog-skeleton>div>i{width:46px;height:46px;border-radius:13px}.store-catalog-skeleton span{display:grid;gap:7px}.store-catalog-skeleton b{font-size:16px;color:#213550}.store-catalog-skeleton small{font-size:13px;color:#7d8ea5}.store-catalog-skeleton section{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:24px 0}.store-catalog-skeleton section i{height:76px;border-radius:14px}.store-catalog-skeleton footer{display:grid;grid-template-columns:2fr 1fr;gap:14px}.store-catalog-skeleton footer i{height:180px;border-radius:16px}.store-catalog-skeleton i{display:block;background:linear-gradient(90deg,#edf2f8 25%,#f8fafc 50%,#edf2f8 75%);background-size:220% 100%;animation:storeSkeleton 1.25s ease-in-out infinite}
+@keyframes storeSkeleton{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media(max-width:760px){.store-catalog-skeleton section{grid-template-columns:1fr}.store-catalog-skeleton footer{grid-template-columns:1fr}.store-catalog-skeleton footer i{height:120px}}

@@ -68,9 +68,11 @@ export default function Home() {
   const [selected, setSelected] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [saleOffers, setSaleOffers] = useState<CatalogOffer[] | null>(null);
+  const [catalogLoaded, setCatalogLoaded] = useState(false);
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(initialSiteConfig);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const catalogEmpty = catalogLoaded && (!saleOffers?.length || !products.length);
   const regions = useMemo(() => {
     if (!saleOffers) return defaultRegions;
     const codes = [...new Set(saleOffers
@@ -121,7 +123,7 @@ export default function Home() {
         setProducts(next);
         if(!next.some((item:any)=>item.id===product)){const first=next.find((item:any)=>item.category==="proxy")||next[0];if(first){setProduct(first.id);setCategory(first.category)}}
       }
-    }).catch(() => undefined);
+    }).catch(() => {setSaleOffers([]);setProducts([])}).finally(()=>setCatalogLoaded(true));
     fetch("/api/site-config", { cache: "no-store" })
       .then(response => response.json())
       .then(data => setSiteConfig(current => ({ ...current, ...data })))
@@ -174,9 +176,11 @@ export default function Home() {
     <section className="hero"><div className="hero-copy"><div className="eyebrow">全球企业级网络服务</div><h1>稳定、纯净、<em>即买即用</em>的网络资源</h1><p>为跨境电商、数据业务、远程办公和多设备运营提供可靠连接。</p><div className="hero-actions"><a className="primary large" href="#pricing">立即选购</a><a className="text-link" href="#products">查看产品 →</a></div><div className="metrics"><div><b>80M+</b><span>全球 IP 池</span></div><div><b>99.9%</b><span>网络可用率</span></div><div><b>7×24</b><span>售后支持</span></div></div></div><div className="network-card"><div className="globe">◎<i className="dot d1"/><i className="dot d2"/><i className="dot d3"/></div><div className="status"><i/> 全球网络运行正常 <b>99.99%</b></div></div></section>
 
     <span id="pricing" className="store-anchor"/>
-    <section id="products" className="section unified-store-section">
+    <section id="products" className={`section unified-store-section${catalogLoaded?"":" catalog-pending"}${catalogEmpty?" catalog-empty":""}`} aria-busy={!catalogLoaded}>
       <div className="section-head"><div><span className="kicker">产品商城</span><h2>选择商品，直接完成购买配置</h2></div><p>商品、地区、周期和数量集中在同一个界面，无需上下滚动。</p></div>
       {currentUser&&<div className="purchase-user-banner"><span>{(currentUser.name||currentUser.email).slice(0,1).toUpperCase()}</span><div><small>{currentUser.role==="admin"?"当前管理账户":"本次订单购买账号"}</small><b>{currentUser.name||"未设置昵称"}</b><em>{currentUser.email}</em></div><strong>{currentUser.role==="admin"?"管理员":"已登录"}</strong><a href={currentUser.role==="admin"?"/admin":"/dashboard"}>{currentUser.role==="admin"?"进入管理后台 →":"进入客户中心 →"}</a></div>}
+      {!catalogLoaded&&<div className="store-catalog-skeleton" role="status"><div><i/><span><b>正在读取商品目录</b><small>正在同步后台商品、地区和价格…</small></span></div><section><i/><i/><i/></section><footer><i/><i/></footer></div>}
+      {catalogEmpty&&<div className="store-catalog-empty"><b>暂无可售商品</b><span>商品目录暂时不可用，请稍后刷新或联系客服。</span></div>}
       <div className="store-category-tabs store-category-top">
         <button className={category==="proxy"?"on":""} onClick={()=>chooseCategory("proxy")}><span>◫</span><b>代理 IP</b><small>静态住宅、动态住宅、数据中心</small></button>
         <button className={category==="node"?"on":""} onClick={()=>chooseCategory("node")}><span>▣</span><b>节点服务</b><small>软路由中转、电脑节点</small></button>

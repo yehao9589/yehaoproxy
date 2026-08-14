@@ -219,9 +219,9 @@ export default function ProductOffersModule() {
                 <b>{typeName(item.product)}</b><small>{item.billingCycle==="calendar-month"?"自然月计费":"固定天数计费"}</small>
               </span>
               <span><b>{item.regionName}</b><small>{item.region}</small></span>
-              <span className="offer-price">{item.billingCycle==="calendar-month"?"—":item.price7 < 0 ? "不出售" : <><b>$${item.price7.toFixed(2)}</b><small>7 天</small></>}</span>
-              <span className="offer-price">{item.price30 < 0 ? "不出售" : <><b>$${item.price30.toFixed(2)}</b><small>{item.billingCycle==="calendar-month"?"1 个自然月":"30 天"}</small></>}</span>
-              <span className="offer-price">{item.price90 < 0 ? "不出售" : <><b>$${item.price90.toFixed(2)}</b><small>{item.billingCycle==="calendar-month"?"3 个自然月":"90 天"}</small></>}</span>
+              <span className="offer-price">{item.billingCycle==="calendar-month"?"—":item.price7 < 0 ? "不出售" : <><b>¥{item.price7.toFixed(2)}</b><small>7 天</small></>}</span>
+              <span className="offer-price">{item.price30 < 0 ? "不出售" : <><b>¥{item.price30.toFixed(2)}</b><small>{item.billingCycle==="calendar-month"?"1 个自然月":"30 天"}</small></>}</span>
+              <span className="offer-price">{item.price90 < 0 ? "不出售" : <><b>¥{item.price90.toFixed(2)}</b><small>{item.billingCycle==="calendar-month"?"3 个自然月":"90 天"}</small></>}</span>
               <span><b>{item.saleStock < 0 ? "不限量" : item.saleStock}</b><small>{item.saleStock < 0 ? `已售 ${item.sold}` : `剩余 ${Math.max(0, item.saleStock - item.sold)}`}</small></span>
               <span className="offer-row-actions">
                 <button className="offer-edit" onClick={() => openOfferEditor(item)}>编辑商品</button>
