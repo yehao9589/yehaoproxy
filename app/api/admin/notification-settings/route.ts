@@ -16,6 +16,12 @@ export const DEFAULT_TEMPLATES = [
   {id: "after_sale", name: "售后申请进度", scene: "售后通知", enabled: true, emailEnabled: true, smsEnabled: false, emailSubject: "售后申请状态更新", emailBody: "订单 {{orderId}} 的售后申请状态已更新，请登录客户中心查看。", smsBody: "【YehaoProxy】订单{{orderId}}的售后申请状态已更新。"},
 ];
 
+export const DEFAULT_ADMIN_TEMPLATES = [
+  {id:"admin_new_order",name:"客户新购提醒",scene:"订单运营",enabled:true,emailEnabled:true,smsEnabled:false,emailSubject:"收到新订单 {{orderId}}",emailBody:"客户 {{customerEmail}} 创建了 {{product}} 订单，地区 {{region}}，数量 {{quantity}}，金额 {{amount}}。",smsBody:""},
+  {id:"admin_renewal",name:"客户续费提醒",scene:"续费核验",enabled:true,emailEnabled:true,smsEnabled:false,emailSubject:"收到续费订单 {{orderId}}",emailBody:"客户 {{customerEmail}} 提交了续费订单，原服务 {{sourceOrderId}}，续费周期 {{durationDays}} 天，金额 {{amount}}。",smsBody:""},
+  {id:"admin_stock_low",name:"库存不足提醒",scene:"库存预警",enabled:true,emailEnabled:true,smsEnabled:false,emailSubject:"商品库存不足：{{product}} / {{region}}",emailBody:"客户下单时库存不足。商品 {{product}}，地区 {{region}}，需要 {{required}}，当前可用 {{available}}。",smsBody:""},
+];
+
 type NotificationTemplateInput = {
   id?: unknown;
   name?: unknown;
@@ -51,9 +57,11 @@ export async function GET() {
   const options = Object.fromEntries(optionRows.map(item => [item.key, item.value]));
   let sms = null;
   let templates = DEFAULT_TEMPLATES;
+  let adminTemplates = DEFAULT_ADMIN_TEMPLATES;
   try { sms = options.sms_provider_config ? JSON.parse(options.sms_provider_config) : null; } catch {}
   try { templates = options.notification_templates ? JSON.parse(options.notification_templates) : DEFAULT_TEMPLATES; } catch {}
-  return NextResponse.json({email, sms, templates});
+  try { adminTemplates = options.admin_notification_templates ? JSON.parse(options.admin_notification_templates) : DEFAULT_ADMIN_TEMPLATES; } catch {}
+  return NextResponse.json({email, sms, templates, adminTemplates});
 }
 
 export async function POST(request: Request) {
@@ -92,6 +100,12 @@ export async function POST(request: Request) {
     }));
     await setSystemOption("notification_templates",JSON.stringify(templates),now);
     return NextResponse.json({ok: true, templates});
+  }
+  if (body?.kind === "admin-templates") {
+    if (!Array.isArray(body.templates) || !body.templates.length) return NextResponse.json({error:"管理员模板数据无效"},{status:400});
+    const templates=body.templates.map(item=>({id:String(item.id),name:String(item.name).slice(0,50),scene:String(item.scene).slice(0,30),enabled:item.enabled!==false,emailEnabled:item.emailEnabled!==false,smsEnabled:false,emailSubject:String(item.emailSubject).slice(0,100),emailBody:String(item.emailBody).slice(0,5000),smsBody:""}));
+    await setSystemOption("admin_notification_templates",JSON.stringify(templates),now);
+    return NextResponse.json({ok:true,templates});
   }
   return NextResponse.json({error: "通知配置类型无效"}, {status: 400});
 }

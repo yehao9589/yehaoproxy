@@ -47,7 +47,17 @@ export default function OrderClient(){
   const items=allItems.slice(offset,offset+pageSize),serviceRequests=allServiceRequests.slice(offset,offset+pageSize);
   const orderStats={total:allItems.length,pending:allItems.filter(item=>item.status==="pending").length,opening:allItems.filter(item=>["paid","provisioning"].includes(item.status)).length,active:allItems.filter(item=>item.status==="active").length};
   useEffect(()=>setPage(1),[section,pageSize]);
-  async function load(){const[ordersResponse,requestsResponse]=await Promise.all([fetch("/api/orders"),fetch("/api/service-requests")]),[ordersData,requestsData]=await Promise.all([ordersResponse.json(),requestsResponse.json()]);if(!ordersResponse.ok||!requestsResponse.ok)return setMessage(ordersData.error||requestsData.error);setItems(ordersData.items);setServiceRequests(requestsData.items||[]);const requested=new URLSearchParams(location.search).get("order");if(requested)setDetail(ordersData.items.find((item:O)=>item.id===requested)||null)}
+  async function load(){
+    setMessage("");
+    const ordersTask=fetch("/api/orders").then(async response=>({response,data:await response.json()}));
+    const requestsTask=fetch("/api/service-requests").then(async response=>({response,data:await response.json()}));
+    const {response:ordersResponse,data:ordersData}=await ordersTask;
+    if(!ordersResponse.ok)return setMessage(ordersData.error||"订单加载失败");
+    setItems(ordersData.items||[]);
+    const requested=new URLSearchParams(location.search).get("order");
+    if(requested)setDetail((ordersData.items||[]).find((item:O)=>item.id===requested)||null);
+    try{const {response,data}=await requestsTask;if(response.ok)setServiceRequests(data.items||[])}catch{}
+  }
   useEffect(()=>{void load()},[]);
   useEffect(()=>{[...document.querySelectorAll<HTMLElement>(".order-customer-table small")].filter(item=>item.textContent?.trim().startsWith("到期")).forEach(item=>item.setAttribute("hidden",""));const expiry=[...document.querySelectorAll<HTMLElement>(".customer-order-detail dt")].find(item=>item.textContent?.trim()==="到期时间");expiry?.parentElement?.setAttribute("hidden","")},[detail,items]);
   useEffect(()=>{const rows=[...document.querySelectorAll<HTMLElement>(".order-customer-table .orow:not(.head)")];rows.forEach((row,index)=>{const order=items[index],cell=row.children[1] as HTMLElement|undefined;if(!order||!cell)return;const grouped=new Map<string,number>();(order.bundleItems?.length?order.bundleItems:[order]).forEach(item=>grouped.set(item.product,(grouped.get(item.product)||0)+item.quantity));const title=[...grouped].map(([product,quantity])=>`${productNames[product]||product} × ${quantity}`).join("、");cell.replaceChildren();const label=document.createElement("b");label.textContent=title;cell.append(label);if(order.renewalOf){const source=document.createElement("small");source.textContent=`续费原服务 ${order.renewalOf}`;cell.append(source)}})},[items,section]);

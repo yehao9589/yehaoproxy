@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "../../../../../db";
 import { orders, productOffers, systemOptions } from "../../../../../db/schema";
 import { audit } from "../../../../../lib/audit";
+import {notifyAdmins} from "../../../../../lib/admin-event-notifications";
 import { getCurrentCustomer } from "../../../../../lib/auth";
 import { billingCycleFromNote } from "../../../../../lib/billing-period";
 
@@ -105,6 +106,7 @@ export async function PATCH(
       { sourceOrderId: order.id, durationDays, amount },
       req,
     );
+    void notifyAdmins("admin_renewal",{orderId:renewalId,customerEmail:user.email,sourceOrderId:order.id,durationDays,amount:`${order.currency} ${amount.toFixed(2)}`},[{label:"续费订单",value:renewalId,accent:true},{label:"客户",value:user.email},{label:"原服务",value:order.id},{label:"续费周期",value:`${durationDays} 天`},{label:"金额",value:`${order.currency} ${amount.toFixed(2)}`}]).catch(()=>{});
     return NextResponse.json({ ok: true, orderId: renewalId, amount });
   }
 

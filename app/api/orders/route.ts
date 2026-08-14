@@ -1,9 +1,11 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb, getRawDatabase } from "../../../db";
-import { orders, productOffers, proxyAllocations, serviceRequests } from "../../../db/schema";
+import { currencies, orders, productOffers, proxyAllocations, serviceRequests } from "../../../db/schema";
 import { getCurrentCustomer } from "../../../lib/auth";
 import { billingCycleFromNote } from "../../../lib/billing-period";
+import {sendOrderCreatedEmails} from "../../../lib/order-notifications";
+import {notifyAdmins} from "../../../lib/admin-event-notifications";
 
 const durations = new Set([7, 30, 90]);
 
@@ -25,6 +27,8 @@ export async function POST(req: Request) {
   ) return NextResponse.json({ error: "订单参数无效" }, { status: 400 });
 
   const db = getDb();
+  const [activeCurrency] = await db.select({code:currencies.code}).from(currencies).where(eq(currencies.enabled,true)).limit(1);
+  const currency = activeCurrency?.code || "USD";
   const [offer] = await db
     .select()
     .from(productOffers)
@@ -39,6 +43,7 @@ export async function POST(req: Request) {
   const unlimited = offer.saleStock < 0;
   const available = unlimited ? null : Math.max(0, offer.saleStock - offer.sold);
   if (!unlimited && available! < quantity) {
+    void notifyAdmins("admin_stock_low",{product,region,required:quantity,available:available||0},[{label:"商品",value:product},{label:"地区",value:region},{label:"需要数量",value:String(quantity)},{label:"可用库存",value:String(available||0),accent:true}]).catch(()=>{});
     return NextResponse.json({ error: "商城可售额度不足", available }, { status: 409 });
   }
 
@@ -49,8 +54,8 @@ export async function POST(req: Request) {
   const id = `YH-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   const d1 = getRawDatabase();
   const result = await d1.batch([
-    d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,admin_note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'USD','pending',?,?,?)")
-      .bind(id, user.email, product, region, quantity, durationDays, amount, `[BILLING_CYCLE]${offer.billingCycle}`, now, now),
+    d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,admin_note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,'pending',?,?,?)")
+      .bind(id, user.email, product, region, quantity, durationDays, amount, currency, `[BILLING_CYCLE]${offer.billingCycle}`, now, now),
     d1.prepare("UPDATE product_offers SET sold=sold+?,updated_at=? WHERE id=? AND enabled=1 AND (sale_stock<0 OR sale_stock-sold>=?)")
       .bind(quantity, now, offer.id, quantity),
   ]);
@@ -58,11 +63,12 @@ export async function POST(req: Request) {
     await d1.prepare("DELETE FROM orders WHERE id=?").bind(id).run();
     return NextResponse.json({ error: "商城可售额度刚刚发生变化，请重试" }, { status: 409 });
   }
+  void sendOrderCreatedEmails({id,customerEmail:user.email,product,region,quantity,durationDays,amount,currency}).catch(()=>{});
   return NextResponse.json({
     id,
     status: "pending",
     amount,
-    currency: "USD",
+    currency,
     entitlement: quantity,
     message: "付款后获得对应商品的服务额度",
   }, { status: 201 });

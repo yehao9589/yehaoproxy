@@ -7,6 +7,7 @@ import{encryptCredential}from"../../../../../lib/inventory-crypto";
 import{normalizeCityName}from"../../../../../lib/cities";
 import{addBillingPeriod,billingCycleFromNote}from"../../../../../lib/billing-period";
 import{getXPanelBinding,getXPanelServers}from"../../../../../lib/xpanel";
+import{audit}from"../../../../../lib/audit";
 
 const metadataLine=/^\[[A-Z_]+\][^\n]*$/gm;
 function adminDate(value:unknown){const raw=String(value||"").trim();return new Date(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(raw)?`${raw}+08:00`:raw)}
@@ -85,7 +86,8 @@ export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){
 }
 
 export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
-  if(!await requireAdminApi("orders"))return NextResponse.json({error:"无订单管理权限"},{status:403});
+  const admin=await requireAdminApi("orders");
+  if(!admin)return NextResponse.json({error:"无订单管理权限"},{status:403});
   const{id}=await params,b=await req.json().catch(()=>null),action=String(b?.action||""),db=getDb();
   const[order]=await db.select().from(orders).where(eq(orders.id,id)).limit(1);
   if(!order)return NextResponse.json({error:"订单不存在"},{status:404});
@@ -112,15 +114,17 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   }
   if(action==="service-update"){
     const currentInternal=metadata(order.adminNote),written=String(b?.adminNote||"").replace(metadataLine,"").trim(),requestedCycle=String(b?.billingCycle||billingCycleFromNote(order.adminNote)),internalWithoutCycle=currentInternal.replace(/\n?\[BILLING_CYCLE\][^\n]*/g,"").trim(),internal=`${internalWithoutCycle}${internalWithoutCycle?"\n":""}[BILLING_CYCLE]${requestedCycle}`;
-    const paymentMethod=String(b?.paymentMethod||"balance"),expiresAt=b?.expiresAt?adminDate(b.expiresAt):null,renewalAmount=b?.renewalAmount===""||b?.renewalAmount==null?null:Number(b.renewalAmount),durationDays=b?.durationDays==null||b.durationDays===""?order.durationDays:Number(b.durationDays),autoRenew=b?.autoRenew===true||b?.autoRenew==="true"||b?.autoRenew==="on",adminNote=`${internal}${internal&&written?"\n":""}${written}`.slice(0,1000),nextStatus=String(b?.status||order.status),cycle=requestedCycle;
+    const paymentMethod=String(b?.paymentMethod||"balance"),expiresAt=b?.expiresAt?adminDate(b.expiresAt):null,renewalAmount=b?.renewalAmount===""||b?.renewalAmount==null?null:Number(b.renewalAmount),durationDays=b?.durationDays==null||b.durationDays===""?order.durationDays:Number(b.durationDays),autoRenew=b?.autoRenew===true||b?.autoRenew==="true"||b?.autoRenew==="on",adminNote=`${internal}${internal&&written?"\n":""}${written}`.slice(0,1000),nextStatus=String(b?.status||order.status),cycle=requestedCycle,rawAmount=b?.amount==null?order.amount:Number(b.amount),amount=Math.round((rawAmount+Number.EPSILON)*100)/100;
     const validDuration=order.product==="cart-bundle"
       ?durationDays===0
       :Number.isInteger(durationDays)&&durationDays>0&&durationDays<=3650&&(cycle!=="calendar-month"||durationDays%30===0);
-    if(!["fixed-days","calendar-month"].includes(cycle)||!["balance","manual","alipay","wechat","paypal","usdt","bank"].includes(paymentMethod)||expiresAt&&Number.isNaN(expiresAt.getTime())||renewalAmount!==null&&(!Number.isFinite(renewalAmount)||renewalAmount<0)||!validDuration||!["pending","paid","provisioning","active"].includes(nextStatus))return NextResponse.json({error:cycle==="calendar-month"&&durationDays===7?"自然月计费不能使用 7 天周期":"续费周期或订单参数无效"},{status:400});
+    if(!["fixed-days","calendar-month"].includes(cycle)||!["balance","manual","alipay","wechat","paypal","usdt","bank"].includes(paymentMethod)||expiresAt&&Number.isNaN(expiresAt.getTime())||renewalAmount!==null&&(!Number.isFinite(renewalAmount)||renewalAmount<0)||!Number.isFinite(amount)||amount<0||amount>10000000||!validDuration||!["pending","paid","provisioning","active"].includes(nextStatus))return NextResponse.json({error:"续费周期或订单参数无效"},{status:400});
+    if(order.status!=="pending"&&Math.abs(amount-order.amount)>0.001)return NextResponse.json({error:"只有待付款订单可以修改付款金额"},{status:409});
     if(order.product==="computer-node"&&nextStatus==="active"&&!order.adminNote?.includes("[SUBSCRIPTION_URL]"))return NextResponse.json({error:"电脑节点必须先发放有效订阅链接，不能直接修改为已激活"},{status:409});
     if(["refunded","failed"].includes(order.status))return NextResponse.json({error:"已退款或已取消订单不可重新激活"},{status:409});
-    await db.update(orders).set({paymentMethod,expiresAt,renewalAmount,durationDays,autoRenew,adminNote,status:nextStatus as typeof order.status,updatedAt:now}).where(eq(orders.id,id));
+    await db.update(orders).set({paymentMethod,expiresAt,renewalAmount,durationDays,autoRenew,adminNote,status:nextStatus as typeof order.status,amount:Number(amount.toFixed(2)),updatedAt:now}).where(eq(orders.id,id));
     if(expiresAt)await db.update(proxyAllocations).set({expiresAt,autoRenew}).where(eq(proxyAllocations.orderId,id));
+    if(Math.abs(amount-order.amount)>0.001)await audit({id:admin.id,role:admin.role},"order.amount.update","order",id,{beforeAmount:order.amount,afterAmount:Number(amount.toFixed(2)),currency:order.currency},req);
     return NextResponse.json({ok:true,status:nextStatus});
   }
   if(action==="update"){

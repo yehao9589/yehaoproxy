@@ -2,7 +2,7 @@
 
 import {useEffect, useMemo, useState} from "react";
 
-type View = "email-templates" | "sms-templates" | "email" | "sms";
+type View = "email-templates" | "admin-templates" | "sms-templates" | "email" | "sms";
 type Template = {
   id: string;
   name: string;
@@ -53,6 +53,7 @@ export default function NotificationSettings() {
   const [email, setEmail] = useState<any>(null);
   const [sms, setSms] = useState<Sms>(emptySms);
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [adminTemplates, setAdminTemplates] = useState<Template[]>([]);
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
   const [editingChannel, setEditingChannel] = useState<"email" | "sms" | null>(null);
   const [emailProvider,setEmailProvider]=useState("resend");
@@ -76,6 +77,7 @@ export default function NotificationSettings() {
         emailEnabled: item.emailEnabled !== false,
         smsEnabled: item.smsEnabled === true,
       })));
+      setAdminTemplates((data.adminTemplates || []).map((item: Template) => ({...item,enabled:item.enabled!==false,emailEnabled:item.emailEnabled!==false,smsEnabled:false})));
     } else {
       notify(data.error || "通知配置读取失败");
     }
@@ -148,20 +150,19 @@ export default function NotificationSettings() {
     if (response.ok) setEditingTemplate(null);
   }
 
+  async function persistAdminTemplates(next=adminTemplates){const response=await fetch("/api/admin/notification-settings",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({kind:"admin-templates",templates:next})}),data=await response.json();notify(response.ok?"管理员通知模板已保存":data.error||"保存失败");if(response.ok)setEditingTemplate(null)}
+
   function updateTemplate(id: string, key: keyof Template, value: string | boolean) {
-    setTemplates(rows => rows.map(row => row.id === id ? {...row, [key]: value} : row));
+    const update=(rows:Template[])=>rows.map(row => row.id === id ? {...row, [key]: value} : row);
+    if(view==="admin-templates")setAdminTemplates(update);else setTemplates(update);
   }
 
   async function toggleTemplate(id: string) {
-    const next = templates.map(row => row.id === id ? {...row, enabled: row.enabled === false} : row);
-    setTemplates(next);
-    await persistTemplates(next);
+    const source=view==="admin-templates"?adminTemplates:templates,next=source.map(row => row.id === id ? {...row, enabled: row.enabled === false} : row);
+    if(view==="admin-templates"){setAdminTemplates(next);await persistAdminTemplates(next)}else{setTemplates(next);await persistTemplates(next)}
   }
 
-  const current = useMemo(
-    () => templates.find(item => item.id === editingTemplate) || null,
-    [templates, editingTemplate],
-  );
+  const current = useMemo(() => (view==="admin-templates"?adminTemplates:templates).find(item => item.id === editingTemplate) || null,[templates,adminTemplates,editingTemplate,view]);
 
   const activeTemplates = templates.filter(item => item.enabled !== false).length;
   const sceneCount = new Set(templates.map(item => item.scene)).size;
@@ -192,6 +193,7 @@ export default function NotificationSettings() {
 
       <nav className="notify-nav">
         <button className={view === "email-templates" ? "on" : ""} onClick={() => setView("email-templates")}>邮件模板</button>
+        <button className={view === "admin-templates" ? "on" : ""} onClick={() => setView("admin-templates")}>管理员通知</button>
         <button className={view === "sms-templates" ? "on" : ""} onClick={() => setView("sms-templates")}>短信模板</button>
         <button className={view === "email" ? "on" : ""} onClick={() => setView("email")}>邮件接口</button>
         <button className={view === "sms" ? "on" : ""} onClick={() => setView("sms")}>短信接口</button>
@@ -199,25 +201,25 @@ export default function NotificationSettings() {
 
       {loading ? <div className="notify-loading">正在读取通知配置…</div> : null}
 
-      {!loading && (view === "email-templates" || view === "sms-templates") && (
+      {!loading && (view === "email-templates" || view === "admin-templates" || view === "sms-templates") && (
         <section className="notify-panel">
           <div className="notify-panel-head">
-            <div><h3>{view==="email-templates"?"邮件模板":"短信模板"}</h3><p>{view==="email-templates"?"维护邮件标题、正文，并实时预览品牌邮件最终效果":"独立维护短信正文；未配置短信接口时不会发送"}</p></div>
-            <div className="notify-filter"><span>共 {templates.length} 个模板</span><button type="button">语言：简体中文</button></div>
+            <div><h3>{view==="admin-templates"?"管理员通知模板":view==="email-templates"?"客户邮件模板":"客户短信模板"}</h3><p>{view==="admin-templates"?"新购、续费和库存预警只发送给管理员账户，不会发送给客户":view==="email-templates"?"维护发给客户的邮件标题、正文，并实时预览":"独立维护发给客户的短信正文"}</p></div>
+            <div className="notify-filter"><span>共 {(view==="admin-templates"?adminTemplates:templates).length} 个模板</span><button type="button">语言：简体中文</button></div>
           </div>
           <div className="notify-table-wrap">
             <table className="notify-table">
-              <thead><tr><th>状态</th><th>模板名称</th><th>业务场景</th><th>{view==="email-templates"?"邮件标题":"短信内容"}</th><th>渠道状态</th><th>操作</th></tr></thead>
+              <thead><tr><th>状态</th><th>模板名称</th><th>业务场景</th><th>{view==="sms-templates"?"短信内容":"邮件标题"}</th><th>渠道状态</th><th>操作</th></tr></thead>
               <tbody>
-                {templates.map(item => (
+                {(view==="admin-templates"?adminTemplates:templates).map(item => (
                   <tr key={item.id}>
                     <td><button aria-label={`${item.name}状态`} className={`notify-switch ${item.enabled === false ? "" : "on"}`} onClick={() => void toggleTemplate(item.id)}><i/></button></td>
                     <td><button className="notify-template-link" onClick={() => setEditingTemplate(item.id)}>{item.name}</button><small>{item.id}</small></td>
                     <td><span className="notify-scene">{item.scene}</span></td>
-                    <td className="notify-subject">{view==="email-templates"?item.emailSubject:item.smsBody}</td>
+                    <td className="notify-subject">{view==="sms-templates"?item.smsBody:item.emailSubject}</td>
                     <td>
                       <div className="notify-channels">
-                        {view==="email-templates"?(item.emailEnabled !== false?<span className="active">邮件已启用</span>:<span className="off">邮件已关闭</span>):(item.smsEnabled === true?<span className="active sms">短信已启用</span>:<span className="off">短信已关闭</span>)}
+                        {view!=="sms-templates"?(item.emailEnabled !== false?<span className="active">邮件已启用</span>:<span className="off">邮件已关闭</span>):(item.smsEnabled === true?<span className="active sms">短信已启用</span>:<span className="off">短信已关闭</span>)}
                       </div>
                     </td>
                     <td><button className="notify-action" onClick={() => setEditingTemplate(item.id)}>编辑</button></td>
@@ -267,13 +269,13 @@ export default function NotificationSettings() {
                 <label>业务场景<input value={current.scene} onChange={event => updateTemplate(current.id, "scene", event.target.value)}/></label>
               </div>
               <div className="notify-channel-choice single">
-                <div><b>{view==="email-templates"?"邮件发送状态":"短信发送状态"}</b><small>{view==="email-templates"?"启用后，此业务场景会通过已配置的邮件接口发送":"短信接口为可选功能，接口未配置时建议保持关闭"}</small></div>
-                {view==="email-templates"?<label className={current.emailEnabled !== false ? "selected" : ""}><input type="checkbox" checked={current.emailEnabled !== false} onChange={event => updateTemplate(current.id, "emailEnabled", event.target.checked)}/><span><b>启用邮件</b><small>{email?.enabled?"接口已启用":"接口未启用"}</small></span></label>:<label className={current.smsEnabled === true ? "selected" : ""}><input type="checkbox" checked={current.smsEnabled === true} onChange={event => updateTemplate(current.id, "smsEnabled", event.target.checked)}/><span><b>启用短信</b><small>{sms.enabled?"接口已启用":"接口未启用"}</small></span></label>}
+                <div><b>{view!=="sms-templates"?"邮件发送状态":"短信发送状态"}</b><small>{view!=="sms-templates"?"启用后，此业务场景会通过已配置的邮件接口发送":"短信接口为可选功能，接口未配置时建议保持关闭"}</small></div>
+                {view!=="sms-templates"?<label className={current.emailEnabled !== false ? "selected" : ""}><input type="checkbox" checked={current.emailEnabled !== false} onChange={event => updateTemplate(current.id, "emailEnabled", event.target.checked)}/><span><b>启用邮件</b><small>{email?.enabled?"接口已启用":"接口未启用"}</small></span></label>:<label className={current.smsEnabled === true ? "selected" : ""}><input type="checkbox" checked={current.smsEnabled === true} onChange={event => updateTemplate(current.id, "smsEnabled", event.target.checked)}/><span><b>启用短信</b><small>{sms.enabled?"接口已启用":"接口未启用"}</small></span></label>}
               </div>
               <div className="notify-vars"><b>可用变量</b>{["{{code}}", "{{orderId}}", "{{product}}", "{{days}}", "{{expiresAt}}", "{{customerName}}"].map(item => <code key={item}>{item}</code>)}</div>
-              {view==="email-templates"?<><label className="notify-field">邮件标题<input value={current.emailSubject} onChange={event => updateTemplate(current.id, "emailSubject", event.target.value)}/></label><label className="notify-field">邮件正文<textarea rows={8} value={current.emailBody} onChange={event => updateTemplate(current.id, "emailBody", event.target.value)}/></label><EmailPreview template={current} brand={brand}/></>:<><label className="notify-field">短信正文 <small>{current.smsBody.length}/500</small><textarea rows={5} maxLength={500} value={current.smsBody} onChange={event => updateTemplate(current.id, "smsBody", event.target.value)}/></label><div className="notify-preview"><b>短信预览</b><p>{preview(current.smsBody)}</p></div></>}
+              {view!=="sms-templates"?<><label className="notify-field">邮件标题<input value={current.emailSubject} onChange={event => updateTemplate(current.id, "emailSubject", event.target.value)}/></label><label className="notify-field">邮件正文<textarea rows={8} value={current.emailBody} onChange={event => updateTemplate(current.id, "emailBody", event.target.value)}/></label><EmailPreview template={current} brand={brand}/></>:<><label className="notify-field">短信正文 <small>{current.smsBody.length}/500</small><textarea rows={5} maxLength={500} value={current.smsBody} onChange={event => updateTemplate(current.id, "smsBody", event.target.value)}/></label><div className="notify-preview"><b>短信预览</b><p>{preview(current.smsBody)}</p></div></>}
             </div>
-            <footer className="notify-drawer-foot"><button className="notify-btn secondary" onClick={() => setEditingTemplate(null)}>取消</button><button className="notify-btn primary" onClick={() => void persistTemplates()}>保存模板</button></footer>
+            <footer className="notify-drawer-foot"><button className="notify-btn secondary" onClick={() => setEditingTemplate(null)}>取消</button><button className="notify-btn primary" onClick={() => void (view==="admin-templates"?persistAdminTemplates():persistTemplates())}>保存模板</button></footer>
           </section>
         </div>
       )}
