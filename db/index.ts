@@ -15,6 +15,32 @@ function createDatabase(client:unknown){return drizzleD1(client as D1Database,{s
 type AppDatabase=ReturnType<typeof createDatabase>;
 let remoteDatabase:AppDatabase|null=null;
 
+function decodeRemoteValue(value:unknown):unknown{
+  if(value==null||typeof value!=="object")return value;
+  if(Array.isArray(value))return value.map(decodeRemoteValue);
+  const record=value as Record<string,unknown>;
+  const keys=Object.keys(record);
+  const bytes=record.type==="Buffer"&&Array.isArray(record.data)
+    ?record.data.map(Number)
+    :keys.length>0&&keys.every(key=>/^\d+$/.test(key))
+      ?Object.entries(record).sort((a,b)=>Number(a[0])-Number(b[0])).map(([,item])=>Number(item))
+      :null;
+  if(bytes&&bytes.every(item=>Number.isInteger(item)&&item>=0&&item<=255))return new TextDecoder().decode(new Uint8Array(bytes));
+  return Object.fromEntries(Object.entries(record).map(([key,item])=>[key,decodeRemoteValue(item)]));
+}
+
+function decodeRemoteRows(rows:Record<string,unknown>[]|undefined){
+  return(rows||[]).map(row=>decodeRemoteValue(row) as Record<string,unknown>);
+}
+
+async function readRemoteResponse(response:Response){
+  const raw=await response.text();
+  let result:{rows?:Record<string,unknown>[];meta?:Record<string,unknown>;error?:string};
+  try{result=raw?JSON.parse(raw):{}}catch{throw new Error(`MySQL 桥接返回了无效响应（HTTP ${response.status}）`)}
+  if(!response.ok)throw new Error(result.error||`MySQL 查询失败（HTTP ${response.status}）`);
+  return{...result,rows:decodeRemoteRows(result.rows)};
+}
+
 export function databaseDriver() {
   const workerEnv = runtimeEnvironment;
   return String(workerEnv.DATABASE_DRIVER || process.env.DATABASE_DRIVER || "sqlite").toLowerCase() === "mysql" ? "mysql" : "sqlite";
@@ -27,7 +53,7 @@ class RemoteStatement {
   toPayload(){return{sql:this.sql,params:this.params}}
   private async execute(){
     const response=await fetch(`${this.endpoint}/query`,{method:"POST",headers:{"content-type":"application/json",...(this.secret?{authorization:`Bearer ${this.secret}`}:{})},body:JSON.stringify({sql:this.sql,params:this.params})});
-    const result=await response.json() as {rows?:Record<string,unknown>[];meta?:Record<string,unknown>;error?:string};
+    const result=await readRemoteResponse(response);
     if(!response.ok)throw new Error(result.error||"MySQL 查询失败");
     return result;
   }
@@ -42,9 +68,11 @@ class RemoteMySqlDatabase {
   prepare(sql:string){return new RemoteStatement(sql,this.endpoint,this.secret)}
   async batch(statements:RemoteStatement[]){
     const response=await fetch(`${this.endpoint}/batch`,{method:"POST",headers:{"content-type":"application/json",...(this.secret?{authorization:`Bearer ${this.secret}`}:{})},body:JSON.stringify({statements:statements.map(statement=>statement.toPayload())})});
-    const result=await response.json() as {results?:Array<{rows?:Record<string,unknown>[];meta?:Record<string,unknown>}>;error?:string};
+    const raw=await response.text();
+    let result:{results?:Array<{rows?:Record<string,unknown>[];meta?:Record<string,unknown>}>;error?:string};
+    try{result=raw?JSON.parse(raw):{}}catch{throw new Error(`MySQL 事务接口返回了无效响应（HTTP ${response.status}）`)}
     if(!response.ok)throw new Error(result.error||"MySQL 事务执行失败");
-    return(result.results||[]).map(item=>({results:item.rows||[],success:true,meta:item.meta||{}}));
+    return(result.results||[]).map(item=>({results:decodeRemoteRows(item.rows),success:true,meta:item.meta||{}}));
   }
   async exec(sql:string){return new RemoteStatement(sql,this.endpoint,this.secret).run()}
 }

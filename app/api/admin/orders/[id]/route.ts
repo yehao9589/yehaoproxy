@@ -8,11 +8,23 @@ import{normalizeCityName}from"../../../../../lib/cities";
 import{addBillingPeriod,billingCycleFromNote}from"../../../../../lib/billing-period";
 import{getXPanelBinding,getXPanelServers}from"../../../../../lib/xpanel";
 import{audit}from"../../../../../lib/audit";
+import{databaseText}from"../../../../../lib/database-text";
 
 const metadataLine=/^\[[A-Z_]+\][^\n]*$/gm;
 function adminDate(value:unknown){const raw=String(value||"").trim();return new Date(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(raw)?`${raw}+08:00`:raw)}
 function visibleNote(value:string|null){return String(value||"").replace(metadataLine,"").replace(/\n{2,}/g,"\n").trim()||null}
 function metadata(value:string|null){return String(value||"").match(metadataLine)?.join("\n")||""}
+function orderNote(value:unknown){return databaseText(value)}
+
+async function syncBundleParent(db:ReturnType<typeof getDb>,order:typeof orders.$inferSelect,now:Date,childExpiry:Date|null){
+  const parentId=orderNote(order.adminNote).match(/\[BUNDLE_PARENT\]([^\n]+)/)?.[1]?.trim();
+  if(!parentId)return;
+  const siblings=(await db.select().from(orders).where(eq(orders.customerEmail,order.customerEmail))).filter(item=>orderNote(item.adminNote).includes(`[BUNDLE_PARENT]${parentId}`));
+  const normalized=siblings.map(item=>item.id===order.id?{...item,status:"active" as const,expiresAt:childExpiry||item.expiresAt}:item);
+  if(!normalized.length||!normalized.every(item=>item.status==="active"))return;
+  const parentExpiry=normalized.map(item=>item.expiresAt).filter((value):value is Date=>!!value).sort((a,b)=>b.getTime()-a.getTime())[0]||childExpiry;
+  await db.update(orders).set({status:"active",expiresAt:parentExpiry,updatedAt:now}).where(eq(orders.id,parentId));
+}
 
 export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){
   if(!await requireAdminApi("orders"))return NextResponse.json({error:"无订单管理权限"},{status:403});
@@ -21,7 +33,7 @@ export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){
   if(!order)return NextResponse.json({error:"订单不存在"},{status:404});
   const[customer]=await db.select({id:customers.id,email:customers.email,name:customers.name,status:customers.status}).from(customers).where(eq(customers.email,order.customerEmail)).limit(1);
   const relatedOrders=order.product==="cart-bundle"
-    ?(await db.select().from(orders).where(eq(orders.customerEmail,order.customerEmail))).filter(item=>item.adminNote?.includes(`[BUNDLE_PARENT]${id}`))
+    ?(await db.select().from(orders).where(eq(orders.customerEmail,order.customerEmail))).filter(item=>orderNote(item.adminNote).includes(`[BUNDLE_PARENT]${id}`))
     :[order];
   const renewalOf=order.adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1]?.trim()||null;
   const renewalAllocationId=order.adminNote?.match(/\[RENEW_ALLOCATION\]([^\n]+)/)?.[1]?.trim()||null;
@@ -104,15 +116,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     const adminNote=`${cleanNote}${cleanNote?"\n":""}[SUBSCRIPTION_URL]${subscriptionUrl}`;
     const expiresAt=order.expiresAt||addBillingPeriod(now,order.durationDays,billingCycleFromNote(order.adminNote));
     await db.update(orders).set({adminNote,status:"active",expiresAt,updatedAt:now}).where(eq(orders.id,id));
-    const parentId=order.adminNote?.match(/\[BUNDLE_PARENT\]([^\n]+)/)?.[1]?.trim();
-    if(parentId){
-      const siblings=(await db.select().from(orders).where(eq(orders.customerEmail,order.customerEmail))).filter(item=>item.adminNote?.includes(`[BUNDLE_PARENT]${parentId}`));
-      const afterDelivery=siblings.map(item=>item.id===id?{...item,status:"active" as const,expiresAt}:item);
-      if(afterDelivery.length>0&&afterDelivery.every(item=>item.status==="active")){
-        const parentExpiry=afterDelivery.map(item=>item.expiresAt).filter((value):value is Date=>!!value).sort((a,b)=>b.getTime()-a.getTime())[0]||expiresAt;
-        await db.update(orders).set({status:"active",expiresAt:parentExpiry,updatedAt:now}).where(eq(orders.id,parentId));
-      }
-    }
+    await syncBundleParent(db,order,now,expiresAt);
     return NextResponse.json({ok:true,status:"active",subscriptionUrl,expiresAt});
   }
   if(action==="service-update"){
@@ -177,14 +181,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     if(completes){
       await db.update(proxyAllocations).set({expiresAt:expiry,autoRenew:order.autoRenew}).where(eq(proxyAllocations.orderId,id));
       await db.update(orders).set({status:"active",region:country,expiresAt:expiry,updatedAt:now}).where(eq(orders.id,id));
-      const parentId=order.adminNote?.match(/\[BUNDLE_PARENT\]([^\n]+)/)?.[1]?.trim();
-      if(parentId){
-        const siblings=(await db.select().from(orders).where(eq(orders.customerEmail,order.customerEmail))).filter(item=>item.adminNote?.includes(`[BUNDLE_PARENT]${parentId}`));
-        if(siblings.length>0&&siblings.every(item=>item.status==="active")){
-          const parentExpiry=siblings.map(item=>item.expiresAt).filter((value):value is Date=>!!value).sort((a,b)=>b.getTime()-a.getTime())[0]||expiry;
-          await db.update(orders).set({status:"active",expiresAt:parentExpiry,updatedAt:now}).where(eq(orders.id,parentId));
-        }
-      }
+      await syncBundleParent(db,order,now,expiry);
     }else await db.update(orders).set({status:"provisioning",expiresAt:null,updatedAt:now}).where(eq(orders.id,id));
     return NextResponse.json({ok:true,allocated:existing.length+1,remaining:Math.max(0,order.quantity-existing.length-1),status:completes?"active":"provisioning",expiresAt:expiry});
   }
