@@ -18,6 +18,16 @@
   z-index: 20010;
 }
 
+.order-confirm-mask{position:fixed;inset:0;z-index:20020;display:grid;place-items:center;padding:24px;background:rgba(9,24,42,.55);backdrop-filter:blur(3px)}
+.order-confirm-dialog{width:min(520px,calc(100vw - 32px));overflow:hidden;border:1px solid #dce5ef;border-radius:18px;background:#fff;box-shadow:0 28px 90px rgba(8,25,44,.28)}
+.order-confirm-dialog>header{display:flex;align-items:center;gap:13px;padding:20px 22px;border-bottom:1px solid #e8edf3;background:linear-gradient(135deg,#fff 0%,#f7faff 100%)}
+.order-confirm-dialog>header>span{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;font-size:18px;font-weight:800}.order-confirm-dialog .refund-icon{background:#fff1f2;color:#d43445}.order-confirm-dialog .cancel-icon{background:#fff7e6;color:#c47a0b}
+.order-confirm-dialog>header>div{flex:1}.order-confirm-dialog>header small{display:block;margin-bottom:2px;color:#718399;font-size:11px;font-weight:700;letter-spacing:.08em}.order-confirm-dialog>header h3{margin:0;color:#172b43;font-size:20px}.order-confirm-dialog>header>button{display:grid;place-items:center;width:36px;min-width:36px;height:36px;padding:0;border:0;border-radius:10px;background:#eef3f8;color:#63758a;font-size:21px}
+.order-confirm-body{padding:22px}.order-confirm-body>p{margin:0 0 18px;color:#52667c;line-height:1.75}.order-confirm-body>p strong{color:#d43445;font-size:18px}
+.refund-methods{display:grid;gap:10px}.refund-methods label{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid #dce5ef;border-radius:12px;background:#fff;cursor:pointer;transition:.15s}.refund-methods label:hover,.refund-methods label.selected{border-color:#4b8fe2;background:#f4f9ff;box-shadow:0 0 0 2px rgba(52,128,220,.08)}.refund-methods input{width:16px;height:16px;accent-color:#2476d2}.refund-methods span{display:grid;flex:1;gap:3px}.refund-methods b{color:#23384f;font-size:14px}.refund-methods small{color:#7a8da2;font-size:12px}.refund-methods i{padding:3px 7px;border-radius:999px;background:#e7f4ff;color:#2476d2;font-size:10px;font-style:normal;font-weight:700}
+.confirm-warning{margin-top:16px;padding:11px 13px;border-radius:10px;background:#fff8e8;color:#8a661e;font-size:12px;line-height:1.55}.order-confirm-dialog>footer{display:flex;justify-content:flex-end;gap:10px;padding:15px 22px;border-top:1px solid #e8edf3;background:#f8fafc}.order-confirm-dialog>footer button{min-width:100px;height:38px}
+@media(max-width:560px){.order-confirm-mask{padding:12px}.order-confirm-dialog>header,.order-confirm-body{padding:17px}.order-confirm-dialog>footer{padding:13px 17px}.order-confirm-dialog>footer button{flex:1}}
+
 :is(
   .admin-permission-modal,
   .aftersales-detail,
