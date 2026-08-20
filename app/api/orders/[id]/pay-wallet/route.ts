@@ -86,6 +86,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
     for (const child of bundleChildren) {
       writes.push(db.update(orders).set({ status: "provisioning", paymentMethod: "balance", paymentReference: txId, updatedAt: now }).where(eq(orders.id, child.id)));
+      const childSourceId=child.adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1];
+      const childAllocationId=child.adminNote?.match(/\[RENEW_ALLOCATION\]([^\n]+)/)?.[1];
+      if(childSourceId){
+        const source=customerOrders.find(item=>item.id===childSourceId);
+        if(!source||source.status==="refunded")return NextResponse.json({error:`续费明细 ${child.id} 对应的原服务不存在或已退款`},{status:409});
+        const cycle=billingCycleFromNote(source.adminNote||child.adminNote),base=source.expiresAt&&source.expiresAt>now?source.expiresAt:now,expiresAt=addBillingPeriod(base,child.durationDays,cycle);
+        writes.push(db.update(orders).set({status:"active",expiresAt,updatedAt:now}).where(eq(orders.id,source.id)));
+        let previousAllocationExpiry="";
+        if(childAllocationId){const[allocation]=await db.select().from(proxyAllocations).where(eq(proxyAllocations.id,childAllocationId)).limit(1);if(!allocation)return NextResponse.json({error:`续费明细 ${child.id} 对应的代理资源不存在`},{status:409});previousAllocationExpiry=allocation.expiresAt?.toISOString()||"";const allocationBase=allocation.expiresAt&&allocation.expiresAt>now?allocation.expiresAt:now;writes.push(db.update(proxyAllocations).set({expiresAt:addBillingPeriod(allocationBase,child.durationDays,cycle)}).where(eq(proxyAllocations.id,allocation.id)))}
+        writes.push(db.update(orders).set({adminNote:`${child.adminNote||""}\n[RENEW_PREVIOUS_SOURCE_EXPIRY]${source.expiresAt?.toISOString()||""}\n[RENEW_PREVIOUS_ALLOCATION_EXPIRY]${previousAllocationExpiry}\n[RENEW_APPLIED_AT]${now.toISOString()}`.trim(),updatedAt:now}).where(eq(orders.id,child.id)));
+      }
     }
     if (order.product === "node-traffic-reset") {
       const sourceOrderId = order.adminNote?.match(/\[RESET_OF\]([^\n]+)/)?.[1] || targetOrderId;

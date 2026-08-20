@@ -157,10 +157,15 @@ test("customer order totals separate effective revenue from refunds", async () =
 test("proxy batch renewal uses the direct renewal wording and order flow", async () => {
   const proxyUi = await read("app/dashboard/proxies/ProxiesClient.tsx");
   const bulkApi = await read("app/api/proxies/bulk/route.ts");
+  const walletPayment = await read("app/api/orders/[id]/pay-wallet/route.ts");
+  const onlinePayment = await read("lib/online-payment.ts");
   assert.doesNotMatch(proxyUi, /批量申请续费/);
   assert.match(proxyUi, />批量续费</);
   assert.match(bulkApi, /proxy\.renewal_orders\.create/);
   assert.match(bulkApi, /db\.insert\(orders\)/);
+  assert.match(bulkApi, /BUNDLE_RENEWAL/);
+  assert.match(walletPayment, /childSourceId/);
+  assert.match(onlinePayment, /RENEW_APPLIED_AT/);
 });
 
 test("required commercial pages and deployment configuration exist", async () => {

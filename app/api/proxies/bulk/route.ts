@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     const durationDays = Number(body?.durationDays);
     if (!Number.isInteger(durationDays)||durationDays<1||durationDays>3650) return NextResponse.json({error:"续费周期无效"},{status:400});
     const offers = await db.select().from(productOffers).where(eq(productOffers.enabled,true));
-    const now = new Date(), created: Array<{id:string;amount:number}> = [];
+    const now = new Date(), bundleId=owned.length>1?`YH-${crypto.randomUUID().slice(0,8).toUpperCase()}`:null, created: Array<{id:string;amount:number;sourceOrderId:string;product:string;region:string}> = [];
     for (const row of owned) {
       const cycle = billingCycleFromNote(row.order.adminNote);
       if (cycle === "calendar-month"&&durationDays%30!==0) return NextResponse.json({error:"按月续费必须填写完整月数"},{status:409});
@@ -51,12 +51,14 @@ export async function POST(req: Request) {
       const amount = Number(((row.order.renewalAmount!=null&&row.order.renewalAmount>0?row.order.renewalAmount*multiplier:Number(listedPrice))).toFixed(2));
       if(!Number.isFinite(amount)||amount<=0)return NextResponse.json({error:`${row.order.product} / ${row.order.region} 尚未配置该续费价格`},{status:409});
       const renewalId=`RN-${crypto.randomUUID().slice(0,8).toUpperCase()}`;
-      await db.insert(orders).values({id:renewalId,customerEmail:user.email,product:row.order.product,region:row.order.region,quantity:1,durationDays,amount,currency:row.order.currency,status:"pending",paymentMethod:"balance",renewalAmount:amount,adminNote:`[RENEWAL_OF]${row.order.id}\n[RENEW_ALLOCATION]${row.allocation.id}\n[BILLING_CYCLE]${cycle}`,createdAt:now,updatedAt:now});
-      created.push({id:renewalId,amount});
+      await db.insert(orders).values({id:renewalId,customerEmail:user.email,product:row.order.product,region:row.order.region,quantity:1,durationDays,amount,currency:row.order.currency,status:"pending",paymentMethod:"balance",renewalAmount:amount,adminNote:`${bundleId?`[BUNDLE_PARENT]${bundleId}\n`:""}[RENEWAL_OF]${row.order.id}\n[RENEW_ALLOCATION]${row.allocation.id}\n[BILLING_CYCLE]${cycle}`,createdAt:now,updatedAt:now});
+      created.push({id:renewalId,amount,sourceOrderId:row.order.id,product:row.order.product,region:row.order.region});
     }
     const total=Number(created.reduce((sum,item)=>sum+item.amount,0).toFixed(2));
-    await audit({id:user.id,role:user.role},"proxy.renewal_orders.create","order",created[0]?.id||null,{allocationIds:ids,orderIds:created.map(item=>item.id),durationDays,total},req);
-    return NextResponse.json({ok:true,created:created.length,orderIds:created.map(item=>item.id),orderId:created[0]?.id,total});
+    if(bundleId){const bundleItems=encodeURIComponent(JSON.stringify(created.map(item=>({id:item.sourceOrderId,product:item.product,region:item.region,quantity:1,durationDays,amount:item.amount,renewalOrderId:item.id}))));await db.insert(orders).values({id:bundleId,customerEmail:user.email,product:"cart-bundle",region:"MULTI",quantity:created.length,durationDays:0,amount:total,currency:owned[0].order.currency,status:"pending",paymentMethod:"balance",renewalAmount:total,adminNote:`[BUNDLE_ITEMS]${bundleItems}\n[BUNDLE_RENEWAL]true`,createdAt:now,updatedAt:now})}
+    const checkoutOrderId=bundleId||created[0]?.id;
+    await audit({id:user.id,role:user.role},"proxy.renewal_orders.create","order",checkoutOrderId||null,{allocationIds:ids,orderIds:created.map(item=>item.id),bundleOrderId:bundleId,durationDays,total},req);
+    return NextResponse.json({ok:true,created:created.length,orderIds:created.map(item=>item.id),orderId:checkoutOrderId,total,bundled:Boolean(bundleId)});
   }
   if(action==="auto-renew"){
     if (owned.some(row => row.allocation.expiresAt && row.allocation.expiresAt.getTime() <= Date.now())) return NextResponse.json({ error: "已到期代理不能开启自动续费，请先手动续费" }, { status: 409 });

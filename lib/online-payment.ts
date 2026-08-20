@@ -1,7 +1,8 @@
 import {and,eq} from "drizzle-orm";
 import {getDb} from "../db";
-import {customers,orders,paymentTransactions,wallets,walletTransactions} from "../db/schema";
+import {customers,orders,paymentTransactions,proxyAllocations,wallets,walletTransactions} from "../db/schema";
 import {withRequestLock} from "./request-lock";
+import {addBillingPeriod,billingCycleFromNote} from "./billing-period";
 
 export async function completeOnlinePayment(input:{orderId:string;gatewayId:string;tradeNo:string;paidAmount:number}){
   return withRequestLock(`online-payment:${input.orderId}`,async()=>{
@@ -28,7 +29,11 @@ export async function completeOnlinePayment(input:{orderId:string;gatewayId:stri
       writes.push(db.update(orders).set({status:"provisioning",paymentMethod:"alipay",paymentReference:input.tradeNo,updatedAt:now}).where(eq(orders.id,order.id)));
       if(order.product==="cart-bundle"){
         const children=(await db.select().from(orders).where(eq(orders.customerEmail,order.customerEmail))).filter(item=>item.adminNote?.includes(`[BUNDLE_PARENT]${order.id}`));
-        for(const child of children)writes.push(db.update(orders).set({status:"provisioning",paymentMethod:"alipay",paymentReference:input.tradeNo,updatedAt:now}).where(eq(orders.id,child.id)));
+        for(const child of children){
+          writes.push(db.update(orders).set({status:"provisioning",paymentMethod:"alipay",paymentReference:input.tradeNo,updatedAt:now}).where(eq(orders.id,child.id)));
+          const sourceId=child.adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1],allocationId=child.adminNote?.match(/\[RENEW_ALLOCATION\]([^\n]+)/)?.[1];
+          if(sourceId){const[source]=await db.select().from(orders).where(and(eq(orders.id,sourceId),eq(orders.customerEmail,order.customerEmail))).limit(1);if(!source||source.status==="refunded")throw new Error(`续费明细 ${child.id} 对应的原服务不存在或已退款`);const cycle=billingCycleFromNote(source.adminNote||child.adminNote),base=source.expiresAt&&source.expiresAt>now?source.expiresAt:now;writes.push(db.update(orders).set({status:"active",expiresAt:addBillingPeriod(base,child.durationDays,cycle),updatedAt:now}).where(eq(orders.id,source.id)));let previousAllocationExpiry="";if(allocationId){const[allocation]=await db.select().from(proxyAllocations).where(eq(proxyAllocations.id,allocationId)).limit(1);if(!allocation)throw new Error(`续费明细 ${child.id} 对应的代理资源不存在`);previousAllocationExpiry=allocation.expiresAt?.toISOString()||"";const allocationBase=allocation.expiresAt&&allocation.expiresAt>now?allocation.expiresAt:now;writes.push(db.update(proxyAllocations).set({expiresAt:addBillingPeriod(allocationBase,child.durationDays,cycle)}).where(eq(proxyAllocations.id,allocation.id)))}writes.push(db.update(orders).set({adminNote:`${child.adminNote||""}\n[RENEW_PREVIOUS_SOURCE_EXPIRY]${source.expiresAt?.toISOString()||""}\n[RENEW_PREVIOUS_ALLOCATION_EXPIRY]${previousAllocationExpiry}\n[RENEW_APPLIED_AT]${now.toISOString()}`.trim(),updatedAt:now}).where(eq(orders.id,child.id)))}
+        }
       }
     }
     await db.batch(writes as[Q,...Q[]]);
