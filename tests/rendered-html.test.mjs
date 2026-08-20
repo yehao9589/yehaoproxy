@@ -168,6 +168,16 @@ test("proxy batch renewal uses the direct renewal wording and order flow", async
   assert.match(onlinePayment, /RENEW_APPLIED_AT/);
 });
 
+test("Alipay checkout applies coupons server-side and opens externally", async () => {
+  const checkoutApi = await read("app/api/checkout/[gateway]/route.ts");
+  const orderUi = await read("app/dashboard/orders/OrderClient.tsx");
+  assert.match(checkoutApi, /couponRedemptions/);
+  assert.match(checkoutApi, /couponCode/);
+  assert.match(checkoutApi, /convertCurrency\(payable/);
+  assert.match(orderUi, /window\.open\("about:blank","_blank"\)/);
+  assert.match(orderUi, /couponCode:couponCode\.trim\(\)/);
+});
+
 test("required commercial pages and deployment configuration exist", async () => {
   for (const file of [
     "app/login/page.tsx",
