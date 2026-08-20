@@ -5,6 +5,7 @@ import { getDb } from "../../../db";
 import { orders, productOffers, proxyAllocations, systemOptions } from "../../../db/schema";
 import { decryptCredential } from "../../../lib/inventory-crypto";
 import { billingCycleFromNote } from "../../../lib/billing-period";
+import { proxyNoteValue, visibleProxyNote } from "../../../lib/proxy-note";
 
 export async function GET(req: Request) {
   const user = await getCurrentCustomer();
@@ -38,12 +39,12 @@ export async function GET(req: Request) {
   const archiveDays = Number(archiveOption?.value || 30), archiveCutoff = Date.now() - archiveDays * 86400000;
   const items = (await Promise.all(owned.map(async row => {
     if(row.allocation.expiresAt&&row.allocation.expiresAt.getTime()<archiveCutoff)return null;
-    const activatedMarker=row.allocation.note?.match(/\[ACTIVATED_AT\]([^\n]+)/)?.[1];
+    const activatedMarker=proxyNoteValue(row.allocation.note,"ACTIVATED_AT");
     const extractedAt=activatedMarker?new Date(activatedMarker):null;
     const replaceEligibleUntil = extractedAt ? new Date(extractedAt.getTime() + 3 * 86400000) : null;
     const rawNote = row.allocation.note || "";
-    const city = rawNote.match(/\[CITY\]([^\n]*)/)?.[1] || null;
-    const note = rawNote.replace(/\n?\[CITY\][^\n]*/g, "").trim();
+    const city = proxyNoteValue(rawNote,"CITY") || null;
+    const note = visibleProxyNote(rawNote);
     const savedBillingCycle = row.adminNote?.match(/\[BILLING_CYCLE\]([^\n]+)/)?.[1]?.trim();
     const billingCycle = savedBillingCycle === "calendar-month" || savedBillingCycle === "fixed-days"
       ? billingCycleFromNote(row.adminNote)

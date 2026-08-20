@@ -131,6 +131,38 @@ test("MySQL bridge preserves duplicate columns for Drizzle row mapping", async (
   assert.match(bridge, /normalizedRaw/);
 });
 
+test("proxy notes hide internal metadata while preserving it on customer edits", async () => {
+  const helper = await read("lib/proxy-note.ts");
+  const listRoute = await read("app/api/proxies/route.ts");
+  const updateRoute = await read("app/api/proxies/[id]/route.ts");
+  const exportRoute = await read("app/api/proxies/export/route.ts");
+  assert.match(helper, /CITY\|ACTIVATED_AT/);
+  assert.match(helper, /visibleProxyNote/);
+  assert.match(listRoute, /visibleProxyNote/);
+  assert.match(updateRoute, /composeProxyNote/);
+  assert.match(exportRoute, /visibleProxyNote/);
+  assert.match(exportRoute, /国家\/地区,城市/);
+  assert.match(exportRoute, /Asia\/Shanghai/);
+});
+
+test("customer order totals separate effective revenue from refunds", async () => {
+  const customerApi = await read("app/api/admin/customers/[id]/route.ts");
+  const customerUi = await read("app/admin/customers/CustomersClient.tsx");
+  assert.match(customerApi, /refundedAmount/);
+  assert.match(customerApi, /paidOrderCount/);
+  assert.match(customerUi, /有效收款/);
+  assert.match(customerUi, /已退款/);
+});
+
+test("proxy batch renewal uses the direct renewal wording and order flow", async () => {
+  const proxyUi = await read("app/dashboard/proxies/ProxiesClient.tsx");
+  const bulkApi = await read("app/api/proxies/bulk/route.ts");
+  assert.doesNotMatch(proxyUi, /批量申请续费/);
+  assert.match(proxyUi, />批量续费</);
+  assert.match(bulkApi, /proxy\.renewal_orders\.create/);
+  assert.match(bulkApi, /db\.insert\(orders\)/);
+});
+
 test("required commercial pages and deployment configuration exist", async () => {
   for (const file of [
     "app/login/page.tsx",

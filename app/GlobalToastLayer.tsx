@@ -40,6 +40,7 @@ export default function GlobalToastLayer(){
       const method=String(init?.method||(input instanceof Request?input.method:"GET")).toUpperCase();
       if(["POST","PUT","PATCH","DELETE"].includes(method)){
         const url=String(input instanceof Request?input.url:input);
+        if(url.includes("/api/admin/impersonation/heartbeat"))return response;
         if(url.includes("/api/admin/products")||url.includes("/api/admin/product-types"))return response;
         const fallbackError=method==="DELETE"?"删除失败":method==="POST"?"操作失败":"保存失败";
         let resultText=successText(url,method),resultKind:Toast["kind"]="success";

@@ -54,6 +54,10 @@
 .admin-pro .record-head-actions{display:flex;align-items:center;gap:14px}
 .admin-pro .record-head-actions>button{height:36px;padding:0 14px;border:1px solid #2f75e8;border-radius:8px;background:#2f75e8;color:#fff;font-size:12px;font-weight:700;cursor:pointer}
 .admin-pro .record-head-actions>button:hover{background:#2166d4}
+.admin-pro .record-order-totals{display:flex;align-items:center;gap:16px;padding-left:2px}
+.admin-pro .record-order-totals strong{display:flex;flex-direction:column;align-items:flex-end;color:#203754;font-size:17px;line-height:1.15;white-space:nowrap}
+.admin-pro .record-order-totals strong.refunded{padding-left:16px;border-left:1px solid #e2e8f0;color:#c64a55}
+.admin-pro .record-order-totals small{margin-top:4px;color:#8595a8;font-size:9px;font-weight:500}
 .manual-bill-mask{position:fixed;z-index:10080;inset:0;display:grid;place-items:center;padding:24px;background:rgba(16,31,50,.48);backdrop-filter:blur(2px)}
 .manual-bill-modal{box-sizing:border-box;width:min(680px,calc(100vw - 32px));max-height:calc(100vh - 48px);overflow:auto;border:1px solid #dce5f0;border-radius:16px;background:#fff;box-shadow:0 24px 70px rgba(19,38,64,.24)}
 .manual-bill-modal>header{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid #e7edf4}

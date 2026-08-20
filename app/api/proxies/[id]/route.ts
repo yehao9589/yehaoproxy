@@ -5,6 +5,7 @@ import {getDb} from "../../../../db";
 import {orders,proxyAllocations} from "../../../../db/schema";
 import {audit} from "../../../../lib/audit";
 import {billingCycleFromNote} from "../../../../lib/billing-period";
+import {composeProxyNote} from "../../../../lib/proxy-note";
 
 export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   const user=await getCurrentCustomer();if(!user)return NextResponse.json({error:"请先登录"},{status:401});
@@ -14,7 +15,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   if(!owned)return NextResponse.json({error:"代理不存在"},{status:404});
   if(owned.allocation.expiresAt&&owned.allocation.expiresAt.getTime()<=Date.now())return NextResponse.json({error:"代理服务已到期，请先续费"},{status:409});
   const updates:{note?:string|null;autoRenew?:boolean}={};
-  if(b.note!==undefined){const city=owned.allocation.note?.match(/\[CITY\]([^\n]*)/)?.[1]||"",note=String(b.note).replace(/\n?\[CITY\][^\n]*/g,"").trim().slice(0,200);updates.note=city?`${note}${note?"\n":""}[CITY]${city}`:note||null}
+  if(b.note!==undefined){const note=String(b.note).trim().slice(0,200);updates.note=composeProxyNote(note,owned.allocation.note)}
   if(b.autoRenew!==undefined)updates.autoRenew=Boolean(b.autoRenew);
   let renewalDays:number|undefined;
   if(b.renewalDays!==undefined){renewalDays=Number(b.renewalDays);if(![7,30,60,90].includes(renewalDays))return NextResponse.json({error:"默认续费时长无效"},{status:400})}

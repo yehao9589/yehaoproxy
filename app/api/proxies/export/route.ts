@@ -3,9 +3,15 @@ import { getCurrentCustomer } from "../../../../lib/auth";
 import { audit } from "../../../../lib/audit";
 import { decryptCredential } from "../../../../lib/inventory-crypto";
 import { getDb } from "../../../../db";
-import { orders, proxyAllocations } from "../../../../db/schema";
+import { orders, productOffers, proxyAllocations } from "../../../../db/schema";
+import { proxyNoteValue, visibleProxyNote } from "../../../../lib/proxy-note";
+import { countryName } from "../../../../lib/countries";
 
 const csv = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+const localTime = (value: Date | null) => value?.toLocaleString("sv-SE", {
+  timeZone: "Asia/Shanghai",
+  hour12: false,
+}) || "";
 
 export async function GET(request: Request) {
   const user = await getCurrentCustomer();
@@ -20,12 +26,15 @@ export async function GET(request: Request) {
       protocol: proxyAllocations.protocol,
       note: proxyAllocations.note,
       expiresAt: proxyAllocations.expiresAt,
+      region: orders.region,
+      regionName: productOffers.regionName,
     })
     .from(proxyAllocations)
     .innerJoin(orders, eq(proxyAllocations.orderId, orders.id))
+    .leftJoin(productOffers, and(eq(productOffers.product, orders.product), eq(productOffers.region, orders.region)))
     .where(and(eq(orders.customerEmail, user.email), eq(proxyAllocations.status, "active")));
 
-  const lines = ["host,port,username,password,protocol,note,expires_at"];
+  const lines = ["代理地址,端口,账号,密码,协议,国家/地区,城市,备注,到期时间"];
   for (const row of rows) {
     lines.push([
       row.host,
@@ -33,8 +42,10 @@ export async function GET(request: Request) {
       row.username,
       await decryptCredential(row.password),
       row.protocol,
-      row.note,
-      row.expiresAt?.toISOString(),
+      row.regionName || countryName(row.region),
+      proxyNoteValue(row.note, "CITY"),
+      visibleProxyNote(row.note),
+      localTime(row.expiresAt),
     ].map(csv).join(","));
   }
 
