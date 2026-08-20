@@ -30,6 +30,7 @@ export default function RenewalOrders() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [busy, setBusy] = useState<string | null>(null);
+  const [pendingVerify, setPendingVerify] = useState<{ id: string; action: "approve" | "reject" } | null>(null);
 
   async function load() {
     setLoading(true);
@@ -50,21 +51,29 @@ export default function RenewalOrders() {
 
   async function verify(id: string, action: "approve" | "reject") {
     if (busy) return;
-    const prompt = action === "approve"
-      ? "确认该续费已经核验通过？客户服务时间已在付款时延长。"
-      : "确认核验不通过？系统将退款到客户余额，并恢复续费前的到期时间。";
-    if (!confirm(prompt)) return;
+    setPendingVerify(null);
+    setMessage("");
     setBusy(`${id}:${action}`);
-    const response = await fetch(`/api/admin/orders/${encodeURIComponent(id)}/complete-renewal`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action }),
-    });
-    const data = await response.json();
-    setBusy(null);
-    if (!response.ok) return setMessage(data.error || "续费核验失败");
-    setMessage(action === "approve" ? "续费核验通过，订单已完成" : `核验不通过，已退款 ¥${Number(data.refund || 0).toFixed(2)} 并恢复原到期时间`);
-    await load();
+    try {
+      const response = await fetch(`/api/admin/orders/${encodeURIComponent(id)}/complete-renewal`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : {};
+      if (!response.ok) throw new Error(data.error || `续费核验失败（${response.status}）`);
+      const nextMessage = action === "approve" ? "续费核验通过，订单已完成" : `核验不通过，已退款 ¥${Number(data.refund || 0).toFixed(2)} 并恢复原到期时间`;
+      setMessage(nextMessage);
+      window.dispatchEvent(new CustomEvent("yehao:toast", { detail: { message: nextMessage, kind: "success" } }));
+      await load();
+    } catch (error) {
+      const nextMessage = error instanceof Error ? error.message : "续费核验失败，请稍后重试";
+      setMessage(nextMessage);
+      window.dispatchEvent(new CustomEvent("yehao:toast", { detail: { message: nextMessage, kind: "error" } }));
+    } finally {
+      setBusy(null);
+    }
   }
 
   return <div className="renewal-order-page">
@@ -86,12 +95,13 @@ export default function RenewalOrders() {
           <span>{row.durationDays} 天</span><strong>¥{Number(row.amount).toFixed(2)}</strong>
           <span>{new Date(row.createdAt).toLocaleString("zh-CN", { hour12: false })}</span>
           <span><em className={`order-status ${row.status==="active"&&!row.adminNote?.includes("[RENEWAL_VERIFIED_AT]")?"provisioning":row.status}`}>{row.status==="active"&&!row.adminNote?.includes("[RENEWAL_VERIFIED_AT]")?"待核验":states[row.status] || row.status}</em></span>
-          <span>{["paid", "provisioning"].includes(row.status)||(row.status==="active"&&!row.adminNote?.includes("[RENEWAL_VERIFIED_AT]")) ? <span className="verify-actions"><button className="primary" disabled={busy?.startsWith(`${row.id}:`)} aria-busy={busy === `${row.id}:approve`} onClick={() => void verify(row.id, "approve")}>{busy === `${row.id}:approve` ? "处理中…" : "核验通过"}</button><button className="reject" disabled={busy?.startsWith(`${row.id}:`)} aria-busy={busy === `${row.id}:reject`} onClick={() => void verify(row.id, "reject")}>{busy === `${row.id}:reject` ? "处理中…" : "不通过"}</button></span> : <button disabled>{row.status === "pending" ? "等待付款" : "已核验"}</button>}</span>
+          <span>{["paid", "provisioning"].includes(row.status)||(row.status==="active"&&!row.adminNote?.includes("[RENEWAL_VERIFIED_AT]")) ? <span className="verify-actions"><button className="primary" disabled={busy?.startsWith(`${row.id}:`)} aria-busy={busy === `${row.id}:approve`} onClick={() => setPendingVerify({id:row.id,action:"approve"})}>{busy === `${row.id}:approve` ? "处理中…" : "核验通过"}</button><button className="reject" disabled={busy?.startsWith(`${row.id}:`)} aria-busy={busy === `${row.id}:reject`} onClick={() => setPendingVerify({id:row.id,action:"reject"})}>{busy === `${row.id}:reject` ? "处理中…" : "不通过"}</button></span> : <button disabled>{row.status === "pending" ? "等待付款" : "已核验"}</button>}</span>
         </div>)}
         {!loading && !visible.length && <div className="empty">暂无续费订单</div>}
         {loading && <div className="empty">正在加载续费订单…</div>}
       </div>
       <Pagination total={filtered.length} page={currentPage} pageSize={pageSize} onPage={setPage} onPageSize={(size) => { setPageSize(size); setPage(1); }} />
     </section>
+    {pendingVerify&&<div className="customer-payment-mask" onMouseDown={event=>{if(event.target===event.currentTarget)setPendingVerify(null)}}><section className="customer-payment-modal renewal-verify-modal"><header><div><small>续费订单核验</small><h2>{pendingVerify.action==="approve"?"确认核验通过":"确认核验不通过"}</h2><p>{pendingVerify.id}</p></div><button type="button" aria-label="关闭" onClick={()=>setPendingVerify(null)}>×</button></header><p>{pendingVerify.action==="approve"?"客户付款时已经自动延长服务时间。确认后只会完成后台核验，不会再次续期。":"系统将退款至客户余额，并把原服务恢复到续费前的到期时间。"}</p><footer><button type="button" onClick={()=>setPendingVerify(null)}>取消</button><button type="button" className={pendingVerify.action==="approve"?"primary":"danger"} onClick={()=>void verify(pendingVerify.id,pendingVerify.action)}>{pendingVerify.action==="approve"?"确认通过":"确认退款并回滚"}</button></footer></section></div>}
   </div>;
 }
