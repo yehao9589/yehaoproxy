@@ -2,16 +2,18 @@ import { NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
 import { requireAdminApi } from "../../../../lib/admin-auth";
 import { getDb } from "../../../../db";
-import { customers, orders, paymentTransactions, walletTransactions } from "../../../../db/schema";
+import { couponRedemptions, coupons, customers, orders, paymentTransactions, walletTransactions } from "../../../../db/schema";
 
 export async function GET() {
   if (!await requireAdminApi("overview")) return NextResponse.json({ error: "无运营概览权限" }, { status: 403 });
   const db = getDb();
-  const [orderRows, walletRows, paymentRows, customerRows] = await Promise.all([
+  const [orderRows, walletRows, paymentRows, customerRows, redemptionRows, couponRows] = await Promise.all([
     db.select().from(orders).orderBy(desc(orders.createdAt)),
     db.select().from(walletTransactions).orderBy(desc(walletTransactions.createdAt)).limit(200),
     db.select().from(paymentTransactions).orderBy(desc(paymentTransactions.createdAt)).limit(200),
     db.select({ id: customers.id, email: customers.email, name: customers.name }).from(customers).where(eq(customers.role, "customer")),
+    db.select().from(couponRedemptions),
+    db.select().from(coupons),
   ]);
   const paid = new Set(["paid", "provisioning", "active"]);
   const revenue = orderRows.filter(order => paid.has(order.status)).reduce((sum, order) => sum + order.amount, 0);
@@ -32,9 +34,12 @@ export async function GET() {
   const customersById = new Map(customerRows.map(customer => [customer.id, customer]));
   const customersByEmail = new Map(customerRows.map(customer => [customer.email, customer]));
   const ordersById = new Map(orderRows.map(order => [order.id, order]));
+  const redemptionsByOrder = new Map(redemptionRows.map(row => [row.orderId, row]));
+  const couponsById = new Map(couponRows.map(row => [row.id, row]));
   const relatedOrder = (orderId:string|null) => {
     const order = orderId ? ordersById.get(orderId) : null;
-    return order ? { id:order.id, product:order.product, region:order.region, quantity:order.quantity, status:order.status, paymentMethod:order.paymentMethod } : null;
+    if(!order)return null;const redemption=redemptionsByOrder.get(order.id),coupon=redemption?couponsById.get(redemption.couponId):null,discountAmount=Number(redemption?.discount||0);
+    return { id:order.id, product:order.product, region:order.region, quantity:order.quantity, status:order.status, paymentMethod:order.paymentMethod, couponCode:coupon?.code||null, discountAmount, originalAmount:Number((order.amount+discountAmount).toFixed(2)), paidAmount:order.amount };
   };
   const walletRecords = walletRows.map(transaction => {
     const customer = customersById.get(transaction.customerId), order = relatedOrder(transaction.referenceId);

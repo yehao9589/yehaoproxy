@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb, getRawDatabase } from "../../../db";
-import { currencies, orders, productOffers, proxyAllocations, serviceRequests } from "../../../db/schema";
+import { couponRedemptions, coupons, currencies, orders, productOffers, proxyAllocations, serviceRequests } from "../../../db/schema";
 import { getCurrentCustomer } from "../../../lib/auth";
 import { billingCycleFromNote } from "../../../lib/billing-period";
 import {sendOrderCreatedEmails} from "../../../lib/order-notifications";
@@ -78,10 +78,14 @@ export async function GET() {
   const user = await getCurrentCustomer();
   if (!user) return NextResponse.json({ error: "请先登录" }, { status: 401 });
   const db = getDb();
-  const [rows, requestRows] = await Promise.all([
+  const [rows, requestRows, redemptionRows, couponRows] = await Promise.all([
     db.select().from(orders).where(eq(orders.customerEmail, user.email)).orderBy(desc(orders.createdAt)).limit(100),
     db.select().from(serviceRequests).where(eq(serviceRequests.customerId, user.id)).orderBy(desc(serviceRequests.createdAt)).limit(200),
+    db.select().from(couponRedemptions).where(eq(couponRedemptions.customerId,user.id)),
+    db.select().from(coupons),
   ]);
+  const redemptionByOrder=new Map(redemptionRows.map(row=>[row.orderId,row]));
+  const couponById=new Map(couponRows.map(row=>[row.id,row]));
   const resourceOrderIds=new Set<string>();
   for(const order of rows){
     const note=String(order.adminNote||"");
@@ -117,6 +121,7 @@ export async function GET() {
     return requestByOrderId.get(order.id) || (targetId ? requestByAllocationId.get(targetId) : null) || null;
   };
   const serialize = ({ adminNote, ...order }: typeof rows[number]) => {
+    const redemption=redemptionByOrder.get(order.id),coupon=redemption?couponById.get(redemption.couponId):null,discountAmount=Number(redemption?.discount||0);
     const renewalOf=adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1]?.trim()||null;
     const bundleRenewal=Boolean(adminNote?.includes("[BUNDLE_RENEWAL]true"));
     const renewalApplied=Boolean(adminNote?.includes("[RENEW_APPLIED_AT]"));
@@ -127,6 +132,10 @@ export async function GET() {
     const resources=sourceIds.flatMap((id:string)=>allocationsByOrder.get(id)||[]).map((resource:typeof allocationRows[number])=>({id:resource.id,orderId:resource.orderId,ip:`${resource.host}:${resource.port}`,wifiName:resource.wifiName||null,country:orderRegionById.get(resource.orderId)||order.region,city:resource.note?.match(/\[CITY\]([^\n]*)/)?.[1]?.trim()||null,protocol:resource.protocol,status:resource.status}));
     return {
       ...order,
+      couponCode:coupon?.code||null,
+      discountAmount,
+      originalAmount:Number((order.amount+discountAmount).toFixed(2)),
+      paidAmount:order.amount,
       status: renewalApplied||bundleRenewalApplied ? "active" : order.status,
       billingCycle: billingCycleFromNote(adminNote),
       amount: adminNote?.match(/\[BUNDLE_ITEM_AMOUNT\]([^\n]+)/)?.[1]

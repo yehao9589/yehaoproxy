@@ -61,6 +61,8 @@ test("credentials, authentication, and installer use production-safe controls", 
   assert.match(auth, /PBKDF2/);
   assert.match(auth, /210000/);
   assert.match(auth, /customer\.status!=="active"/);
+  assert.match(auth, /expiresAt:new Date\(now\.getTime\(\)\+ttl\)/);
+  assert.doesNotMatch(auth, /legacyDeadline|session\.createdAt\.getTime\(\)\+ttl/);
   assert.match(crypto, /AES-GCM/);
   assert.match(crypto, /INVENTORY_ENCRYPTION_KEY/);
   assert.doesNotMatch(mail, /previewDelivery|NextResponse\.json\(\{[^)]*\bcode\b/);
@@ -171,6 +173,8 @@ test("proxy batch renewal uses the direct renewal wording and order flow", async
 test("Alipay checkout applies coupons server-side and opens externally", async () => {
   const checkoutApi = await read("app/api/checkout/[gateway]/route.ts");
   const orderUi = await read("app/dashboard/orders/OrderClient.tsx");
+  const adminOrders = await read("app/api/admin/orders/route.ts");
+  const insights = await read("app/api/admin/insights/route.ts");
   assert.match(checkoutApi, /couponRedemptions/);
   assert.match(checkoutApi, /couponCode/);
   assert.match(checkoutApi, /convertCurrency\(payable/);
@@ -179,6 +183,10 @@ test("Alipay checkout applies coupons server-side and opens externally", async (
   assert.match(orderUi, /externalPaymentOrderId/);
   assert.match(orderUi, /已完成支付/);
   assert.match(orderUi, /location\.reload\(\)/);
+  assert.match(adminOrders, /couponCode:coupon\?\.code/);
+  assert.match(adminOrders, /originalAmount/);
+  assert.match(insights, /redemptionsByOrder/);
+  assert.match(insights, /discountAmount/);
 });
 
 test("renewals complete for customers while remaining pending verification for admins", async () => {

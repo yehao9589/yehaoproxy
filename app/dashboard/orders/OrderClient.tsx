@@ -6,12 +6,12 @@ import {dashboardJson,invalidateDashboardData} from "../data-cache";
 
 type BundleItem={id:string;product:string;region:string;quantity:number;durationDays:number;amount:number};
 type OrderResource={id:string;orderId:string;ip:string;wifiName:string|null;country:string;city:string|null;protocol:string;status:string};
-type O={id:string;product:string;region:string;quantity:number;durationDays:number;amount:number;status:string;createdAt:string;expiresAt?:string|null;renewalOf?:string|null;bundleRenewal?:boolean;bundleItems?:BundleItem[]|null;resources?:OrderResource[];serviceRequestStatus?:string|null};
+type O={id:string;product:string;region:string;quantity:number;durationDays:number;amount:number;status:string;createdAt:string;expiresAt?:string|null;renewalOf?:string|null;bundleRenewal?:boolean;bundleItems?:BundleItem[]|null;resources?:OrderResource[];serviceRequestStatus?:string|null;couponCode?:string|null;discountAmount?:number;originalAmount?:number;paidAmount?:number};
 type ServiceRequest={id:string;allocationId:string;type:"renew"|"replace"|"reset_traffic"|"custom";durationDays:number|null;amount:number|null;reason:string|null;status:string;createdAt:string;service?:{kind:"proxy"|"node";orderId:string;product:string;region:string;address:string|null;wifiName:string|null;city:string|null}|null};
 const labels:Record<string,string>={pending:"待支付",paid:"待开通",provisioning:"待开通",active:"已开通",refunded:"已退款",failed:"已取消"};
 const nodeProducts=new Set(["soft-router","computer-node","node-traffic-reset"]);
 const productNames:Record<string,string>={"static-isp":"静态住宅 IP","static-residential":"静态住宅 IP","dynamic-residential":"动态住宅代理","datacenter":"数据中心代理","soft-router":"软路由中转","computer-node":"电脑节点","node-traffic-reset":"节点流量重置","ip-replacement":"更换 IP 服务","cart-bundle":"购物车合并订单"};
-const productLabel=(order:O)=>order.bundleRenewal?"批量续费":`${productNames[order.product]||order.product}${order.renewalOf?"续费":""}`;
+const productLabel=(order:O)=>`${order.bundleRenewal?"批量续费":`${productNames[order.product]||order.product}${order.renewalOf?"续费":""}`}${order.couponCode?` · 优惠券 ${order.couponCode}（原价 $${Number(order.originalAmount).toFixed(2)}，优惠 $${Number(order.discountAmount).toFixed(2)}，实付 $${Number(order.paidAmount??order.amount).toFixed(2)}）`:""}`;
 const regionLabel=(region:string)=>region==="MULTI"?"多个地区":region==="GLOBAL"?"全局节点":`${countryName(region)}（${region}）`;
 const groupedBundleItems=(items:BundleItem[]|null|undefined)=>{
   const grouped=new Map<string,BundleItem>();

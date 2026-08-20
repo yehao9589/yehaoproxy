@@ -2,7 +2,7 @@ import{NextResponse}from"next/server";
 import{and,desc,eq,sql}from"drizzle-orm";
 import{requireAdminApi}from"../../../../../lib/admin-auth";
 import{getDb}from"../../../../../db";
-import{customers,orders,paymentTransactions,productOffers,proxyAllocations,serviceRequests}from"../../../../../db/schema";
+import{couponRedemptions,coupons,customers,orders,paymentTransactions,productOffers,proxyAllocations,serviceRequests}from"../../../../../db/schema";
 import{encryptCredential}from"../../../../../lib/inventory-crypto";
 import{normalizeCityName}from"../../../../../lib/cities";
 import{addBillingPeriod,billingCycleFromNote}from"../../../../../lib/billing-period";
@@ -66,7 +66,8 @@ export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){
   const payments=await db.select().from(paymentTransactions).where(eq(paymentTransactions.orderId,id));
   const subscriptionUrl=order.adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1]||null;
   const itemAmount=order.adminNote?.match(/\[BUNDLE_ITEM_AMOUNT\]([^\n]+)/)?.[1],billingOrderId=order.adminNote?.match(/\[BUNDLE_PARENT\]([^\n]+)/)?.[1];
-  const visibleOrder={...order,amount:itemAmount==null?order.amount:Number(itemAmount),adminNote:visibleNote(order.adminNote),billType:billKind({...order,adminNote:orderNote(order.adminNote)}),renewalVerified:orderNote(order.adminNote).includes("[RENEWAL_VERIFIED_AT]"),subscriptionUrl,billingOrderId:billingOrderId||null,billingCycle:billingCycleFromNote(order.adminNote)};
+  const[redemption]=await db.select().from(couponRedemptions).where(eq(couponRedemptions.orderId,id)).limit(1),[coupon]=redemption?await db.select().from(coupons).where(eq(coupons.id,redemption.couponId)).limit(1):[null],discountAmount=Number(redemption?.discount||0);
+  const visibleOrder={...order,amount:itemAmount==null?order.amount:Number(itemAmount),adminNote:visibleNote(order.adminNote),billType:billKind({...order,adminNote:orderNote(order.adminNote)}),renewalVerified:orderNote(order.adminNote).includes("[RENEWAL_VERIFIED_AT]"),subscriptionUrl,billingOrderId:billingOrderId||null,billingCycle:billingCycleFromNote(order.adminNote),couponCode:coupon?.code||null,discountAmount,originalAmount:Number((order.amount+discountAmount).toFixed(2)),paidAmount:order.amount};
   const[offer]=await db.select().from(productOffers).where(and(eq(productOffers.product,order.product),eq(productOffers.region,order.region))).limit(1);
   const availableRenewalPeriods=visibleOrder.billingCycle==="calendar-month"
     ?[(offer?.price30??-1)>=0?30:null,(offer?.price90??-1)>=0?90:null].filter((value):value is number=>value!==null)

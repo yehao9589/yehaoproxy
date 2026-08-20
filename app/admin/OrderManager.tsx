@@ -10,6 +10,7 @@ type Order = AdminOrderDetail["order"] & {
   allocatedIp?: string | null; allocatedWifiName?: string | null; allocatedCountry?: string | null; allocatedCity?: string | null; displayAmount?: number; billingOrderId?: string | null;
   customerId?: string | null; customerName?: string | null; bundleItems?: Array<{product:string;region:string;quantity:number}> | null;
   serviceRequestStatus?: string | null;
+  couponCode?: string | null; discountAmount?: number; originalAmount?: number; paidAmount?: number;
 };
 
 const statusNames: Record<string, string> = { pending: "待付款", paid: "等待受理", provisioning: "开通处理中", active: "已激活", refunded: "已退款", failed: "已取消" };
@@ -19,7 +20,7 @@ const regionNames: Record<string, string> = { US: "美国", JP: "日本", BR: "�
 const productName = (value: string) => productNames[value] || value;
 const regionName = (value: string) => regionNames[value] || value;
 const isRenewalOrder = (order: Order) => billKind(order) === "renewal";
-function billSummary(order:Order){if(isRenewalOrder(order))return{products:order.product==="cart-bundle"?"批量服务续费":`${productName(order.product)}续费`,regions:order.product==="cart-bundle"?`${order.bundleItems?.length||order.quantity} 项已有服务`:`${regionName(order.region)} · ${order.durationDays} 天`};const source=order.bundleItems?.length?order.bundleItems:[{product:order.product,region:order.region,quantity:order.quantity}],products=new Map<string,number>(),regions=new Map<string,number>();source.forEach(item=>{products.set(item.product,(products.get(item.product)||0)+item.quantity);regions.set(item.region,(regions.get(item.region)||0)+item.quantity)});return{products:[...products].map(([value,count])=>`${productName(value)} × ${count}`).join("、"),regions:[...regions].map(([value,count])=>`${regionName(value)} × ${count}`).join("、")}}
+function billSummary(order:Order){const pricing=order.couponCode?` · 优惠券 ${order.couponCode}：原价 ¥${Number(order.originalAmount).toFixed(2)}，优惠 ¥${Number(order.discountAmount).toFixed(2)}，实付 ¥${Number(order.paidAmount??order.amount).toFixed(2)}`:"";if(isRenewalOrder(order))return{products:order.product==="cart-bundle"?"批量服务续费":`${productName(order.product)}续费`,regions:(order.product==="cart-bundle"?`${order.bundleItems?.length||order.quantity} 项已有服务`:`${regionName(order.region)} · ${order.durationDays} 天`)+pricing};const source=order.bundleItems?.length?order.bundleItems:[{product:order.product,region:order.region,quantity:order.quantity}],products=new Map<string,number>(),regions=new Map<string,number>();source.forEach(item=>{products.set(item.product,(products.get(item.product)||0)+item.quantity);regions.set(item.region,(regions.get(item.region)||0)+item.quantity)});return{products:[...products].map(([value,count])=>`${productName(value)} × ${count}`).join("、"),regions:[...regions].map(([value,count])=>`${regionName(value)} × ${count}`).join("、")+pricing}}
 
 export default function OrderManager({ search = "", kind = "all" }: { search?: string; kind?: "all" | "bills" | "products" }) {
   const [rows, setRows] = useState<Order[]>([]);
