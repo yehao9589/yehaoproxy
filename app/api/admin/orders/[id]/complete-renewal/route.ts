@@ -40,7 +40,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const sourceId = noteValue(renewal.adminNote, "RENEWAL_OF");
   const allocationId = noteValue(renewal.adminNote, "RENEW_ALLOCATION");
   if (!sourceId) return NextResponse.json({ error: "该订单不是续费订单" }, { status: 409 });
-  if (!['paid', 'provisioning'].includes(renewal.status)) {
+  if (!['paid', 'provisioning', 'active'].includes(renewal.status) || noteValue(renewal.adminNote, "RENEWAL_VERIFIED_AT")) {
     return NextResponse.json({ error: "该续费订单已经核验，不能重复处理" }, { status: 409 });
   }
 

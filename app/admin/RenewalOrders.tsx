@@ -49,6 +49,7 @@ export default function RenewalOrders() {
   const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   async function verify(id: string, action: "approve" | "reject") {
+    if (busy) return;
     const prompt = action === "approve"
       ? "确认该续费已经核验通过？客户服务时间已在付款时延长。"
       : "确认核验不通过？系统将退款到客户余额，并恢复续费前的到期时间。";
@@ -84,8 +85,8 @@ export default function RenewalOrders() {
           <span><b>{countryName(row.service?.country||row.region)}</b><small>{row.service?.city||row.service?.country||row.region}</small></span>
           <span>{row.durationDays} 天</span><strong>¥{Number(row.amount).toFixed(2)}</strong>
           <span>{new Date(row.createdAt).toLocaleString("zh-CN", { hour12: false })}</span>
-          <span><em className={`order-status ${row.status}`}>{states[row.status] || row.status}</em></span>
-          <span>{["paid", "provisioning"].includes(row.status) ? <span className="verify-actions"><button className="primary" disabled={busy !== null} onClick={() => void verify(row.id, "approve")}>{busy === `${row.id}:approve` ? "处理中…" : "核验通过"}</button><button className="reject" disabled={busy !== null} onClick={() => void verify(row.id, "reject")}>{busy === `${row.id}:reject` ? "处理中…" : "不通过"}</button></span> : <button disabled>{row.status === "pending" ? "等待付款" : "已核验"}</button>}</span>
+          <span><em className={`order-status ${row.status==="active"&&!row.adminNote?.includes("[RENEWAL_VERIFIED_AT]")?"provisioning":row.status}`}>{row.status==="active"&&!row.adminNote?.includes("[RENEWAL_VERIFIED_AT]")?"待核验":states[row.status] || row.status}</em></span>
+          <span>{["paid", "provisioning"].includes(row.status)||(row.status==="active"&&!row.adminNote?.includes("[RENEWAL_VERIFIED_AT]")) ? <span className="verify-actions"><button className="primary" disabled={busy?.startsWith(`${row.id}:`)} aria-busy={busy === `${row.id}:approve`} onClick={() => void verify(row.id, "approve")}>{busy === `${row.id}:approve` ? "处理中…" : "核验通过"}</button><button className="reject" disabled={busy?.startsWith(`${row.id}:`)} aria-busy={busy === `${row.id}:reject`} onClick={() => void verify(row.id, "reject")}>{busy === `${row.id}:reject` ? "处理中…" : "不通过"}</button></span> : <button disabled>{row.status === "pending" ? "等待付款" : "已核验"}</button>}</span>
         </div>)}
         {!loading && !visible.length && <div className="empty">暂无续费订单</div>}
         {loading && <div className="empty">正在加载续费订单…</div>}

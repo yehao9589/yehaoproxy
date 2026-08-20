@@ -17,8 +17,8 @@ export default function ManualAllocationEnhancer(){
   const formRef=useRef<HTMLFormElement>(null);
   useEffect(()=>{
     function enhance(){
-      const toolbar=document.querySelector<HTMLElement>(".order-workspace .order-toolbar"),heading=document.querySelector<HTMLElement>(".order-workspace-head h2");
-      if(!toolbar||!heading||toolbar.querySelector(".manual-allocation-button"))return;
+      const workspace=document.querySelector<HTMLElement>(".order-workspace"),toolbar=workspace?.querySelector<HTMLElement>(".order-toolbar"),heading=workspace?.querySelector<HTMLElement>(".order-workspace-head h2");
+      if(!workspace||workspace.dataset.workspaceContext==="bill"||!toolbar||!heading||toolbar.querySelector(".manual-allocation-button"))return;
       const button=document.createElement("button");button.type="button";button.className="manual-allocation-button";button.textContent="＋ 手动填写 IP";
       button.onclick=async()=>{const orderId=heading.textContent?.replace(/^.*?#/,"").trim()||"";button.disabled=true;try{const response=await fetch(`/api/admin/orders/${encodeURIComponent(orderId)}`),data=await response.json();if(!response.ok)throw new Error(data.error||"订单读取失败");if(!["paid","provisioning"].includes(data.order.status))throw new Error("只有已付款或开通中的订单可以手动交付");const delivery=data.manualDelivery||{sourceOrderId:orderId,targetOrderId:orderId,quantity:data.order.quantity,allocated:data.allocations.length,region:data.order.region};if(!delivery.targetOrderId)throw new Error(delivery.quantity>0&&delivery.allocated>=delivery.quantity?"该订单的 IP 已全部交付":"没有可手动交付的 IP 产品订单");setError("");setSuccess("");setRaw("");setParseMsg("");setOpen(delivery)}catch(reason){alert(reason instanceof Error?reason.message:"订单读取失败")}finally{button.disabled=false}};
       toolbar.appendChild(button);

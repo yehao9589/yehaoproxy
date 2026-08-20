@@ -52,6 +52,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const targetOrderId = order.adminNote?.match(/\[TARGET_ORDER\]([^\n]+)/)?.[1];
     const customOneTime = order.adminNote?.includes("[PRODUCT_TYPE]one-time-service") || false;
     const bundleOrder = order.product === "cart-bundle" && order.adminNote?.includes("[BUNDLE_ITEMS]");
+    const bundleRenewal = bundleOrder && order.adminNote?.includes("[BUNDLE_RENEWAL]true");
 
     const customerOrders = bundleOrder || targetOrderId
       ? await db.select().from(orders).where(eq(orders.customerEmail, user.email))
@@ -78,14 +79,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const writes: BatchQuery[] = [
       walletUpdate,
       db.insert(walletTransactions).values({ id: txId, customerId: user.id, type: "purchase", amount: -payable, balanceAfter: nextBalance, referenceType: "order", referenceId: id, note: `订单 ${id}`, createdAt: now }),
-      db.update(orders).set({ status: "provisioning", amount: payable, paymentMethod: "balance", paymentReference: txId, updatedAt: now }).where(and(eq(orders.id, id), eq(orders.status, "pending"))),
+      db.update(orders).set({ status: bundleRenewal ? "active" : "provisioning", amount: payable, paymentMethod: "balance", paymentReference: txId, updatedAt: now }).where(and(eq(orders.id, id), eq(orders.status, "pending"))),
     ];
     if (coupon) {
       writes.push(db.insert(couponRedemptions).values({ id: crypto.randomUUID(), couponId: coupon.id, customerId: user.id, orderId: id, discount, createdAt: now }));
       writes.push(db.update(coupons).set({ usedCount: coupon.usedCount + 1 }).where(and(eq(coupons.id, coupon.id), eq(coupons.usedCount, coupon.usedCount))));
     }
     for (const child of bundleChildren) {
-      writes.push(db.update(orders).set({ status: "provisioning", paymentMethod: "balance", paymentReference: txId, updatedAt: now }).where(eq(orders.id, child.id)));
+      writes.push(db.update(orders).set({ status: child.adminNote?.includes("[RENEWAL_OF]") ? "active" : "provisioning", paymentMethod: "balance", paymentReference: txId, updatedAt: now }).where(eq(orders.id, child.id)));
       const childSourceId=child.adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1];
       const childAllocationId=child.adminNote?.match(/\[RENEW_ALLOCATION\]([^\n]+)/)?.[1];
       if(childSourceId){
@@ -117,7 +118,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const allocationBase = renewalAllocation.expiresAt && renewalAllocation.expiresAt > now ? renewalAllocation.expiresAt : now;
         writes.push(db.update(proxyAllocations).set({ expiresAt: addBillingPeriod(allocationBase, order.durationDays, cycle) }).where(eq(proxyAllocations.id, renewalAllocation.id)));
       }
-      writes.push(db.update(orders).set({ status: "provisioning", adminNote: `${order.adminNote || ""}\n[RENEW_PREVIOUS_SOURCE_EXPIRY]${renewalSource.expiresAt?.toISOString() || ""}\n[RENEW_PREVIOUS_ALLOCATION_EXPIRY]${previousAllocationExpiry}\n[RENEW_APPLIED_AT]${now.toISOString()}`.trim(), updatedAt: now }).where(eq(orders.id, id)));
+      writes.push(db.update(orders).set({ status: "active", adminNote: `${order.adminNote || ""}\n[RENEW_PREVIOUS_SOURCE_EXPIRY]${renewalSource.expiresAt?.toISOString() || ""}\n[RENEW_PREVIOUS_ALLOCATION_EXPIRY]${previousAllocationExpiry}\n[RENEW_APPLIED_AT]${now.toISOString()}`.trim(), updatedAt: now }).where(eq(orders.id, id)));
     }
     if (replacementAllocation) {
       const reason = order.adminNote?.match(/\[REPLACE_REASON\]([^\n]+)/)?.[1] || "客户付费申请更换 IP";

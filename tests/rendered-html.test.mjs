@@ -176,6 +176,75 @@ test("Alipay checkout applies coupons server-side and opens externally", async (
   assert.match(checkoutApi, /convertCurrency\(payable/);
   assert.match(orderUi, /window\.open\("about:blank","_blank"\)/);
   assert.match(orderUi, /couponCode:couponCode\.trim\(\)/);
+  assert.match(orderUi, /externalPaymentOrderId/);
+  assert.match(orderUi, /已完成支付/);
+  assert.match(orderUi, /location\.reload\(\)/);
+});
+
+test("renewals complete for customers while remaining pending verification for admins", async () => {
+  const [ordersApi, orderUi, walletPayment, onlinePayment, renewalAdmin, verifyApi] = await Promise.all([
+    read("app/api/orders/route.ts"),
+    read("app/dashboard/orders/OrderClient.tsx"),
+    read("app/api/orders/[id]/pay-wallet/route.ts"),
+    read("lib/online-payment.ts"),
+    read("app/admin/RenewalOrders.tsx"),
+    read("app/api/admin/orders/[id]/complete-renewal/route.ts"),
+  ]);
+  assert.match(ordersApi, /bundleRenewal/);
+  assert.match(ordersApi, /bundleRenewalApplied/);
+  assert.match(ordersApi, /renewalApplied\|\|bundleRenewalApplied \? "active"/);
+  assert.match(orderUi, /order\.renewalOf\|\|order\.bundleRenewal/);
+  assert.match(orderUi, /续费完成/);
+  assert.match(walletPayment, /bundleRenewal \? "active" : "provisioning"/);
+  assert.match(onlinePayment, /directRenewalSourceId/);
+  assert.match(renewalAdmin, /RENEWAL_VERIFIED_AT/);
+  assert.match(renewalAdmin, /待核验/);
+  assert.match(renewalAdmin, /busy\?\.startsWith\(`\$\{row\.id\}:`\)/);
+  assert.doesNotMatch(renewalAdmin, /disabled=\{busy !== null\}/);
+  assert.match(verifyApi, /RENEWAL_VERIFIED_AT/);
+});
+
+test("billing separates payment, delivery, renewal verification, and after-sales workflows", async () => {
+  const [manager, detail, detailApi, enhancer, workflow] = await Promise.all([
+    read("app/admin/OrderManager.tsx"),
+    read("app/admin/OrderDetailWorkspace.tsx"),
+    read("app/api/admin/orders/[id]/route.ts"),
+    read("app/ManualAllocationEnhancer.tsx"),
+    read("lib/bill-workflow.ts"),
+  ]);
+  assert.match(manager, /收款状态/);
+  assert.match(manager, /业务进度/);
+  assert.match(manager, /续费待核验/);
+  assert.match(manager, /账单只负责收款与查看进度/);
+  assert.doesNotMatch(manager, /const orderActionName/);
+  assert.match(detailApi, /billType:billKind/);
+  assert.match(detail, /data-workspace-context=\{billOnly\?"bill":"delivery"\}/);
+  assert.match(detail, /不执行产品交付/);
+  assert.match(detail, /不会创建新 IP、不会产生新的资源交付任务/);
+  assert.match(enhancer, /workspace\.dataset\.workspaceContext==="bill"/);
+  assert.match(workflow, /续费已生效 · 待核验/);
+  assert.match(workflow, /等待产品交付/);
+});
+
+test("audit logs use one Chinese display layer for admin and customer records", async () => {
+  const display = await read("lib/audit-display.ts");
+  const auditClient = await read("app/admin/audit/AuditClient.tsx");
+  const customerApi = await read("app/api/admin/customers/[id]/route.ts");
+  const customerClient = await read("app/admin/customers/CustomersClient.tsx");
+  assert.match(display, /percent:"按百分比折扣"/);
+  assert.match(display, /"pre-release":"预发布通道"/);
+  assert.match(display, /"node\.renewal\.create":"创建节点续费订单"/);
+  assert.match(display, /"proxy\.renewal_orders\.create":"创建代理续费订单"/);
+  assert.match(display, /ACTIVATED_AT/);
+  assert.match(display, /历史记录内容无法识别/);
+  assert.match(display, /hiddenKeys/);
+  assert.doesNotMatch(auditClient, /相关信息/);
+  assert.match(auditClient, /item\.actionLabel/);
+  assert.match(customerApi, /actionLabel:auditActionName/);
+  assert.match(customerApi, /detailLabel:auditDetailText/);
+  assert.match(customerClient, /row\.actionLabel\|\|"系统操作"/);
+  assert.match(customerClient, /className="customer-log-list"/);
+  assert.match(customerClient, /row\.detailLabel\|\|"操作已记录"/);
 });
 
 test("required commercial pages and deployment configuration exist", async () => {

@@ -94,6 +94,14 @@ export async function GET() {
   for(const allocation of allocationRows){const list=allocationsByOrder.get(allocation.orderId)||[];list.push(allocation);allocationsByOrder.set(allocation.orderId,list)}
   const requestById = new Map(requestRows.map((request) => [request.id, request]));
   const orderRegionById = new Map(rows.map((order) => [order.id, order.region]));
+  const renewalChildrenByParent = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const parentId = row.adminNote?.match(/\[BUNDLE_PARENT\]([^\n]+)/)?.[1]?.trim();
+    if (!parentId) continue;
+    const children = renewalChildrenByParent.get(parentId) || [];
+    children.push(row);
+    renewalChildrenByParent.set(parentId, children);
+  }
   const requestByOrderId = new Map<string, typeof requestRows[number]>();
   const requestByAllocationId = new Map<string, typeof requestRows[number]>();
   for (const request of requestRows) {
@@ -110,16 +118,22 @@ export async function GET() {
   };
   const serialize = ({ adminNote, ...order }: typeof rows[number]) => {
     const renewalOf=adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1]?.trim()||null;
+    const bundleRenewal=Boolean(adminNote?.includes("[BUNDLE_RENEWAL]true"));
+    const renewalApplied=Boolean(adminNote?.includes("[RENEW_APPLIED_AT]"));
+    const bundleChildren=renewalChildrenByParent.get(order.id)||[];
+    const bundleRenewalApplied=bundleRenewal&&bundleChildren.length>0&&bundleChildren.every(child=>child.adminNote?.includes("[RENEW_APPLIED_AT]"));
     const bundleItems=(()=>{const raw=adminNote?.match(/\[BUNDLE_ITEMS\]([^\n]+)/)?.[1];if(!raw)return null;try{return JSON.parse(decodeURIComponent(raw))}catch{return null}})();
     const sourceIds=renewalOf?[renewalOf]:bundleItems?.length?bundleItems.map((item:{id:string})=>item.id):[order.id];
     const resources=sourceIds.flatMap((id:string)=>allocationsByOrder.get(id)||[]).map((resource:typeof allocationRows[number])=>({id:resource.id,orderId:resource.orderId,ip:`${resource.host}:${resource.port}`,wifiName:resource.wifiName||null,country:orderRegionById.get(resource.orderId)||order.region,city:resource.note?.match(/\[CITY\]([^\n]*)/)?.[1]?.trim()||null,protocol:resource.protocol,status:resource.status}));
     return {
       ...order,
+      status: renewalApplied||bundleRenewalApplied ? "active" : order.status,
       billingCycle: billingCycleFromNote(adminNote),
       amount: adminNote?.match(/\[BUNDLE_ITEM_AMOUNT\]([^\n]+)/)?.[1]
         ? Number(adminNote.match(/\[BUNDLE_ITEM_AMOUNT\]([^\n]+)/)![1])
         : order.amount,
       renewalOf,
+      bundleRenewal,
       subscriptionUrl: order.product === "computer-node"
         ? adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1] || null
         : null,

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { and, desc, eq, notInArray } from "drizzle-orm";
+import { and, desc, eq, notInArray, or } from "drizzle-orm";
 import { requireAdminApi } from "../../../../../lib/admin-auth";
 import { audit } from "../../../../../lib/audit";
 import { hashPassword } from "../../../../../lib/auth";
 import { getDb } from "../../../../../db";
 import { auditLogs, authSessions, customers, notifications, orders, proxyAllocations, tickets, wallets, walletTransactions } from "../../../../../db/schema";
 import { AFTER_SALES_TICKET_CATEGORIES } from "../../../../../lib/ticket-categories";
+import { auditActionName, auditDetailText, auditResourceName } from "../../../../../lib/audit-display";
 
 export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){
   if(!await requireAdminApi("customers"))return NextResponse.json({error:"无客户管理权限"},{status:403});
@@ -21,9 +22,10 @@ export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){
     subscriptionUrl:row.adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1]||null,
   }));
   const assets=[...proxyAssets,...nodeAssets].sort((a,b)=>(b.expiresAt?.getTime()||0)-(a.expiresAt?.getTime()||0));
-  const [transactions,ticketRows,logs,notificationRows]=await Promise.all([db.select().from(walletTransactions).where(eq(walletTransactions.customerId,id)).orderBy(desc(walletTransactions.createdAt)).limit(50),db.select().from(tickets).where(and(eq(tickets.customerId,id),notInArray(tickets.category,[...AFTER_SALES_TICKET_CATEGORIES]))).orderBy(desc(tickets.updatedAt)).limit(50),db.select().from(auditLogs).where(eq(auditLogs.actorId,id)).orderBy(desc(auditLogs.createdAt)).limit(50),db.select().from(notifications).where(eq(notifications.customerId,id)).orderBy(desc(notifications.createdAt)).limit(50)]);
+  const [transactions,ticketRows,logs,notificationRows]=await Promise.all([db.select().from(walletTransactions).where(eq(walletTransactions.customerId,id)).orderBy(desc(walletTransactions.createdAt)).limit(50),db.select().from(tickets).where(and(eq(tickets.customerId,id),notInArray(tickets.category,[...AFTER_SALES_TICKET_CATEGORIES]))).orderBy(desc(tickets.updatedAt)).limit(50),db.select().from(auditLogs).where(or(eq(auditLogs.actorId,id),and(eq(auditLogs.resourceType,"customer"),eq(auditLogs.resourceId,id)))).orderBy(desc(auditLogs.createdAt)).limit(50),db.select().from(notifications).where(eq(notifications.customerId,id)).orderBy(desc(notifications.createdAt)).limit(50)]);
   const paidStatuses=new Set(["paid","provisioning","active"]),paidOrders=orderRows.filter(x=>paidStatuses.has(x.status)),refundedOrders=orderRows.filter(x=>x.status==="refunded"),totalSpent=paidOrders.reduce((sum,x)=>sum+x.amount,0),refundedAmount=refundedOrders.reduce((sum,x)=>sum+x.amount,0);
-  const balance=wallet?.balance||0,creditLimit=wallet?.creditLimit||0,creditUsed=Math.max(0,-balance);return NextResponse.json({customer:{id:customer.id,email:customer.email,name:customer.name,status:customer.status,emailVerified:customer.emailVerified,createdAt:customer.createdAt},summary:{totalSpent:Number(totalSpent.toFixed(2)),refundedAmount:Number(refundedAmount.toFixed(2)),orderCount:orderRows.length,paidOrderCount:paidOrders.length,refundedOrderCount:refundedOrders.length,activeAssets:assets.filter(x=>x.status==="active").length,totalAssets:assets.length,balance,frozen:wallet?.frozen||0,creditLimit,creditUsed,availableCredit:Math.max(0,creditLimit-creditUsed),openTickets:ticketRows.filter(x=>!["resolved","closed"].includes(x.status)).length},orders:orderRows,assets,transactions,tickets:ticketRows,logs,notifications:notificationRows});
+  const localizedLogs=logs.map(log=>({id:log.id,action:log.action,actionLabel:auditActionName(log.action),resourceType:log.resourceType,resourceLabel:auditResourceName(log.resourceType),resourceId:log.resourceId,detailLabel:auditDetailText(log.detail,log.resourceType),ipAddress:log.ipAddress,createdAt:log.createdAt}));
+  const balance=wallet?.balance||0,creditLimit=wallet?.creditLimit||0,creditUsed=Math.max(0,-balance);return NextResponse.json({customer:{id:customer.id,email:customer.email,name:customer.name,status:customer.status,emailVerified:customer.emailVerified,createdAt:customer.createdAt},summary:{totalSpent:Number(totalSpent.toFixed(2)),refundedAmount:Number(refundedAmount.toFixed(2)),orderCount:orderRows.length,paidOrderCount:paidOrders.length,refundedOrderCount:refundedOrders.length,activeAssets:assets.filter(x=>x.status==="active").length,totalAssets:assets.length,balance,frozen:wallet?.frozen||0,creditLimit,creditUsed,availableCredit:Math.max(0,creditLimit-creditUsed),openTickets:ticketRows.filter(x=>!["resolved","closed"].includes(x.status)).length},orders:orderRows,assets,transactions,tickets:ticketRows,logs:localizedLogs,notifications:notificationRows});
 }
 
 export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
