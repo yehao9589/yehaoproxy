@@ -23,7 +23,8 @@ function requestIp(req){
 }
 
 const gateway=createServer((req,res)=>{
-  const ip=requestIp(req),headers={...req.headers,host:"127.0.0.1:3001"};
+  const ip=requestIp(req),headers={...req.headers};
+  if(!headers.host)headers.host="127.0.0.1:3000";
   delete headers["cf-connecting-ip"];
   delete headers["true-client-ip"];
   delete headers["x-client-ip"];
