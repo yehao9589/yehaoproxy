@@ -1,5 +1,6 @@
 "use client";
 import {useEffect} from "react";
+import {copyText} from "../lib/copy-text";
 type Item={host:string;port:number;password:string|null};
 type Order={product:string;quantity:number;status:string};
 const nodeProducts=new Set(["soft-router","computer-node"]);
@@ -39,7 +40,7 @@ export default function ProxyOverviewCopyEnhancer(){
       if(index<0||index>2)return;
       const value=cell.textContent?.trim()||"";
       if(!value||value.includes("••")||value==="—")return;
-      await navigator.clipboard.writeText(value);
+      await copyText(value);
       cell.classList.add("copied");setTimeout(()=>cell.classList.remove("copied"),900);
     }
     Promise.all([fetch("/api/proxies?reveal=1").then(r=>r.json()),fetch("/api/orders").then(r=>r.json())]).then(([p,o])=>{items=p.items||[];orders=o.items||[];decorate()}).catch(()=>decorate());

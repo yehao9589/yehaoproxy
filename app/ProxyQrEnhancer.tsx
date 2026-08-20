@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useMemo,useState} from "react";
 import QRCode from "qrcode";
+import {copyText} from "../lib/copy-text";
 
 type ProxyItem={host:string;port:number;username:string|null;password:string|null;protocol:string;region:string};
 type Format="colon"|"url"|"auth-first"|"host-first";
@@ -44,7 +45,7 @@ export default function ProxyQrEnhancer(){
     observer.observe(document.body,{childList:true,subtree:true});enhance();
     return()=>observer.disconnect();
   },[]);
-  async function copy(){await navigator.clipboard.writeText(output);setCopied(true);setTimeout(()=>setCopied(false),1000)}
+  async function copy(){await copyText(output);setCopied(true);setTimeout(()=>setCopied(false),1000)}
   if(!item&&!error)return null;
   return <div className="proxy-usage-mask" onMouseDown={e=>{if(e.target===e.currentTarget){setItem(null);setError("")}}}>
     <section className="proxy-usage-modal">

@@ -51,14 +51,14 @@ class RemoteStatement {
   constructor(private sql: string, private endpoint: string, private secret: string) {}
   bind(...params: unknown[]) { this.params=params; return this; }
   toPayload(){return{sql:this.sql,params:this.params}}
-  private async execute(){
-    const response=await fetch(`${this.endpoint}/query`,{method:"POST",headers:{"content-type":"application/json",...(this.secret?{authorization:`Bearer ${this.secret}`}:{})},body:JSON.stringify({sql:this.sql,params:this.params})});
+  private async execute(rawRows=false){
+    const response=await fetch(`${this.endpoint}/query`,{method:"POST",headers:{"content-type":"application/json",...(this.secret?{authorization:`Bearer ${this.secret}`}:{})},body:JSON.stringify({sql:this.sql,params:this.params,rawRows})});
     const result=await readRemoteResponse(response);
     if(!response.ok)throw new Error(result.error||"MySQL 查询失败");
     return result;
   }
   async all(){const result=await this.execute();return{results:result.rows||[],success:true,meta:result.meta||{}}}
-  async raw(){const result=await this.execute();return(result.rows||[]).map(row=>Object.values(row))}
+  async raw(){const result=await this.execute(true);return(result.rows||[]).map(row=>Array.isArray(row)?row:Object.values(row))}
   async first<T=Record<string,unknown>>(){const result=await this.execute();return(result.rows?.[0]||null) as T|null}
   async run(){const result=await this.execute();return{success:true,meta:result.meta||{},results:result.rows||[]}}
 }

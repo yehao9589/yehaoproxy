@@ -27,10 +27,19 @@ function normalized(rows){
   if(Array.isArray(rows))return{rows:rows.map(normalizeRow),meta:{changes:0}};
   return{rows:[],meta:{changes:Number(rows?.affectedRows||0),last_row_id:Number(rows?.insertId||0)}};
 }
+function normalizedRaw(rows){
+  if(Array.isArray(rows))return{rows:rows.map(row=>Array.isArray(row)?row.map(normalizeValue):Object.values(row).map(normalizeValue)),meta:{changes:0}};
+  return{rows:[],meta:{changes:Number(rows?.affectedRows||0),last_row_id:Number(rows?.insertId||0)}};
+}
 async function query(sql,params=[],input={}){
   const selectedPool=input.host?mysql.createPool(config(input)):pool??=mysql.createPool(config());
   const connection=await selectedPool.getConnection();
-  try{await connection.query("SET SESSION sql_mode='ANSI_QUOTES'");const[rows]=await connection.query(compatibleSql(sql),params);return normalized(rows)}
+  try{
+    await connection.query("SET SESSION sql_mode='ANSI_QUOTES'");
+    const statement=input.rawRows?{sql:compatibleSql(sql),rowsAsArray:true}:compatibleSql(sql);
+    const[rows]=await connection.query(statement,params);
+    return input.rawRows?normalizedRaw(rows):normalized(rows);
+  }
   finally{connection.release();if(input.host)await selectedPool.end()}
 }
 async function batch(statements=[]){

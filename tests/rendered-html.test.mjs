@@ -91,10 +91,11 @@ test("unfinished payment and notification adapters fail closed", async () => {
   const checkout = await read("app/api/checkout/[gateway]/route.ts");
   const settings = await read("app/api/admin/settings/route.ts");
   assert.match(payments, /gatewayRuntimeSupported/);
-  assert.match(payments, /return false/);
+  assert.match(payments, /gateway==="alipay"/);
+  assert.match(payments, /支付适配器尚未完成签名与回调验签/);
   assert.match(checkout, /getCurrentCustomer/);
   assert.match(checkout, /gatewayRuntimeSupported/);
-  assert.match(settings, /真实支付适配器和回调验签尚未完成/);
+  assert.match(settings, /该支付适配器和回调验签尚未完成/);
 });
 
 test("production deployment has health checks, backups, and rollback safety", async () => {
@@ -119,6 +120,15 @@ test("production deployment has health checks, backups, and rollback safety", as
   assert.match(updater, /rolling_back/);
   assert.doesNotMatch(updater, /\.env\.local.*tar/);
   assert.match(health, /encryptionConfigured/);
+});
+
+test("MySQL bridge preserves duplicate columns for Drizzle row mapping", async () => {
+  const database = await read("db/index.ts");
+  const bridge = await read("scripts/mysql-bridge.mjs");
+  assert.match(database, /execute\(true\)/);
+  assert.match(database, /rawRows/);
+  assert.match(bridge, /rowsAsArray:true/);
+  assert.match(bridge, /normalizedRaw/);
 });
 
 test("required commercial pages and deployment configuration exist", async () => {
