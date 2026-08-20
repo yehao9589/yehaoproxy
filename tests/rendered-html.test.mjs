@@ -204,6 +204,16 @@ test("renewals complete for customers while remaining pending verification for a
   assert.match(verifyApi, /RENEWAL_VERIFIED_AT/);
 });
 
+test("bundle renewal verification completes the parent bill after every child is verified", async () => {
+  const route = await read("app/api/admin/orders/[id]/complete-renewal/route.ts");
+  const listRoute = await read("app/api/admin/orders/route.ts");
+  assert.match(route, /noteValue\(renewal\.adminNote, "BUNDLE_PARENT"\)/);
+  assert.match(route, /siblings\.every\(\(item\) => item\.id === id \|\| noteValue\(item\.adminNote, "RENEWAL_VERIFIED_AT"\)\)/);
+  assert.match(route, /where\(eq\(orders\.id, parentId\)\)/);
+  assert.match(listRoute, /allRenewalsVerified/);
+  assert.match(listRoute, /\[RENEWAL_VERIFIED_AT\]\$\{now\.toISOString\(\)\}/);
+});
+
 test("billing separates payment, delivery, renewal verification, and after-sales workflows", async () => {
   const [manager, detail, detailApi, enhancer, workflow] = await Promise.all([
     read("app/admin/OrderManager.tsx"),

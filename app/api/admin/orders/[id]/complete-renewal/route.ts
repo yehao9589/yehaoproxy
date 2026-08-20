@@ -39,6 +39,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const sourceId = noteValue(renewal.adminNote, "RENEWAL_OF");
   const allocationId = noteValue(renewal.adminNote, "RENEW_ALLOCATION");
+  const parentId = noteValue(renewal.adminNote, "BUNDLE_PARENT");
   if (!sourceId) return NextResponse.json({ error: "该订单不是续费订单" }, { status: 409 });
   if (!['paid', 'provisioning', 'active'].includes(renewal.status) || noteValue(renewal.adminNote, "RENEWAL_VERIFIED_AT")) {
     return NextResponse.json({ error: "该续费订单已经核验，不能重复处理" }, { status: 409 });
@@ -54,6 +55,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       updatedAt: now,
       adminNote: `${renewal.adminNote || ""}\n[RENEWAL_VERIFIED_AT]${now.toISOString()}`.trim(),
     }).where(eq(orders.id, id));
+    if (parentId) {
+      const customerOrders = await db.select().from(orders).where(eq(orders.customerEmail, renewal.customerEmail));
+      const siblings = customerOrders.filter((item) => String(item.adminNote || "").includes(`[BUNDLE_PARENT]${parentId}`));
+      const allVerified = siblings.length > 0 && siblings.every((item) => item.id === id || noteValue(item.adminNote, "RENEWAL_VERIFIED_AT"));
+      if (allVerified) {
+        const [parent] = customerOrders.filter((item) => item.id === parentId);
+        if (parent) await db.update(orders).set({
+          status: "active",
+          updatedAt: now,
+          adminNote: `${parent.adminNote || ""}\n[RENEWAL_VERIFIED_AT]${now.toISOString()}`.trim(),
+        }).where(eq(orders.id, parentId));
+      }
+    }
     await audit({ id: admin.id, role: admin.role }, "renewal.verify.approve", "order", id, { sourceOrderId: sourceId, allocationId: allocationId || null }, req);
     return NextResponse.json({ ok: true, action, expiresAt: source.expiresAt });
   }
