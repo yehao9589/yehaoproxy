@@ -4,7 +4,7 @@ import {getDb} from "../../../db";
 import {orders,productOffers,proxyAllocations,serviceRequests,systemOptions} from "../../../db/schema";
 import {audit} from "../../../lib/audit";
 import {getCurrentCustomer} from "../../../lib/auth";
-import {replacementSnapshotLines,stripReplacementSnapshot} from "../../../lib/replacement-snapshot";
+import {parseReplacementSnapshot,replacementSnapshotLines,stripReplacementSnapshot} from "../../../lib/replacement-snapshot";
 
 const DAY=86400000;
 const originalActivation=(allocation:{note:string|null},order:{createdAt:Date})=>{const marked=allocation.note?.match(/\[ACTIVATED_AT\]([^\n]+)/)?.[1],parsed=marked?new Date(marked):order.createdAt;return Number.isNaN(parsed.getTime())?order.createdAt:parsed};
@@ -49,7 +49,7 @@ export async function GET(req:Request){
     ]);
     const allocationMap=new Map(ownedAllocations.map(row=>[row.allocation.id,row]));
     const orderMap=new Map(ownedOrders.map(order=>[order.id,order]));
-    const enriched=items.map(item=>{const proxy=allocationMap.get(item.allocationId),order=proxy?.order||orderMap.get(item.allocationId)||null,allocation=proxy?.allocation||null,node=Boolean(order&&["computer-node","soft-router"].includes(order.product));return{...item,reason:stripReplacementSnapshot(item.reason)||null,service:order?{kind:node?"node":"proxy",orderId:order.id,product:order.product,region:order.region,address:allocation?`${allocation.host}:${allocation.port}`:null,wifiName:allocation?.wifiName||null,city:allocation?.note?.match(/\[CITY\]([^\n]*)/)?.[1]?.trim()||null}:null}});
+    const enriched=items.map(item=>{const proxy=allocationMap.get(item.allocationId),order=proxy?.order||orderMap.get(item.allocationId)||null,allocation=proxy?.allocation||null,node=Boolean(order&&["computer-node","soft-router"].includes(order.product));return{...item,reason:stripReplacementSnapshot(item.reason)||null,previousAsset:parseReplacementSnapshot(item.reason),service:order?{kind:node?"node":"proxy",orderId:order.id,product:order.product,region:order.region,address:allocation?`${allocation.host}:${allocation.port}`:null,wifiName:allocation?.wifiName||null,city:allocation?.note?.match(/\[CITY\]([^\n]*)/)?.[1]?.trim()||null}:null}});
     return NextResponse.json({items:enriched});
   }
   const[owned]=await db.select({allocation:proxyAllocations,order:orders}).from(proxyAllocations).innerJoin(orders,eq(proxyAllocations.orderId,orders.id)).where(and(

@@ -77,13 +77,17 @@ export default function RenewalOrders() {
     }
   }
 
-  return <div className="renewal-order-page">
-    <section className="product-order-hero">
-      <div><small>业务管理</small><h2>续费订单</h2><p>客户付款后立即延长服务时间；此处只负责人工核验，不通过时自动退款并回滚到期时间。</p></div>
+  const pendingCount=rows.filter(row=>["paid","provisioning"].includes(row.status)||(row.status==="active"&&!row.adminNote?.includes("[RENEWAL_VERIFIED_AT]"))).length;
+  const verifiedCount=rows.filter(row=>row.status==="active"&&row.adminNote?.includes("[RENEWAL_VERIFIED_AT]")).length;
+  const refundedCount=rows.filter(row=>row.status==="refunded").length;
+  return <div className="renewal-order-page business-page">
+    <section className="product-order-hero business-hero">
+      <div><small>RENEWAL OPERATIONS</small><h2>续费订单</h2><p>客户付款后立即延长服务时间；此处只负责人工核验，不通过时自动退款并回滚到期时间。</p></div>
       <button onClick={() => void load()}>刷新数据</button>
     </section>
+    <section className="business-metrics"><article><i>续</i><span><small>全部续费</small><b>{rows.length}</b><em>累计续费订单</em></span></article><article><i className="warning">核</i><span><small>等待核验</small><b>{pendingCount}</b><em>需要管理员确认</em></span></article><article><i className="success">成</i><span><small>核验完成</small><b>{verifiedCount}</b><em>续费结果已确认</em></span></article><article><i className="danger">退</i><span><small>核验退款</small><b>{refundedCount}</b><em>不通过并已回滚</em></span></article></section>
     {message && <div className="auth-success">{message}</div>}
-    <section className="product-order-list">
+    <section className="product-order-list business-workbench">
       <header><div><h3>续费核验明细</h3><p>待核验订单不会再次延长服务，避免重复续期。</p></div><div><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="搜索续费单号、客户或商品" /></div></header>
       <div className="renewal-business-table">
         <div className="renewal-business-row head"><span>续费单号</span><span>客户</span><span>服务信息</span><span>WiFi 名称</span><span>地区</span><span>续费周期</span><span>续费金额</span><span>下单时间</span><span>状态</span><span>核验操作</span></div>

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb, getRawDatabase } from "../../../db";
 import { couponRedemptions, coupons, currencies, orders, productOffers, proxyAllocations, serviceRequests } from "../../../db/schema";
@@ -89,16 +89,11 @@ export async function GET() {
   ]);
   const redemptionByOrder=new Map(redemptionRows.map(row=>[row.orderId,row]));
   const couponById=new Map(couponRows.map(row=>[row.id,row]));
-  const resourceOrderIds=new Set<string>();
-  for(const order of rows){
-    const note=String(order.adminNote||"");
-    resourceOrderIds.add(note.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1]?.trim()||order.id);
-    const raw=note.match(/\[BUNDLE_ITEMS\]([^\n]+)/)?.[1];
-    if(raw)try{for(const item of JSON.parse(decodeURIComponent(raw)))if(item?.id)resourceOrderIds.add(String(item.id))}catch{}
-  }
-  const allocationRows=resourceOrderIds.size?await db.select({id:proxyAllocations.id,orderId:proxyAllocations.orderId,host:proxyAllocations.host,port:proxyAllocations.port,wifiName:proxyAllocations.wifiName,protocol:proxyAllocations.protocol,note:proxyAllocations.note,status:proxyAllocations.status}).from(proxyAllocations).where(inArray(proxyAllocations.orderId,[...resourceOrderIds])):[];
+  const allocationRows=await db.select({id:proxyAllocations.id,orderId:proxyAllocations.orderId,host:proxyAllocations.host,port:proxyAllocations.port,wifiName:proxyAllocations.wifiName,protocol:proxyAllocations.protocol,note:proxyAllocations.note,status:proxyAllocations.status,orderRegion:orders.region}).from(proxyAllocations).innerJoin(orders,eq(proxyAllocations.orderId,orders.id)).where(eq(orders.customerEmail,user.email));
   const allocationsByOrder=new Map<string,typeof allocationRows>();
   for(const allocation of allocationRows){const list=allocationsByOrder.get(allocation.orderId)||[];list.push(allocation);allocationsByOrder.set(allocation.orderId,list)}
+  const allocationById=new Map(allocationRows.map(allocation=>[allocation.id,allocation]));
+  const orderById=new Map(rows.map(order=>[order.id,order]));
   const requestById = new Map(requestRows.map((request) => [request.id, request]));
   const orderRegionById = new Map(rows.map((order) => [order.id, order.region]));
   const renewalChildrenByParent = new Map<string, typeof rows>();
@@ -132,7 +127,10 @@ export async function GET() {
     const bundleRenewalApplied=bundleRenewal&&bundleChildren.length>0&&bundleChildren.every(child=>child.adminNote?.includes("[RENEW_APPLIED_AT]"));
     const bundleItems=(()=>{const raw=adminNote?.match(/\[BUNDLE_ITEMS\]([^\n]+)/)?.[1];if(!raw)return null;try{return JSON.parse(decodeURIComponent(raw))}catch{return null}})();
     const sourceIds=renewalOf?[renewalOf]:bundleItems?.length?bundleItems.map((item:{id:string})=>item.id):[order.id];
-    const resources=sourceIds.flatMap((id:string)=>allocationsByOrder.get(id)||[]).map((resource:typeof allocationRows[number])=>({id:resource.id,orderId:resource.orderId,ip:`${resource.host}:${resource.port}`,wifiName:resource.wifiName||null,country:orderRegionById.get(resource.orderId)||order.region,city:resource.note?.match(/\[CITY\]([^\n]*)/)?.[1]?.trim()||null,protocol:resource.protocol,status:resource.status}));
+    const replacementAllocationId=adminNote?.match(/\[REPLACE_ALLOCATION\]([^\n]+)/)?.[1]?.trim()||null;
+    const resourceRows=replacementAllocationId?[allocationById.get(replacementAllocationId)].filter((item):item is typeof allocationRows[number]=>Boolean(item)):sourceIds.flatMap((id:string)=>allocationsByOrder.get(id)||[]);
+    const resources=resourceRows.map((resource:typeof allocationRows[number])=>({id:resource.id,orderId:resource.orderId,ip:`${resource.host}:${resource.port}`,wifiName:resource.wifiName||null,country:resource.orderRegion||orderRegionById.get(resource.orderId)||order.region,city:resource.note?.match(/\[CITY\]([^\n]*)/)?.[1]?.trim()||null,protocol:resource.protocol,status:resource.status}));
+    const nodeSource=renewalOf?orderById.get(renewalOf):order,nodeSubscriptionUrl=nodeSource?.adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1]||null;
     return {
       ...order,
       couponCode:coupon?.code||null,
@@ -149,6 +147,7 @@ export async function GET() {
       subscriptionUrl: order.product === "computer-node"
         ? adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1] || null
         : null,
+      nodeService: ["computer-node","soft-router"].includes(order.product)?{product:order.product,subscriptionUrl:nodeSubscriptionUrl,region:nodeSource?.region||order.region}:null,
       bundleItems,
       resources,
       serviceRequestStatus: serviceRequestForOrder({ ...order, adminNote })?.status || null,

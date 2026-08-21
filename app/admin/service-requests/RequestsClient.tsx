@@ -60,14 +60,20 @@ export default function RequestsClient() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [actionDialog, setActionDialog] = useState<{id:string;action:"approve"|"reject"} | null>(null);
   const [actionNote, setActionNote] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [replacementForm, setReplacementForm] = useState({ host: "", port: "", username: "", password: "", wifiName: "", protocol: "SOCKS5", country: "", city: "" });
 
   async function load() {
+    setRefreshing(true);
     const response = await fetch("/api/admin/service-requests");
     const data = await response.json();
+    setRefreshing(false);
     if (response.ok) setItems(data.items || []);
     else setError(data.error || "售后申请加载失败");
   }
@@ -138,22 +144,26 @@ export default function RequestsClient() {
   const actionRequest = actionDialog ? items.find((item) => item.id === actionDialog.id) || (detail?.request.id === actionDialog.id ? detail.request : null) : null;
   const isReplacementApproval = actionDialog?.action === "approve" && actionRequest?.type === "replace";
   const replacementIncomplete = isReplacementApproval && !replacementForm.host.trim();
+  const typeLabel=(type:string)=>type === "renew" ? "服务续费" : type === "reset_traffic" ? "流量重置" : type === "custom" ? "一次性服务" : "更换 IP";
+  const stats={total:items.length,pending:items.filter(item=>item.status==="pending").length,completed:items.filter(item=>["approved","completed"].includes(item.status)).length,closed:items.filter(item=>["rejected","cancelled"].includes(item.status)).length};
+  const keyword=search.trim().toLowerCase();
+  const filteredItems=items.filter(item=>(statusFilter==="all"||item.status===statusFilter)&&(typeFilter==="all"||item.type===typeFilter)&&(!keyword||[item.id,item.customerName,item.customerEmail,item.assetAddress,item.reason].some(value=>String(value||"").toLowerCase().includes(keyword))));
 
   return <div className="standalone-admin aftersales-center">
     <header><a href="/admin">← 返回后台</a><h1>售后申请</h1></header>
     {error && <div className="live-error">{error}<button onClick={() => setError("")}>×</button></div>}
-    <div className="standalone-table aftersales-table">
-      <div className="orow head"><span>申请编号</span><span>客户</span><span>原代理</span><span>类型</span><span>原因 / 时长</span><span>状态</span><span>操作</span></div>
-      {items.length === 0 ? <div className="empty">暂无售后申请</div> : items.map((item) => <div className="orow" key={item.id}>
-        <span><button className="aftersales-link mono" onClick={() => void open(item)}>{item.id}</button></span>
-        <span><button className="aftersales-link" onClick={() => openCustomer(item.customerId)}>{item.customerName || "未设置名称"}</button>{item.customerEmail&&<small>{item.customerEmail}</small>}</span>
-        <span><button className="aftersales-link mono" onClick={() => void open(item)}>{item.assetAddress || "未找到代理资源"}</button>{item.assetAddress&&<small>资源记录 {item.allocationId.slice(0,8)}</small>}</span>
-        <span>{item.type === "renew" ? "续费" : item.type === "reset_traffic" ? "流量重置" : item.type === "custom" ? "一次性服务" : "更换"}</span>
-        <span>{item.reason || `${item.durationDays || 0} 天`}</span>
-        <span><b className={`aftersales-status ${item.status}`}>{statusLabels[item.status] || "未知状态"}</b></span>
-        <span className="live-actions"><button onClick={() => void open(item)}>查看详情</button>{item.status === "pending" && <><button className="primary" onClick={() => askAction(item.id, "approve")}>批准</button><button className="danger-outline" onClick={() => askAction(item.id, "reject")}>拒绝</button></>}</span>
-      </div>)}
-    </div>
+    <section className="aftersales-hero"><div><small>AFTER-SALES OPERATIONS</small><h2>售后服务中心</h2><p>集中处理更换 IP、服务续费与流量重置，完整保留客户、资源和处理结果。</p></div><button type="button" disabled={refreshing} onClick={()=>void load()}>{refreshing?"正在刷新…":"刷新申请"}</button></section>
+    <section className="aftersales-metrics"><article><i className="all">全</i><span><small>全部申请</small><b>{stats.total}</b><em>累计售后记录</em></span></article><article><i className="pending">待</i><span><small>等待处理</small><b>{stats.pending}</b><em>{stats.pending?"需要尽快处理":"当前没有积压"}</em></span></article><article><i className="completed">成</i><span><small>处理完成</small><b>{stats.completed}</b><em>已批准或已完成</em></span></article><article><i className="closed">关</i><span><small>已关闭</small><b>{stats.closed}</b><em>已拒绝或已取消</em></span></article></section>
+    <section className="aftersales-workbench"><header><div><h3>申请处理队列</h3><p>共 {filteredItems.length} 条符合当前条件</p></div><div className="aftersales-filters"><label><span>⌕</span><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="搜索编号、客户、IP 或原因"/></label><select aria-label="申请类型" value={typeFilter} onChange={event=>setTypeFilter(event.target.value)}><option value="all">全部类型</option><option value="replace">更换 IP</option><option value="renew">服务续费</option><option value="reset_traffic">流量重置</option><option value="custom">一次性服务</option></select><select aria-label="处理状态" value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">全部状态</option><option value="pending">待处理</option><option value="completed">已完成</option><option value="approved">已批准</option><option value="rejected">已拒绝</option><option value="cancelled">已取消</option></select></div></header>
+      <div className="aftersales-queue-head"><span>申请与客户</span><span>关联服务</span><span>申请内容</span><span>处理状态</span><span>操作</span></div>
+      <div className="aftersales-queue">{filteredItems.length===0?<div className="aftersales-empty"><i>◎</i><b>没有匹配的售后申请</b><p>请调整搜索词或筛选条件后重试。</p></div>:filteredItems.map(item=><article className={`aftersales-request-card ${item.status}`} key={item.id}>
+        <span className="aftersales-request-identity"><i className={`type-${item.type}`}>{item.type==="replace"?"换":item.type==="renew"?"续":item.type==="reset_traffic"?"流":"服"}</i><span><button className="aftersales-link mono" onClick={()=>void open(item)}>{item.id}</button><button className="aftersales-link customer" onClick={()=>openCustomer(item.customerId)}>{item.customerName||"未设置名称"}</button><small>{item.customerEmail||displayCustomerId(item.customerId)}</small></span></span>
+        <span className="aftersales-service-cell"><b className="mono">{item.assetAddress||"未找到关联资源"}</b><small>资源记录 {item.allocationId.slice(0,8)}</small></span>
+        <span className="aftersales-request-copy"><b>{typeLabel(item.type)}</b><small>{item.reason||`${item.durationDays||0} 天`}</small><em>{date(item.createdAt)}</em></span>
+        <span><b className={`aftersales-status ${item.status}`}>{statusLabels[item.status]||"未知状态"}</b></span>
+        <span className="aftersales-row-actions"><button onClick={()=>void open(item)}>详情</button>{item.status==="pending"&&<><button className="primary" onClick={()=>askAction(item.id,"approve")}>{item.type==="replace"?"交付":"处理"}</button><button className="danger-outline" onClick={()=>askAction(item.id,"reject")}>拒绝</button></>}</span>
+      </article>)}</div>
+    </section>
     {loading && <div className="customer-drawer-mask"><div className="customer-drawer loading">正在加载售后详情…</div></div>}
     {detail && <div className="aftersales-detail-mask" onClick={() => setDetail(null)}><section className="aftersales-detail" onClick={(event) => event.stopPropagation()}>
       <header><div><small>售后申请详情</small><h2>{detail.request.type === "renew" ? "代理续费" : detail.request.type === "reset_traffic" ? "节点流量重置" : detail.request.type === "custom" ? "一次性服务" : "代理更换"}</h2><p>{detail.request.id}</p></div><button onClick={() => setDetail(null)}>×</button></header>
