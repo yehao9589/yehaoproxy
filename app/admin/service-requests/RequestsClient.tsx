@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {displayCustomerId} from "../../../lib/customer-id";
+import LocationSelectFields from "../../LocationSelectFields";
 
 type RequestItem = {
   id: string;
@@ -109,7 +110,7 @@ export default function RequestsClient() {
     if(actionName==="reject"&&!note.trim())return setError("请填写拒绝原因");
     const currentRequest = items.find((item) => item.id === id) || (detail?.request.id === id ? detail.request : null);
     const isReplacement = actionName === "approve" && currentRequest?.type === "replace";
-    if (isReplacement && (!replacementForm.host.trim() || !replacementForm.port || !replacementForm.country.trim() || !replacementForm.city.trim())) return setError("请填写完整的新 IP、端口、国家和城市");
+    if (isReplacement && !replacementForm.host.trim()) return setError("请填写新的 IP 地址");
     setActionBusy(true);
     const payload = isReplacement ? {
       action: actionName, note: note.trim(), host: replacementForm.host.trim(), port: Number(replacementForm.port),
@@ -134,7 +135,7 @@ export default function RequestsClient() {
     : null;
   const actionRequest = actionDialog ? items.find((item) => item.id === actionDialog.id) || (detail?.request.id === actionDialog.id ? detail.request : null) : null;
   const isReplacementApproval = actionDialog?.action === "approve" && actionRequest?.type === "replace";
-  const replacementIncomplete = isReplacementApproval && (!replacementForm.host.trim() || !replacementForm.port || !replacementForm.country.trim() || !replacementForm.city.trim());
+  const replacementIncomplete = isReplacementApproval && !replacementForm.host.trim();
 
   return <div className="standalone-admin aftersales-center">
     <header><a href="/admin">← 返回后台</a><h1>售后申请</h1></header>
@@ -184,16 +185,15 @@ export default function RequestsClient() {
     {actionDialog&&<div className="aftersales-action-mask" onMouseDown={event=>{if(event.target===event.currentTarget&&!actionBusy)setActionDialog(null)}}><form className={`aftersales-action-dialog${isReplacementApproval ? " replacement-dialog" : ""}`} onSubmit={event=>{event.preventDefault();void action(actionDialog.id,actionDialog.action,actionNote)}}>
       <header><div><small>售后申请 {actionDialog.id}</small><h2>{actionDialog.action==="reject"?"拒绝售后申请":isReplacementApproval?"填写并交付新代理":"确认处理售后申请"}</h2></div><button type="button" disabled={actionBusy} onClick={()=>setActionDialog(null)}>×</button></header>
       {isReplacementApproval&&<section className="replacement-resource-form">
-        <div className="replacement-resource-heading"><div><strong>新代理资源</strong><span>确认后将直接替换客户当前使用的代理信息</span></div><b>必填项标有 *</b></div>
+        <div className="replacement-resource-heading"><div><strong>新代理资源</strong><span>只需填写新 IP；其他项目留空时保持原资源配置不变</span></div><b>仅 IP 为必填项</b></div>
         <div className="replacement-resource-grid">
           <label className="wide">代理地址 / IP *<input autoFocus required value={replacementForm.host} onChange={event=>setReplacementForm(value=>({...value,host:event.target.value}))} placeholder="例如 23.134.60.23"/></label>
-          <label>端口 *<input type="number" min="1" max="65535" required value={replacementForm.port} onChange={event=>setReplacementForm(value=>({...value,port:event.target.value}))} placeholder="例如 443"/></label>
-          <label>协议 *<select value={replacementForm.protocol} onChange={event=>setReplacementForm(value=>({...value,protocol:event.target.value}))}><option value="SOCKS5">SOCKS5</option><option value="HTTPS">HTTPS</option><option value="HTTP">HTTP</option></select></label>
-          <label>账号<input value={replacementForm.username} onChange={event=>setReplacementForm(value=>({...value,username:event.target.value}))} placeholder="可留空"/></label>
+          <label>端口（可选）<input type="number" min="1" max="65535" value={replacementForm.port} onChange={event=>setReplacementForm(value=>({...value,port:event.target.value}))} placeholder="留空保持原端口"/></label>
+          <label>协议（可选）<select value={replacementForm.protocol} onChange={event=>setReplacementForm(value=>({...value,protocol:event.target.value}))}><option value="">保持原协议</option><option value="SOCKS5">SOCKS5</option><option value="HTTPS">HTTPS</option><option value="HTTP">HTTP</option></select></label>
+          <label>账号（可选）<input value={replacementForm.username} onChange={event=>setReplacementForm(value=>({...value,username:event.target.value}))} placeholder="留空保持原账号"/></label>
           <label>密码<input value={replacementForm.password} onChange={event=>setReplacementForm(value=>({...value,password:event.target.value}))} placeholder="留空则保留原密码"/></label>
-          <label>WiFi 名称<input value={replacementForm.wifiName} onChange={event=>setReplacementForm(value=>({...value,wifiName:event.target.value}))} placeholder="可留空"/></label>
-          <label>国家代码 *<input required maxLength={2} value={replacementForm.country} onChange={event=>setReplacementForm(value=>({...value,country:event.target.value.toUpperCase()}))} placeholder="例如 US、JP"/></label>
-          <label className="wide">城市 *<input required value={replacementForm.city} onChange={event=>setReplacementForm(value=>({...value,city:event.target.value}))} placeholder="例如 洛杉矶"/></label>
+          <label>WiFi 名称（可选）<input value={replacementForm.wifiName} onChange={event=>setReplacementForm(value=>({...value,wifiName:event.target.value}))} placeholder="留空保持原名称"/></label>
+          <LocationSelectFields initialCountry={replacementForm.country} initialCity={replacementForm.city} allowEmpty optional onChange={(country,city)=>setReplacementForm(value=>({...value,country,city}))}/>
         </div>
       </section>}
       <label>{actionDialog.action==="reject"?"拒绝原因":"处理备注（可选）"}<textarea autoFocus rows={5} maxLength={500} required={actionDialog.action==="reject"} value={actionNote} onChange={event=>setActionNote(event.target.value)} placeholder={actionDialog.action==="reject"?"请填写明确的拒绝原因，客户可在售后记录中查看":"填写本次处理结果或内部说明"}/></label>
