@@ -4,36 +4,46 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@11.9.0 --activate
 
+FROM base AS build-deps
+
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --ignore-scripts \
     && pnpm rebuild esbuild sharp unrs-resolver workerd
 
+FROM build-deps AS build
+
 COPY . .
-RUN pnpm run build \
-    && pnpm prune --prod \
+RUN pnpm run build
+
+# 生产依赖独立成稳定层。普通业务代码变化时不会重新生成 node_modules。
+FROM base AS prod-deps
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts \
+    && pnpm rebuild esbuild sharp unrs-resolver workerd \
     && pnpm store prune
 
 FROM docker.m.daocloud.io/library/node:22-bookworm-slim AS runtime
 
 WORKDIR /app
 
-ARG APP_VERSION=pre-release
-ARG APP_COMMIT=""
-ARG IMAGE_REPOSITORY=ghcr.io/yehao9589/yehaoproxy:pre-release
-
 RUN apt-get update \
     && apt-get install -y --no-install-recommends mariadb-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Only runtime artifacts are copied. Source files, development dependencies,
-# compilers and package-manager caches stay in the builder image.
-COPY --from=base /app/package.json ./package.json
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/dist ./dist
-COPY --from=base /app/public ./public
-COPY --from=base /app/scripts ./scripts
+# 依赖层与应用产物分开，后续普通更新只需拉取较小的应用层。
+COPY --from=prod-deps /app/package.json ./package.json
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/public ./public
+COPY --from=build /app/scripts ./scripts
 
 EXPOSE 3000
+
+# 版本信息放在稳定依赖层之后，提交号变化不会让系统组件和依赖层失效。
+ARG APP_VERSION=pre-release
+ARG APP_COMMIT=""
+ARG IMAGE_REPOSITORY=ghcr.io/yehao9589/yehaoproxy:pre-release
 
 ENV NODE_ENV=production
 ENV NODE_OPTIONS=--experimental-loader=/app/scripts/cloudflare-node-loader.mjs
