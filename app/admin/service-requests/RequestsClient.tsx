@@ -18,6 +18,8 @@ type RequestItem = {
   status: string;
   createdAt: string;
   updatedAt?: string;
+  assetAddress?: string | null;
+  previousAsset?: { address: string; username: string | null; wifiName: string | null; protocol: string | null; country: string | null; city: string | null } | null;
 };
 
 type Detail = {
@@ -141,11 +143,11 @@ export default function RequestsClient() {
     <header><a href="/admin">← 返回后台</a><h1>售后申请</h1></header>
     {error && <div className="live-error">{error}<button onClick={() => setError("")}>×</button></div>}
     <div className="standalone-table aftersales-table">
-      <div className="orow head"><span>申请编号</span><span>客户</span><span>代理资产</span><span>类型</span><span>原因 / 时长</span><span>状态</span><span>操作</span></div>
+      <div className="orow head"><span>申请编号</span><span>客户</span><span>原代理</span><span>类型</span><span>原因 / 时长</span><span>状态</span><span>操作</span></div>
       {items.length === 0 ? <div className="empty">暂无售后申请</div> : items.map((item) => <div className="orow" key={item.id}>
         <span><button className="aftersales-link mono" onClick={() => void open(item)}>{item.id}</button></span>
         <span><button className="aftersales-link" onClick={() => openCustomer(item.customerId)}>{item.customerName || "未设置名称"}</button>{item.customerEmail&&<small>{item.customerEmail}</small>}</span>
-        <span><button className="aftersales-link mono" onClick={() => void open(item)}>{item.allocationId}</button></span>
+        <span><button className="aftersales-link mono" onClick={() => void open(item)}>{item.assetAddress || "未找到代理资源"}</button>{item.assetAddress&&<small>资源记录 {item.allocationId.slice(0,8)}</small>}</span>
         <span>{item.type === "renew" ? "续费" : item.type === "reset_traffic" ? "流量重置" : item.type === "custom" ? "一次性服务" : "更换"}</span>
         <span>{item.reason || `${item.durationDays || 0} 天`}</span>
         <span><b className={`aftersales-status ${item.status}`}>{statusLabels[item.status] || "未知状态"}</b></span>
@@ -179,6 +181,14 @@ export default function RequestsClient() {
           <div><span>自动续费</span><strong>{detail.asset?.autoRenew ? "已开启" : "未开启"}</strong></div>
         </div></section>}
         {detail.request.type === "replace" && <section><h3>更换申请</h3><div className="aftersales-detail-grid renewal-focus"><div><span>已付费用</span><strong>¥{detail.request.amount?.toFixed(2) || "0.00"}</strong></div><div><span>更换原因</span><strong>{detail.request.reason || "未填写"}</strong></div></div></section>}
+        {detail.request.type === "replace" && detail.request.previousAsset && <section><h3>更换前的代理信息</h3><div className="aftersales-detail-grid">
+          <div><span>原代理地址</span><b className="mono">{detail.request.previousAsset.address}</b></div>
+          <div><span>原账号</span><b>{detail.request.previousAsset.username || "未设置"}</b></div>
+          <div><span>原 WiFi 名称</span><b>{detail.request.previousAsset.wifiName || "未设置"}</b></div>
+          <div><span>原协议</span><b>{detail.request.previousAsset.protocol || "未设置"}</b></div>
+          <div><span>原国家 / 地区</span><b>{detail.request.previousAsset.country || "未设置"}</b></div>
+          <div><span>原城市</span><b>{detail.request.previousAsset.city || "未设置"}</b></div>
+        </div></section>}
       </div>
       <footer><button onClick={() => setDetail(null)}>关闭</button>{detail.request.status === "pending" && <button className="danger-outline" onClick={() => askAction(detail.request.id, "reject")}>拒绝申请</button>}{(detail.request.status === "pending" || (detail.request.type === "reset_traffic" && detail.request.status === "completed")) && <button className="primary" onClick={() => askAction(detail.request.id, "approve")}>{detail.request.type === "reset_traffic" ? (detail.request.status === "completed" ? "重新执行流量重置" : "执行流量重置") : detail.request.type === "custom" ? "确认服务已完成" : detail.request.type === "replace" ? "确认并更换 IP" : "批准并执行续费"}</button>}</footer>
     </section></div>}

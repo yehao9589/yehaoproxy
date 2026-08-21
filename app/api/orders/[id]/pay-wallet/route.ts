@@ -5,6 +5,7 @@ import { couponRedemptions, coupons, orders, proxyAllocations, serviceRequests, 
 import { audit } from "../../../../../lib/audit";
 import { getCurrentCustomer } from "../../../../../lib/auth";
 import { addBillingPeriod, billingCycleFromNote } from "../../../../../lib/billing-period";
+import { parseReplacementSnapshot, replacementSnapshotLines } from "../../../../../lib/replacement-snapshot";
 import { withRequestLock } from "../../../../../lib/request-lock";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -122,7 +123,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
     if (replacementAllocation) {
       const reason = order.adminNote?.match(/\[REPLACE_REASON\]([^\n]+)/)?.[1] || "客户付费申请更换 IP";
-      writes.push(db.insert(serviceRequests).values({ id: `SR-${crypto.randomUUID().slice(0, 10)}`, customerId: user.id, allocationId: replacementAllocation.id, type: "replace", durationDays: null, reason: `${reason}（已付款订单 ${id}）`, amount: payable, status: "pending", adminNote: null, createdAt: now, updatedAt: now }));
+      const sourceOrder=await db.select({region:orders.region}).from(orders).where(eq(orders.id,replacementAllocation.orderId)).limit(1),snapshot=parseReplacementSnapshot(order.adminNote),previousProxy=snapshot?String(order.adminNote||"").split("\n").filter(line=>line.startsWith("[PREVIOUS_PROXY_")).join("\n"):replacementSnapshotLines(replacementAllocation,sourceOrder[0]?.region||"");
+      writes.push(db.insert(serviceRequests).values({ id: `SR-${crypto.randomUUID().slice(0, 10)}`, customerId: user.id, allocationId: replacementAllocation.id, type: "replace", durationDays: null, reason: `${reason}（已付款订单 ${id}）\n${previousProxy}`, amount: payable, status: "pending", adminNote: null, createdAt: now, updatedAt: now }));
     }
 
     await db.batch(writes as [BatchQuery, ...BatchQuery[]]);

@@ -4,6 +4,7 @@ import {getDb} from "../../../db";
 import {orders,productOffers,proxyAllocations,serviceRequests,systemOptions} from "../../../db/schema";
 import {audit} from "../../../lib/audit";
 import {getCurrentCustomer} from "../../../lib/auth";
+import {replacementSnapshotLines,stripReplacementSnapshot} from "../../../lib/replacement-snapshot";
 
 const DAY=86400000;
 const originalActivation=(allocation:{note:string|null},order:{createdAt:Date})=>{const marked=allocation.note?.match(/\[ACTIVATED_AT\]([^\n]+)/)?.[1],parsed=marked?new Date(marked):order.createdAt;return Number.isNaN(parsed.getTime())?order.createdAt:parsed};
@@ -48,7 +49,7 @@ export async function GET(req:Request){
     ]);
     const allocationMap=new Map(ownedAllocations.map(row=>[row.allocation.id,row]));
     const orderMap=new Map(ownedOrders.map(order=>[order.id,order]));
-    const enriched=items.map(item=>{const proxy=allocationMap.get(item.allocationId),order=proxy?.order||orderMap.get(item.allocationId)||null,allocation=proxy?.allocation||null,node=Boolean(order&&["computer-node","soft-router"].includes(order.product));return{...item,service:order?{kind:node?"node":"proxy",orderId:order.id,product:order.product,region:order.region,address:allocation?`${allocation.host}:${allocation.port}`:null,wifiName:allocation?.wifiName||null,city:allocation?.note?.match(/\[CITY\]([^\n]*)/)?.[1]?.trim()||null}:null}});
+    const enriched=items.map(item=>{const proxy=allocationMap.get(item.allocationId),order=proxy?.order||orderMap.get(item.allocationId)||null,allocation=proxy?.allocation||null,node=Boolean(order&&["computer-node","soft-router"].includes(order.product));return{...item,reason:stripReplacementSnapshot(item.reason)||null,service:order?{kind:node?"node":"proxy",orderId:order.id,product:order.product,region:order.region,address:allocation?`${allocation.host}:${allocation.port}`:null,wifiName:allocation?.wifiName||null,city:allocation?.note?.match(/\[CITY\]([^\n]*)/)?.[1]?.trim()||null}:null}});
     return NextResponse.json({items:enriched});
   }
   const[owned]=await db.select({allocation:proxyAllocations,order:orders}).from(proxyAllocations).innerJoin(orders,eq(proxyAllocations.orderId,orders.id)).where(and(
@@ -107,19 +108,20 @@ export async function POST(req:Request){
     const reason=String(body?.reason||"").trim().slice(0,500);
     if(reason.length<5)return NextResponse.json({error:"请填写至少 5 个字的更换原因"},{status:400});
     const policy=await replacementPolicy(owned.order.product,owned.order.region);
+    const previousProxy=replacementSnapshotLines(owned.allocation,owned.order.region);
     const[usedFreeCount,renewed]=await Promise.all([completedReplacementCount(allocationId),hasCompletedRenewal(allocationId)]);
     const eligibleUntil=new Date(originalActivation(owned.allocation,owned.order).getTime()+policy.freeDays*DAY);
     const remainingFreeCount=Math.max(0,policy.freeCount-usedFreeCount);
     if(!renewed&&now<=eligibleUntil&&remainingFreeCount>0){
       const id=`SR-${crypto.randomUUID().slice(0,10)}`;
       const orderId=`FR-${crypto.randomUUID().slice(0,8).toUpperCase()}`;
-      await db.insert(serviceRequests).values({id,customerId:user.id,allocationId,type:"replace",durationDays:null,reason:`${reason}（免费更换，剩余次数 ${remainingFreeCount-1}/${policy.freeCount}）`,amount:0,status:"pending",createdAt:now,updatedAt:now});
-      await db.insert(orders).values({id:orderId,customerEmail:user.email,product:"ip-replacement",region:owned.order.region,quantity:1,durationDays:0,amount:0,currency:owned.order.currency,status:"provisioning",paymentMethod:"free",adminNote:`[REPLACE_ALLOCATION]${allocationId}\n[REPLACE_REASON]${reason}\n[FREE_REPLACEMENT_REQUEST]${id}`,createdAt:now,updatedAt:now});
+      await db.insert(serviceRequests).values({id,customerId:user.id,allocationId,type:"replace",durationDays:null,reason:`${reason}（免费更换，剩余次数 ${remainingFreeCount-1}/${policy.freeCount}）\n${previousProxy}`,amount:0,status:"pending",createdAt:now,updatedAt:now});
+      await db.insert(orders).values({id:orderId,customerEmail:user.email,product:"ip-replacement",region:owned.order.region,quantity:1,durationDays:0,amount:0,currency:owned.order.currency,status:"provisioning",paymentMethod:"free",adminNote:`[REPLACE_ALLOCATION]${allocationId}\n[REPLACE_REASON]${reason}\n[FREE_REPLACEMENT_REQUEST]${id}\n${previousProxy}`,createdAt:now,updatedAt:now});
       await audit({id:user.id,role:user.role},"service.replace.free_create","service_request",id,{allocationId,eligibleUntil,freeDays:policy.freeDays,freeCount:policy.freeCount,remainingFreeCount:remainingFreeCount-1},req);
       return NextResponse.json({id,orderId,status:"pending",amount:0,free:true,remainingFreeCount:remainingFreeCount-1,message:"免费更换申请及订单已创建"},{status:201});
     }
     const orderId=`RP-${crypto.randomUUID().slice(0,8).toUpperCase()}`;
-    await db.insert(orders).values({id:orderId,customerEmail:user.email,product:"ip-replacement",region:owned.order.region,quantity:1,durationDays:0,amount:policy.amount,currency:owned.order.currency,status:"pending",paymentMethod:"balance",adminNote:`[REPLACE_ALLOCATION]${allocationId}\n[REPLACE_REASON]${reason}`,createdAt:now,updatedAt:now});
+    await db.insert(orders).values({id:orderId,customerEmail:user.email,product:"ip-replacement",region:owned.order.region,quantity:1,durationDays:0,amount:policy.amount,currency:owned.order.currency,status:"pending",paymentMethod:"balance",adminNote:`[REPLACE_ALLOCATION]${allocationId}\n[REPLACE_REASON]${reason}\n${previousProxy}`,createdAt:now,updatedAt:now});
     await audit({id:user.id,role:user.role},"service.replace.order_create","order",orderId,{allocationId,reason,amount:policy.amount},req);
     return NextResponse.json({id:orderId,orderId,status:"pending",amount:policy.amount,free:false},{status:201});
   }
