@@ -113,7 +113,7 @@ export default function RequestsClient() {
     if (isReplacement && !replacementForm.host.trim()) return setError("请填写新的 IP 地址");
     setActionBusy(true);
     const payload = isReplacement ? {
-      action: actionName, note: note.trim(), host: replacementForm.host.trim(), port: Number(replacementForm.port),
+      action: actionName, note: note.trim(), host: replacementForm.host.trim(), port: replacementForm.port ? Number(replacementForm.port) : undefined,
       username: replacementForm.username.trim(), password: replacementForm.password, wifiName: replacementForm.wifiName.trim(),
       protocol: replacementForm.protocol, country: replacementForm.country.trim().toUpperCase(), city: replacementForm.city.trim(),
     } : { action: actionName, note: note.trim() };

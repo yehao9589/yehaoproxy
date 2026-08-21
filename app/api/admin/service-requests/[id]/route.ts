@@ -161,21 +161,23 @@ export async function PATCH(
   }
 
   const[sourceOrder]=await db.select({region:orders.region}).from(orders).where(eq(orders.id,allocation.orderId)).limit(1);
-  const originalCity=normalizeCityName(String(allocation.note||"").match(/\[CITY\]([^\n]+)/)?.[1]||""),originalCountry=/^[A-Z]{2}$/i.test(String(sourceOrder?.region||""))?String(sourceOrder?.region).toUpperCase():"US";
-  const host=String(body?.host||"").trim(),requestedPort=String(body?.port??"").trim(),port=requestedPort?Number(requestedPort):allocation.port,username=String(body?.username||"").trim()||allocation.username,password=String(body?.password||""),wifiName=String(body?.wifiName||"").trim()||allocation.wifiName,protocol=String(body?.protocol||allocation.protocol||"HTTPS").toUpperCase(),country=String(body?.country||originalCountry).trim().toUpperCase(),city=normalizeCityName(String(body?.city||originalCity||"其他城市"));
-  if(!host||!Number.isInteger(port)||port<1||port>65535||!["HTTP","HTTPS","SOCKS5"].includes(protocol)||!/^[A-Z]{2}$/.test(country)||!city){
-    return NextResponse.json({error:"请填写有效的新 IP 地址"},{status:400});
-  }
+  const originalCity=normalizeCityName(String(allocation.note||"").match(/\[CITY\]([^\n]+)/)?.[1]||""),originalCountry=String(sourceOrder?.region||"").trim();
+  const host=String(body?.host||"").trim(),requestedPort=body?.port==null||body.port===""||Number(body.port)===0?"":String(body.port).trim(),port=requestedPort?Number(requestedPort):allocation.port,username=String(body?.username||"").trim()||allocation.username,password=String(body?.password||""),wifiName=String(body?.wifiName||"").trim()||allocation.wifiName,requestedProtocol=String(body?.protocol||"").trim().toUpperCase(),protocol=requestedProtocol||allocation.protocol||"HTTPS",requestedCountry=String(body?.country||"").trim().toUpperCase(),country=requestedCountry||originalCountry,requestedCity=normalizeCityName(String(body?.city||"")),city=requestedCity||originalCity;
+  if(!host)return NextResponse.json({error:"请填写新的 IP 地址"},{status:400});
+  if(requestedPort&&(!Number.isInteger(port)||port<1||port>65535))return NextResponse.json({error:"端口必须是 1–65535 之间的整数"},{status:400});
+  if(requestedProtocol&&!["HTTP","HTTPS","SOCKS5"].includes(requestedProtocol))return NextResponse.json({error:"请选择有效的代理协议"},{status:400});
+  if(requestedCountry&&!/^[A-Z]{2}$/.test(requestedCountry))return NextResponse.json({error:"请选择有效的国家或地区"},{status:400});
+  if(body?.city&&!requestedCity)return NextResponse.json({error:"请选择有效的城市"},{status:400});
   const cleanNote=String(allocation.note||"").replace(/\[CITY\][^\n]*(?:\n|$)/g,"").trim();
   await db.update(proxyAllocations).set({
     host,port,username,wifiName,protocol,
     encryptedPassword:password?await encryptCredential(password):allocation.encryptedPassword,
-    note:`${cleanNote}${cleanNote?"\n":""}[CITY]${city}`,
+    note:requestedCity?`${cleanNote}${cleanNote?"\n":""}[CITY]${requestedCity}`:allocation.note,
   }).where(eq(proxyAllocations.id,allocation.id));
-  await db.update(orders).set({region:country,updatedAt:now}).where(eq(orders.id,allocation.orderId));
+  if(requestedCountry)await db.update(orders).set({region:requestedCountry,updatedAt:now}).where(eq(orders.id,allocation.orderId));
   await db.update(serviceRequests).set({
     status: "completed",
-    adminNote: String(body?.note || `已更换为 ${host}:${port}（${country} / ${city}）`),
+    adminNote: String(body?.note || `已更换为 ${host}:${port}${country||city?`（${country||"原地区"} / ${city||"原城市"}）`:""}`),
     updatedAt: now,
   }).where(eq(serviceRequests.id, id));
   if(linkedBillId)await db.update(orders).set({status:"active",updatedAt:now}).where(eq(orders.id,linkedBillId));
