@@ -15,11 +15,14 @@ const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
   vars: {
+    DATABASE_DRIVER: process.env.DATABASE_DRIVER || "sqlite",
+    MYSQL_BRIDGE_URL: process.env.MYSQL_BRIDGE_URL || "",
+    MYSQL_BRIDGE_SECRET: process.env.MYSQL_BRIDGE_SECRET || "",
     XPANEL_BRIDGE_URL: process.env.XPANEL_BRIDGE_URL || "",
     XPANEL_BRIDGE_SECRET: process.env.XPANEL_BRIDGE_SECRET || "",
     CRON_SECRET: process.env.CRON_SECRET || "",
   },
-  d1_databases: d1
+  d1_databases: process.env.DATABASE_DRIVER === "mysql" ? [] : d1
     ? [
         {
           binding: d1,
@@ -44,6 +47,9 @@ export default defineConfig(async () => {
   process.env.WRANGLER_WRITE_LOGS ??= "false";
   process.env.WRANGLER_LOG_PATH ??= ".wrangler/logs";
   process.env.MINIFLARE_REGISTRY_PATH ??= ".wrangler/registry";
+  // Local previews must not depend on Cloudflare's public Request.cf sample.
+  // A blocked or proxied connection used to make Vinext hang and then exit.
+  process.env.CLOUDFLARE_CF_FETCH_ENABLED = "false";
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
   const { cloudflare } = await import("@cloudflare/vite-plugin");

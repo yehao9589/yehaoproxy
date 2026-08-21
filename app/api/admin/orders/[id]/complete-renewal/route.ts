@@ -11,6 +11,7 @@ import {
 import { requireAdminApi } from "../../../../../../lib/admin-auth";
 import { audit } from "../../../../../../lib/audit";
 import { withRequestLock } from "../../../../../../lib/request-lock";
+import { databaseText } from "../../../../../../lib/database-text";
 
 function noteValue(note: string | null, key: string) {
   return note?.match(new RegExp(`\\[${key}\\]([^\\n]*)`))?.[1]?.trim() ?? "";
@@ -57,7 +58,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }).where(eq(orders.id, id));
     if (parentId) {
       const customerOrders = await db.select().from(orders).where(eq(orders.customerEmail, renewal.customerEmail));
-      const siblings = customerOrders.filter((item) => String(item.adminNote || "").includes(`[BUNDLE_PARENT]${parentId}`));
+      const siblings = customerOrders.filter((item) => databaseText(item.adminNote).includes(`[BUNDLE_PARENT]${parentId}`));
       const allVerified = siblings.length > 0 && siblings.every((item) => item.id === id || noteValue(item.adminNote, "RENEWAL_VERIFIED_AT"));
       if (allVerified) {
         const [parent] = customerOrders.filter((item) => item.id === parentId);

@@ -37,4 +37,5 @@ export const installMysqlSchema = installSchema
   .replaceAll("TEXT NOT NULL UNIQUE", "VARCHAR(191) NOT NULL UNIQUE")
   .replaceAll("TEXT NOT NULL DEFAULT", "VARCHAR(191) NOT NULL DEFAULT")
   .replaceAll("INTEGER PRIMARY KEY", "BIGINT PRIMARY KEY")
-  .replaceAll(" INTEGER", " BIGINT");
+  .replaceAll(" INTEGER", " BIGINT")
+  .replaceAll(" TEXT", " LONGTEXT");

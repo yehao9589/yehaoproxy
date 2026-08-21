@@ -2,7 +2,7 @@ import{NextResponse}from"next/server";
 import{and,desc,eq,sql}from"drizzle-orm";
 import{requireAdminApi}from"../../../../../lib/admin-auth";
 import{getDb}from"../../../../../db";
-import{couponRedemptions,coupons,customers,orders,paymentTransactions,productOffers,proxyAllocations,serviceRequests}from"../../../../../db/schema";
+import{couponRedemptions,coupons,customers,orders,paymentTransactions,productOffers,proxyAllocations,serviceRequests,walletTransactions}from"../../../../../db/schema";
 import{encryptCredential}from"../../../../../lib/inventory-crypto";
 import{normalizeCityName}from"../../../../../lib/cities";
 import{addBillingPeriod,billingCycleFromNote}from"../../../../../lib/billing-period";
@@ -64,10 +64,11 @@ export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){
     billingCycle:targetOrder?billingCycleFromNote(targetOrder.adminNote):null,
   };
   const payments=await db.select().from(paymentTransactions).where(eq(paymentTransactions.orderId,id));
+  const[walletTx]=order.paymentReference?await db.select().from(walletTransactions).where(eq(walletTransactions.id,order.paymentReference)).limit(1):[null],balanceBefore=walletTx?Number((walletTx.balanceAfter-walletTx.amount).toFixed(2)):0,paymentSource=order.paymentMethod!=="balance"?order.paymentMethod:walletTx?.balanceAfter<0?(balanceBefore>0?"balance_credit":"credit"):"balance";
   const subscriptionUrl=order.adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1]||null;
   const itemAmount=order.adminNote?.match(/\[BUNDLE_ITEM_AMOUNT\]([^\n]+)/)?.[1],billingOrderId=order.adminNote?.match(/\[BUNDLE_PARENT\]([^\n]+)/)?.[1];
-  const[redemption]=await db.select().from(couponRedemptions).where(eq(couponRedemptions.orderId,id)).limit(1),[coupon]=redemption?await db.select().from(coupons).where(eq(coupons.id,redemption.couponId)).limit(1):[null],discountAmount=Number(redemption?.discount||0);
-  const visibleOrder={...order,amount:itemAmount==null?order.amount:Number(itemAmount),adminNote:visibleNote(order.adminNote),billType:billKind({...order,adminNote:orderNote(order.adminNote)}),renewalVerified:orderNote(order.adminNote).includes("[RENEWAL_VERIFIED_AT]"),subscriptionUrl,billingOrderId:billingOrderId||null,billingCycle:billingCycleFromNote(order.adminNote),couponCode:coupon?.code||null,discountAmount,originalAmount:Number((order.amount+discountAmount).toFixed(2)),paidAmount:order.amount};
+  const redemptionOrderIds=new Set([id,...relatedOrders.map(item=>item.id)]),redemption=(await db.select().from(couponRedemptions)).find(item=>redemptionOrderIds.has(item.orderId)),[coupon]=redemption?await db.select().from(coupons).where(eq(coupons.id,redemption.couponId)).limit(1):[null],discountAmount=Number(redemption?.discount||0),orderText=orderNote(order.adminNote),renewalVerified=orderText.includes("[RENEWAL_VERIFIED_AT]")||(orderText.includes("[BUNDLE_RENEWAL]true")&&relatedOrders.length>0&&relatedOrders.every(item=>orderNote(item.adminNote).includes("[RENEWAL_VERIFIED_AT]")));
+  const visibleOrder={...order,amount:itemAmount==null?order.amount:Number(itemAmount),adminNote:visibleNote(order.adminNote),billType:billKind({...order,adminNote:orderText}),renewalVerified,subscriptionUrl,billingOrderId:billingOrderId||null,billingCycle:billingCycleFromNote(order.adminNote),couponCode:coupon?.code||null,discountAmount,originalAmount:Number((order.amount+discountAmount).toFixed(2)),paidAmount:order.amount,paymentSource};
   const[offer]=await db.select().from(productOffers).where(and(eq(productOffers.product,order.product),eq(productOffers.region,order.region))).limit(1);
   const availableRenewalPeriods=visibleOrder.billingCycle==="calendar-month"
     ?[(offer?.price30??-1)>=0?30:null,(offer?.price90??-1)>=0?90:null].filter((value):value is number=>value!==null)

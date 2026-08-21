@@ -45,15 +45,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: base
     container_name: yehaoproxy-local
     working_dir: /app
-    command: ["pnpm", "exec", "vinext", "dev", "--hostname", "0.0.0.0"]
+    command: ["sh", "-lc", "unset NODE_OPTIONS; pnpm install --frozen-lockfile --ignore-scripts; pnpm run build; export NODE_OPTIONS=--experimental-loader=/app/scripts/cloudflare-node-loader.mjs; exec node node_modules/vinext/dist/cli.js start --hostname 0.0.0.0"]
     ports:
       - "3000:3000"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       CI: "true"
       CONTAINER: "true"
+      DATABASE_DRIVER: mysql
+      CLOUDFLARE_CF_FETCH_ENABLED: "false"
       CRON_SECRET: yehaoproxy-local-cron
       XPANEL_BRIDGE_URL: http://xpanel-bridge:8787
       XPANEL_BRIDGE_SECRET: yehaoproxy-local-xpanel-bridge
