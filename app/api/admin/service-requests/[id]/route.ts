@@ -26,7 +26,7 @@ export async function PATCH(
     const[sourceOrder]=allocation?[]:await db.select().from(orders).where(eq(orders.id,request.allocationId)).limit(1);
     if(!allocation&&!sourceOrder)return NextResponse.json({error:"续费对应的服务资源不存在"},{status:409});
     const issues:string[]=[];
-    if(!request.durationDays||![7,30,90].includes(request.durationDays))issues.push("续费时长异常");
+    if(!request.durationDays||![7,30,90,180].includes(request.durationDays))issues.push("续费时长异常");
     if(request.amount==null||request.amount<0)issues.push("续费金额异常");
     const expiresAt=allocation?.expiresAt||sourceOrder?.expiresAt;
     if(!expiresAt||expiresAt<=request.createdAt)issues.push("到期时间未正确延长");

@@ -5,6 +5,7 @@ import {customers,notifications,orders,systemOptions} from "../db/schema";
 import {sendTransactionalEmail} from "./email";
 import {runTicketAutomation} from "./ticket-automation";
 import {brandedEmail} from "./branded-email";
+import {billingCycleFromNote,periodLabel} from "./billing-period";
 
 export type ReminderConfig={
   enabled:boolean;
@@ -56,7 +57,7 @@ export async function runScheduledReminders(origin:string){
     let delivered=false;
     if(config.siteEnabled&&!siteRecord){await db.insert(notifications).values({id:crypto.randomUUID(),customerId:customer.id,type,title,body,link,read:false,createdAt:now});result.created++;delivered=true}
     if(config.emailEnabled&&!emailRecord)try{
-      await sendTransactionalEmail(customer.email,title,await brandedEmail({title,eyebrow:key.startsWith("expiry")||key==="expired"?"SERVICE EXPIRY":"ORDER UPDATE",greeting:`尊敬的 ${customer.name||customer.email}：`,body,actionLabel:key.startsWith("expiry")||key==="expired"?"立即续费":"查看我的服务",actionUrl:`${origin}${link}`,details:[{label:"订单编号",value:order.id,accent:true},{label:"商品 / 服务",value:productName(order.product)},{label:"服务地区",value:order.region},{label:"购买数量",value:`${order.quantity} 个`},{label:"服务周期",value:`${order.durationDays} 天`},{label:"到期时间",value:order.expiresAt?.toLocaleString("zh-CN",{hour12:false})||"等待开通"}],notice:key.startsWith("expiry")||key==="expired"?"为避免服务中断，请在到期前完成续费。":"服务进度发生变化后，我们会继续通过邮件和站内通知告知你。"}));
+      await sendTransactionalEmail(customer.email,title,await brandedEmail({title,eyebrow:key.startsWith("expiry")||key==="expired"?"SERVICE EXPIRY":"ORDER UPDATE",greeting:`尊敬的 ${customer.name||customer.email}：`,body,actionLabel:key.startsWith("expiry")||key==="expired"?"立即续费":"查看我的服务",actionUrl:`${origin}${link}`,details:[{label:"订单编号",value:order.id,accent:true},{label:"商品 / 服务",value:productName(order.product)},{label:"服务地区",value:order.region},{label:"购买数量",value:`${order.quantity} 个`},{label:"服务周期",value:periodLabel(order.durationDays,billingCycleFromNote(order.adminNote))},{label:"到期时间",value:order.expiresAt?.toLocaleString("zh-CN",{hour12:false})||"等待开通"}],notice:key.startsWith("expiry")||key==="expired"?"为避免服务中断，请在到期前完成续费。":"服务进度发生变化后，我们会继续通过邮件和站内通知告知你。"}));
       await db.insert(systemOptions).values({key:emailMarker,value:now.toISOString(),updatedAt:now});
       result.emailed++;delivered=true;
     }catch{result.emailFailed++}

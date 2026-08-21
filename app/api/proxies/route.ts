@@ -6,8 +6,10 @@ import { orders, productOffers, proxyAllocations, systemOptions } from "../../..
 import { decryptCredential } from "../../../lib/inventory-crypto";
 import { billingCycleFromNote } from "../../../lib/billing-period";
 import { proxyNoteValue, visibleProxyNote } from "../../../lib/proxy-note";
+import {ensureProductOfferSchema} from "../../../lib/product-offer-schema";
 
 export async function GET(req: Request) {
+  await ensureProductOfferSchema();
   const user = await getCurrentCustomer();
   if (!user) return NextResponse.json({ error: "请先登录" }, { status: 401 });
   const reveal = new URL(req.url).searchParams.get("reveal") === "1";
@@ -21,6 +23,7 @@ export async function GET(req: Request) {
       price7: productOffers.price7,
       price30: productOffers.price30,
       price90: productOffers.price90,
+      price180: productOffers.price180,
       durationDays: orders.durationDays,
       renewalAmount: orders.renewalAmount,
       adminNote: orders.adminNote,
@@ -50,7 +53,7 @@ export async function GET(req: Request) {
       ? billingCycleFromNote(row.adminNote)
       : row.offerBillingCycle || "fixed-days";
     const availableRenewalPeriods = billingCycle === "calendar-month"
-      ? [30,60,90]
+      ? [row.price30 !== null && row.price30 >= 0 ? 30 : null,row.price90 !== null && row.price90 >= 0 ? 90 : null,row.price180 !== null && row.price180 >= 0 ? 180 : null].filter((value):value is number=>value!==null)
       : [row.price7 !== null && row.price7 >= 0 ? 7 : null,row.price30 !== null && row.price30 >= 0 ? 30 : null,row.price90 !== null && row.price90 >= 0 ? 90 : null].filter((value):value is number=>value!==null);
     return {
       ...row.allocation,
@@ -70,6 +73,7 @@ export async function GET(req: Request) {
       price7: row.price7,
       price30: row.price30,
       price90: row.price90,
+      price180: row.price180,
       // 服务单独设置优先；历史订单没有保存周期时才使用商品当前默认规则。
       billingCycle,
       availableRenewalPeriods,

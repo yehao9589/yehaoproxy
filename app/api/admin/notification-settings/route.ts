@@ -18,7 +18,7 @@ export const DEFAULT_TEMPLATES = [
 
 export const DEFAULT_ADMIN_TEMPLATES = [
   {id:"admin_new_order",name:"客户新购提醒",scene:"订单运营",enabled:true,emailEnabled:true,smsEnabled:false,emailSubject:"收到新订单 {{orderId}}",emailBody:"客户 {{customerEmail}} 创建了 {{product}} 订单，地区 {{region}}，数量 {{quantity}}，金额 {{amount}}。",smsBody:""},
-  {id:"admin_renewal",name:"客户续费提醒",scene:"续费核验",enabled:true,emailEnabled:true,smsEnabled:false,emailSubject:"收到续费订单 {{orderId}}",emailBody:"客户 {{customerEmail}} 提交了续费订单，原服务 {{sourceOrderId}}，续费周期 {{durationDays}} 天，金额 {{amount}}。",smsBody:""},
+  {id:"admin_renewal",name:"客户续费提醒",scene:"续费核验",enabled:true,emailEnabled:true,smsEnabled:false,emailSubject:"收到续费订单 {{orderId}}",emailBody:"客户 {{customerEmail}} 提交了续费订单，原服务 {{sourceOrderId}}，续费周期 {{durationLabel}}，金额 {{amount}}。",smsBody:""},
   {id:"admin_stock_low",name:"库存不足提醒",scene:"库存预警",enabled:true,emailEnabled:true,smsEnabled:false,emailSubject:"商品库存不足：{{product}} / {{region}}",emailBody:"客户下单时库存不足。商品 {{product}}，地区 {{region}}，需要 {{required}}，当前可用 {{available}}。",smsBody:""},
 ];
 

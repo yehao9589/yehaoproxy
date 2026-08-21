@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Pagination from "../Pagination";
 import { countryName } from "../../lib/countries";
+import {billingCycleFromNote,periodLabel} from "../../lib/billing-period";
 
 const states: Record<string, string> = {
   pending: "待付款",
@@ -92,7 +93,7 @@ export default function RenewalOrders() {
           <span><b className={row.service?.kind==="proxy"?"mono renewal-service-ip":""}>{row.service?.label||"未找到关联服务"}</b><small>{products[row.product] || row.product}</small></span>
           <span><b>{row.service?.kind==="node"?"—":row.service?.wifiName||"未设置"}</b></span>
           <span><b>{countryName(row.service?.country||row.region)}</b><small>{row.service?.city||row.service?.country||row.region}</small></span>
-          <span>{row.durationDays} 天</span><strong>¥{Number(row.amount).toFixed(2)}</strong>
+          <span>{periodLabel(row.durationDays,billingCycleFromNote(row.adminNote))}</span><strong>¥{Number(row.amount).toFixed(2)}</strong>
           <span>{new Date(row.createdAt).toLocaleString("zh-CN", { hour12: false })}</span>
           <span><em className={`order-status ${row.status==="active"&&!row.adminNote?.includes("[RENEWAL_VERIFIED_AT]")?"provisioning":row.status}`}>{row.status==="active"&&!row.adminNote?.includes("[RENEWAL_VERIFIED_AT]")?"待核验":states[row.status] || row.status}</em></span>
           <span>{["paid", "provisioning"].includes(row.status)||(row.status==="active"&&!row.adminNote?.includes("[RENEWAL_VERIFIED_AT]")) ? <span className="verify-actions"><button className="primary" disabled={busy?.startsWith(`${row.id}:`)} aria-busy={busy === `${row.id}:approve`} onClick={() => setPendingVerify({id:row.id,action:"approve"})}>{busy === `${row.id}:approve` ? "处理中…" : "核验通过"}</button><button className="reject" disabled={busy?.startsWith(`${row.id}:`)} aria-busy={busy === `${row.id}:reject`} onClick={() => setPendingVerify({id:row.id,action:"reject"})}>{busy === `${row.id}:reject` ? "处理中…" : "不通过"}</button></span> : <button disabled>{row.status === "pending" ? "等待付款" : "已核验"}</button>}</span>

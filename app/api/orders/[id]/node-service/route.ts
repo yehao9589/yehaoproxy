@@ -5,7 +5,7 @@ import { orders, productOffers, systemOptions } from "../../../../../db/schema";
 import { audit } from "../../../../../lib/audit";
 import {notifyAdmins} from "../../../../../lib/admin-event-notifications";
 import { getCurrentCustomer } from "../../../../../lib/auth";
-import { billingCycleFromNote } from "../../../../../lib/billing-period";
+import { billingCycleFromNote,periodLabel } from "../../../../../lib/billing-period";
 
 const nodeProducts = new Set(["soft-router", "computer-node"]);
 
@@ -43,6 +43,9 @@ export async function PATCH(
     if (billingCycle === "calendar-month" && durationDays === 7) {
       return NextResponse.json({ error: "自然月计费不支持 7 天续费周期" }, { status: 409 });
     }
+    if (billingCycle !== "calendar-month" && durationDays === 180) {
+      return NextResponse.json({ error: "6 个月续费仅适用于自然月服务" }, { status: 409 });
+    }
     await db
       .update(orders)
       .set({ autoRenew, durationDays, updatedAt: new Date() })
@@ -66,6 +69,9 @@ export async function PATCH(
     if (billingCycle === "calendar-month" && durationDays === 7) {
       return NextResponse.json({ error: "自然月计费不支持 7 天续费周期" }, { status: 409 });
     }
+    if (billingCycle !== "calendar-month" && durationDays === 180) {
+      return NextResponse.json({ error: "6 个月续费仅适用于自然月服务" }, { status: 409 });
+    }
     const [offer] = await db
       .select()
       .from(productOffers)
@@ -76,7 +82,7 @@ export async function PATCH(
       ))
       .limit(1);
     if (!offer) return NextResponse.json({ error: "该节点商品已经下架，无法在线续费" }, { status: 409 });
-    const unit = durationDays === 7 ? offer.price7 : durationDays === 90 ? offer.price90 : offer.price30 * (durationDays / 30);
+    const unit = durationDays === 7 ? offer.price7 : durationDays === 90 ? offer.price90 : durationDays === 180 ? offer.price180 : offer.price30 * (durationDays / 30);
     if (unit < 0) return NextResponse.json({ error: `该服务暂不支持续费 ${durationDays} 天` }, { status: 409 });
     const amount = Number((unit * order.quantity).toFixed(2));
     const renewalId = `RN-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
@@ -106,7 +112,8 @@ export async function PATCH(
       { sourceOrderId: order.id, durationDays, amount },
       req,
     );
-    void notifyAdmins("admin_renewal",{orderId:renewalId,customerEmail:user.email,sourceOrderId:order.id,durationDays,amount:`${order.currency} ${amount.toFixed(2)}`},[{label:"续费订单",value:renewalId,accent:true},{label:"客户",value:user.email},{label:"原服务",value:order.id},{label:"续费周期",value:`${durationDays} 天`},{label:"金额",value:`${order.currency} ${amount.toFixed(2)}`}]).catch(()=>{});
+    const durationLabel=periodLabel(durationDays,billingCycle);
+    await notifyAdmins("admin_renewal",{orderId:renewalId,customerEmail:user.email,sourceOrderId:order.id,durationDays,durationLabel,amount:`${order.currency} ${amount.toFixed(2)}`},[{label:"续费订单",value:renewalId,accent:true},{label:"客户",value:user.email},{label:"原服务",value:order.id},{label:"续费周期",value:durationLabel},{label:"金额",value:`${order.currency} ${amount.toFixed(2)}`}]).catch(()=>{});
     return NextResponse.json({ ok: true, orderId: renewalId, amount });
   }
 

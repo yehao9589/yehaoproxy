@@ -27,7 +27,7 @@ export default function NodeTrafficEnhancer() {
       const limited = traffic.total > 0;
       const percent = limited ? Math.min(100, traffic.used / traffic.total * 100) : 0;
       host.className = "node-traffic-card";
-      host.innerHTML = `<div><span>VPS 实时总流量</span><button type="button">刷新</button></div><b>${gb(traffic.used)} GB <small>${limited ? `/ ${gb(traffic.total)} GB` : "/ 不限量"}</small></b>${limited ? `<i><em style="width:${percent}%"></em></i>` : ""}<p>${limited ? `剩余 ${gb(traffic.remaining)} GB · 已用 ${percent.toFixed(1)}%` : `全部 ${Number(traffic.inboundCount || 0)} 个入站流量合计`}</p>`;
+      host.innerHTML = `<div><span>VPS 实时总流量</span><button type="button">刷新</button></div><b>${gb(traffic.used)} GB <small>${limited ? `/ ${gb(traffic.total)} GB` : "/ 不限量"}</small></b>${limited ? `<i><em style="width:${percent}%"></em></i><p>剩余 ${gb(traffic.remaining)} GB · 已用 ${percent.toFixed(1)}%</p>` : ""}`;
       host.querySelector("button")?.addEventListener("click", () => void load(host, orderId, true), { once: true });
     }
 

@@ -5,11 +5,13 @@ import {getDb,getRawDatabase} from "../../../../db";
 import {currencies,productOffers} from "../../../../db/schema";
 import {sendOrderCreatedEmails} from "../../../../lib/order-notifications";
 import {notifyAdmins} from "../../../../lib/admin-event-notifications";
+import {ensureProductOfferSchema} from "../../../../lib/product-offer-schema";
 
-const DURATIONS = new Set([7, 30, 90]);
+const DURATIONS = new Set([7, 30, 90, 180]);
 type InputItem = {product: string; region: string; durationDays: number; quantity: number};
 
 export async function POST(req: Request) {
+  await ensureProductOfferSchema();
   const user = await getCurrentCustomer();
   if (!user) return NextResponse.json({error: "请先登录"}, {status: 401});
 
@@ -42,6 +44,7 @@ export async function POST(req: Request) {
     )).limit(1);
     if (!offer) return NextResponse.json({error: `${item.product} / ${item.region} 当前未开放销售`}, {status: 409});
     if (offer.billingCycle === "calendar-month" && item.durationDays === 7) return NextResponse.json({error: `${offer.regionName} 为自然月商品，不支持 7 天周期`}, {status: 409});
+    if (offer.billingCycle !== "calendar-month" && item.durationDays === 180) return NextResponse.json({error: `${offer.regionName} 不是自然月商品，不能购买 6 个月周期`}, {status: 409});
     offerByKey.set(key, offer);
   }
 
@@ -60,7 +63,7 @@ export async function POST(req: Request) {
   const bundleId = `YH-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   const created = items.flatMap(item => {
     const offer = offerByKey.get(`${item.product}:${item.region}`)!;
-    const unit = item.durationDays === 7 ? offer.price7 : item.durationDays === 90 ? offer.price90 : offer.price30;
+    const unit = item.durationDays === 7 ? offer.price7 : item.durationDays === 90 ? offer.price90 : item.durationDays === 180 ? offer.price180 : offer.price30;
     return Array.from({length:item.quantity},()=>({...item,quantity:1,unit}));
   }).map((item,index)=>({...item,id:`${bundleId}-${String(index+1).padStart(2,"0")}`,amount:Number(item.unit.toFixed(2))}));
   const unavailable = created.find(item => item.amount < 0);
@@ -68,7 +71,7 @@ export async function POST(req: Request) {
 
   const total = Number(created.reduce((sum, item) => sum + item.amount, 0).toFixed(2));
   const singleItem = created.length === 1 ? created[0] : null;
-  const bundleItems = encodeURIComponent(JSON.stringify(created.map(({id, product, region, durationDays, quantity, amount}) => ({id, product, region, durationDays, quantity, amount}))));
+  const bundleItems = encodeURIComponent(JSON.stringify(created.map(({id, product, region, durationDays, quantity, amount}) => ({id, product, region, durationDays, billingCycle:offerByKey.get(`${product}:${region}`)!.billingCycle, quantity, amount}))));
   const statements = [
     ...Array.from(requiredByKey.entries()).map(([key, required]) => {
       const offer = offerByKey.get(key)!;
@@ -100,7 +103,7 @@ export async function POST(req: Request) {
     return NextResponse.json({error: "商品可售额度刚刚发生变化，请重新结算"}, {status: 409});
   }
 
-  void sendOrderCreatedEmails({id:bundleId,customerEmail:user.email,product:singleItem?.product||"cart-bundle",region:singleItem?.region||"MULTI",quantity:created.length,durationDays:singleItem?.durationDays||0,amount:total,currency}).catch(()=>{});
+  void sendOrderCreatedEmails({id:bundleId,customerEmail:user.email,product:singleItem?.product||"cart-bundle",region:singleItem?.region||"MULTI",quantity:created.length,durationDays:singleItem?.durationDays||0,billingCycle:singleItem?offerByKey.get(`${singleItem.product}:${singleItem.region}`)?.billingCycle:undefined,amount:total,currency}).catch(()=>{});
 
   return NextResponse.json({
     ok: true,

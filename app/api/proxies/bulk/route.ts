@@ -5,9 +5,12 @@ import { getDb } from "../../../../db";
 import { orders, productOffers, proxyAllocations, systemOptions } from "../../../../db/schema";
 import { encryptCredential } from "../../../../lib/inventory-crypto";
 import { audit } from "../../../../lib/audit";
-import { billingCycleFromNote } from "../../../../lib/billing-period";
+import { billingCycleFromNote,periodLabel } from "../../../../lib/billing-period";
+import { notifyAdmins } from "../../../../lib/admin-event-notifications";
+import {ensureProductOfferSchema} from "../../../../lib/product-offer-schema";
 
 export async function POST(req: Request) {
+  await ensureProductOfferSchema();
   const user = await getCurrentCustomer();
   if (!user) return NextResponse.json({ error: "请先登录" }, { status: 401 });
   const body = await req.json().catch(() => null);
@@ -45,8 +48,9 @@ export async function POST(req: Request) {
     for (const row of owned) {
       const cycle = billingCycleFromNote(row.order.adminNote);
       if (cycle === "calendar-month"&&durationDays%30!==0) return NextResponse.json({error:"按月续费必须填写完整月数"},{status:409});
+      if (cycle !== "calendar-month"&&durationDays===180) return NextResponse.json({error:"6 个月续费仅适用于自然月服务"},{status:409});
       const offer = offers.find(item=>item.product===row.order.product&&item.region===row.order.region);
-      const listedPrice = durationDays===7?offer?.price7:durationDays===90?offer?.price90:(offer?.price30??0)*(durationDays/30);
+      const listedPrice = durationDays===7?offer?.price7:durationDays===90?offer?.price90:durationDays===180?offer?.price180:(offer?.price30??0)*(durationDays/30);
       const multiplier = durationDays===7?.35:durationDays/30;
       const amount = Number(((row.order.renewalAmount!=null&&row.order.renewalAmount>0?row.order.renewalAmount*multiplier:Number(listedPrice))).toFixed(2));
       if(!Number.isFinite(amount)||amount<=0)return NextResponse.json({error:`${row.order.product} / ${row.order.region} 尚未配置该续费价格`},{status:409});
@@ -58,6 +62,12 @@ export async function POST(req: Request) {
     if(bundleId){const bundleItems=encodeURIComponent(JSON.stringify(created.map(item=>({id:item.sourceOrderId,product:item.product,region:item.region,quantity:1,durationDays,amount:item.amount,renewalOrderId:item.id}))));await db.insert(orders).values({id:bundleId,customerEmail:user.email,product:"cart-bundle",region:"MULTI",quantity:created.length,durationDays:0,amount:total,currency:owned[0].order.currency,status:"pending",paymentMethod:"balance",renewalAmount:total,adminNote:`[BUNDLE_ITEMS]${bundleItems}\n[BUNDLE_RENEWAL]true`,createdAt:now,updatedAt:now})}
     const checkoutOrderId=bundleId||created[0]?.id;
     await audit({id:user.id,role:user.role},"proxy.renewal_orders.create","order",checkoutOrderId||null,{allocationIds:ids,orderIds:created.map(item=>item.id),bundleOrderId:bundleId,durationDays,total},req);
+    if(checkoutOrderId){
+      const sourceSummary=created.length===1?created[0].sourceOrderId:`共 ${created.length} 项服务`;
+      const cycles=[...new Set(owned.map(item=>billingCycleFromNote(item.order.adminNote)))];
+      const durationLabel=periodLabel(durationDays,cycles.length===1?cycles[0]:"fixed-days");
+      await notifyAdmins("admin_renewal",{orderId:checkoutOrderId,customerEmail:user.email,sourceOrderId:sourceSummary,durationDays,durationLabel,amount:`${owned[0].order.currency} ${total.toFixed(2)}`},[{label:"续费账单",value:checkoutOrderId,accent:true},{label:"客户",value:user.email},{label:"原服务",value:sourceSummary},{label:"续费数量",value:`${created.length} 项`},{label:"续费周期",value:durationLabel},{label:"合计金额",value:`${owned[0].order.currency} ${total.toFixed(2)}`}]).catch(()=>{});
+    }
     return NextResponse.json({ok:true,created:created.length,orderIds:created.map(item=>item.id),orderId:checkoutOrderId,total,bundled:Boolean(bundleId)});
   }
   if(action==="auto-renew"){

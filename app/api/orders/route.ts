@@ -6,10 +6,12 @@ import { getCurrentCustomer } from "../../../lib/auth";
 import { billingCycleFromNote } from "../../../lib/billing-period";
 import {sendOrderCreatedEmails} from "../../../lib/order-notifications";
 import {notifyAdmins} from "../../../lib/admin-event-notifications";
+import {ensureProductOfferSchema} from "../../../lib/product-offer-schema";
 
-const durations = new Set([7, 30, 90]);
+const durations = new Set([7, 30, 90, 180]);
 
 export async function POST(req: Request) {
+  await ensureProductOfferSchema();
   const user = await getCurrentCustomer();
   if (!user) return NextResponse.json({ error: "请先登录" }, { status: 401 });
   const body = await req.json().catch(() => null);
@@ -40,6 +42,7 @@ export async function POST(req: Request) {
     .limit(1);
   if (!offer) return NextResponse.json({ error: "该商品地区暂未开放销售" }, { status: 404 });
   if (offer.billingCycle === "calendar-month" && durationDays === 7) return NextResponse.json({error: "自然月商品不支持 7 天周期"}, {status: 409});
+  if (offer.billingCycle !== "calendar-month" && durationDays === 180) return NextResponse.json({error: "6 个月周期仅适用于自然月商品"}, {status: 409});
   const unlimited = offer.saleStock < 0;
   const available = unlimited ? null : Math.max(0, offer.saleStock - offer.sold);
   if (!unlimited && available! < quantity) {
@@ -47,7 +50,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "商城可售额度不足", available }, { status: 409 });
   }
 
-  const unit = durationDays === 7 ? offer.price7 : durationDays === 90 ? offer.price90 : offer.price30;
+  const unit = durationDays === 7 ? offer.price7 : durationDays === 90 ? offer.price90 : durationDays === 180 ? offer.price180 : offer.price30;
   if (unit < 0) return NextResponse.json({error: `该商品暂不出售 ${durationDays} 天周期`}, {status: 409});
   const amount = Number((unit * quantity).toFixed(2));
   const now = Math.floor(Date.now() / 1000);
@@ -63,7 +66,7 @@ export async function POST(req: Request) {
     await d1.prepare("DELETE FROM orders WHERE id=?").bind(id).run();
     return NextResponse.json({ error: "商城可售额度刚刚发生变化，请重试" }, { status: 409 });
   }
-  void sendOrderCreatedEmails({id,customerEmail:user.email,product,region,quantity,durationDays,amount,currency}).catch(()=>{});
+  void sendOrderCreatedEmails({id,customerEmail:user.email,product,region,quantity,durationDays,billingCycle:offer.billingCycle,amount,currency}).catch(()=>{});
   return NextResponse.json({
     id,
     status: "pending",

@@ -71,10 +71,10 @@ export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){
   const visibleOrder={...order,amount:itemAmount==null?order.amount:Number(itemAmount),adminNote:visibleNote(order.adminNote),billType:billKind({...order,adminNote:orderText}),renewalVerified,subscriptionUrl,billingOrderId:billingOrderId||null,billingCycle:billingCycleFromNote(order.adminNote),couponCode:coupon?.code||null,discountAmount,originalAmount:Number((order.amount+discountAmount).toFixed(2)),paidAmount:order.amount,paymentSource};
   const[offer]=await db.select().from(productOffers).where(and(eq(productOffers.product,order.product),eq(productOffers.region,order.region))).limit(1);
   const availableRenewalPeriods=visibleOrder.billingCycle==="calendar-month"
-    ?[(offer?.price30??-1)>=0?30:null,(offer?.price90??-1)>=0?90:null].filter((value):value is number=>value!==null)
+    ?[(offer?.price30??-1)>=0?30:null,(offer?.price90??-1)>=0?90:null,(offer?.price180??-1)>=0?180:null].filter((value):value is number=>value!==null)
     :[(offer?.price7??-1)>=0?7:null,(offer?.price30??-1)>=0?30:null,(offer?.price90??-1)>=0?90:null].filter((value):value is number=>value!==null);
   const childOrders=order.product==="cart-bundle"?relatedOrders.map(item=>({
-    id:item.id,product:item.product,region:item.region,quantity:item.quantity,durationDays:item.durationDays,
+    id:item.id,product:item.product,region:item.region,quantity:item.quantity,durationDays:item.durationDays,billingCycle:billingCycleFromNote(item.adminNote),
     amount:Number(item.adminNote?.match(/\[BUNDLE_ITEM_AMOUNT\]([^\n]+)/)?.[1]??item.amount),status:item.status,
     expiresAt:item.expiresAt,subscriptionUrl:item.adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1]||null,
   })):[];
@@ -140,7 +140,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   if(action==="update"){
     if(order.status!=="pending")return NextResponse.json({error:"只有待付款订单可以修改商品、地区、数量和金额"},{status:409});
     const product=String(b?.product||order.product),region=String(b?.region||order.region).toUpperCase(),quantity=Number(b?.quantity??order.quantity),durationDays=Number(b?.durationDays??order.durationDays),amount=Number(b?.amount??order.amount);
-    if(!product||!/^[A-Z]{2}$/.test(region)||!Number.isInteger(quantity)||quantity<1||quantity>500||![7,30,90].includes(durationDays)||!Number.isFinite(amount)||amount<0)return NextResponse.json({error:"订单修改参数无效"},{status:400});
+    if(!product||!/^[A-Z]{2}$/.test(region)||!Number.isInteger(quantity)||quantity<1||quantity>500||![7,30,90,180].includes(durationDays)||!Number.isFinite(amount)||amount<0)return NextResponse.json({error:"订单修改参数无效"},{status:400});
     const[offer]=await db.select().from(productOffers).where(and(eq(productOffers.product,product),eq(productOffers.region,region))).limit(1);
     if(!offer||!offer.enabled)return NextResponse.json({error:"目标商品地区未上架"},{status:409});
     const releasedSame=product===order.product&&region===order.region?order.quantity:0;

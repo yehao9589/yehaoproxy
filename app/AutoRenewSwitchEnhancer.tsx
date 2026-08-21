@@ -51,7 +51,7 @@ export default function AutoRenewSwitchEnhancer() {
         const select = oldSelect || document.createElement("select");
         select.dataset.periodSignature = signature;
         select.setAttribute("aria-label", "默认续费周期");
-        const values = natural ? [30,60,90] : [...(service?.availableRenewalPeriods?.length ? service.availableRenewalPeriods : [7,30])];
+        const values = natural ? [30,60,90,180] : [...(service?.availableRenewalPeriods?.length ? service.availableRenewalPeriods : [7,30])];
         if (!values.includes(days)) values.push(days);
         select.replaceChildren(...values.sort((a,b)=>a-b).map(value => new Option(natural ? `${value / 30} 个月` : `${value} 天`, String(value), false, value === days)));
         select.value = String(days);

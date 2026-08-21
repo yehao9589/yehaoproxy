@@ -13,6 +13,7 @@ type Offer = {
   price7: number;
   price30: number;
   price90: number;
+  price180: number;
   saleStock: number;
   sold: number;
   enabled: boolean;
@@ -219,9 +220,9 @@ export default function ProductOffersModule() {
                 <b>{typeName(item.product)}</b><small>{item.billingCycle==="calendar-month"?"自然月计费":"固定天数计费"}</small>
               </span>
               <span><b>{item.regionName}</b><small>{item.region}</small></span>
-              <span className="offer-price">{item.billingCycle==="calendar-month"?"—":item.price7 < 0 ? "不出售" : <><b>¥{item.price7.toFixed(2)}</b><small>7 天</small></>}</span>
-              <span className="offer-price">{item.price30 < 0 ? "不出售" : <><b>¥{item.price30.toFixed(2)}</b><small>{item.billingCycle==="calendar-month"?"1 个自然月":"30 天"}</small></>}</span>
-              <span className="offer-price">{item.price90 < 0 ? "不出售" : <><b>¥{item.price90.toFixed(2)}</b><small>{item.billingCycle==="calendar-month"?"3 个自然月":"90 天"}</small></>}</span>
+              <span className="offer-price">{item.billingCycle==="calendar-month"?(item.price30 < 0 ? "不出售" : <><b>¥{item.price30.toFixed(2)}</b><small>1 个自然月</small></>):item.price7 < 0 ? "不出售" : <><b>¥{item.price7.toFixed(2)}</b><small>7 天</small></>}</span>
+              <span className="offer-price">{item.billingCycle==="calendar-month"?(item.price90 < 0 ? "不出售" : <><b>¥{item.price90.toFixed(2)}</b><small>3 个自然月</small></>):item.price30 < 0 ? "不出售" : <><b>¥{item.price30.toFixed(2)}</b><small>30 天</small></>}</span>
+              <span className="offer-price">{item.billingCycle==="calendar-month"?(item.price180 < 0 ? "不出售" : <><b>¥{item.price180.toFixed(2)}</b><small>6 个自然月</small></>):item.price90 < 0 ? "不出售" : <><b>¥{item.price90.toFixed(2)}</b><small>90 天</small></>}</span>
               <span><b>{item.saleStock < 0 ? "不限量" : item.saleStock}</b><small>{item.saleStock < 0 ? `已售 ${item.sold}` : `剩余 ${Math.max(0, item.saleStock - item.sold)}`}</small></span>
               <span className="offer-row-actions">
                 <button className="offer-edit" onClick={() => openOfferEditor(item)}>编辑商品</button>
@@ -250,6 +251,7 @@ export default function ProductOffersModule() {
               {formBillingCycle==="fixed-days"&&<label>7 天单价<input name="price7" type="number" min="0.01" step="0.01" placeholder="不填写表示不出售" defaultValue={editing && editing.price7 >= 0 ? editing.price7 : ""}/></label>}
               <label>{formBillingCycle==="calendar-month"?"1 个自然月单价":"30 天单价"}<input name="price30" type="number" min="0.01" step="0.01" placeholder="不填写表示不出售" defaultValue={editing && editing.price30 >= 0 ? editing.price30 : ""}/></label>
               <label>{formBillingCycle==="calendar-month"?"3 个自然月单价":"90 天单价"}<input name="price90" type="number" min="0.01" step="0.01" placeholder="不填写表示不出售" defaultValue={editing && editing.price90 >= 0 ? editing.price90 : ""}/></label>
+              {formBillingCycle==="calendar-month"&&<label>6 个自然月单价<input name="price180" type="number" min="0.01" step="0.01" placeholder="不填写表示不出售" defaultValue={editing && editing.price180 >= 0 ? editing.price180 : ""}/></label>}
               <label>前台销售额度<input name="saleStock" type="number" min="0" step="1" placeholder="不填写表示不限量" defaultValue={editing && editing.saleStock >= 0 ? editing.saleStock : ""}/></label>
               <label>显示排序<input name="sortOrder" type="number" step="1" defaultValue={editing?.sortOrder ?? 100}/></label>
             </div>

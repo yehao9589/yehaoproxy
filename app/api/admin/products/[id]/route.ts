@@ -4,6 +4,7 @@ import {requireAdminApi} from "../../../../../lib/admin-auth";
 import {getDb} from "../../../../../db";
 import {productOffers} from "../../../../../db/schema";
 import {getProductTypes} from "../../../../../lib/product-types";
+import {ensureProductOfferSchema} from "../../../../../lib/product-offer-schema";
 
 export async function PATCH(req: Request, {params}: {params: Promise<{id: string}>}) {
   if (!await requireAdminApi("products")) {
@@ -38,7 +39,7 @@ export async function PATCH(req: Request, {params}: {params: Promise<{id: string
     patch.regionName = regionName;
   }
 
-  for (const key of ["price7", "price30", "price90"] as const) {
+  for (const key of ["price7", "price30", "price90", "price180"] as const) {
     if (body[key] === undefined) continue;
     const value = body[key] === null || String(body[key]).trim() === "" ? -1 : Number(body[key]);
     if (!Number.isFinite(value) || (value !== -1 && value <= 0)) {
@@ -61,6 +62,7 @@ export async function PATCH(req: Request, {params}: {params: Promise<{id: string
   }
   if (body.enabled !== undefined) patch.enabled = Boolean(body.enabled);
 
+  await ensureProductOfferSchema();
   await getDb().update(productOffers).set(patch).where(eq(productOffers.id, id));
   return NextResponse.json({ok: true});
 }

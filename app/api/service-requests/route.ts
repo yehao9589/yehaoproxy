@@ -124,7 +124,7 @@ export async function POST(req:Request){
     return NextResponse.json({id:orderId,orderId,status:"pending",amount:policy.amount,free:false},{status:201});
   }
   const durationDays=Number(body?.durationDays);
-  if(![7,30,90].includes(durationDays))return NextResponse.json({error:"续费时长无效"},{status:400});
+  if(![7,30,90,180].includes(durationDays))return NextResponse.json({error:"续费时长无效"},{status:400});
   const multiplier=durationDays===7?.35:durationDays===30?1:2.55,basePrice=owned.order.renewalAmount??owned.order.amount/Math.max(1,owned.order.quantity),amount=Number((basePrice*multiplier).toFixed(2)),id=`SR-${crypto.randomUUID().slice(0,10)}`;
   await db.insert(serviceRequests).values({id,customerId:user.id,allocationId,type:"renew",durationDays,reason:null,amount,status:"pending",createdAt:now,updatedAt:now});
   await audit({id:user.id,role:user.role},"service.renew.create","service_request",id,{allocationId,durationDays},req);

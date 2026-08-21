@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import OrderDetailWorkspace, { type AdminOrderDetail } from "./OrderDetailWorkspace";
 import Pagination from "../Pagination";
 import { billActionName, billKind, billKindNames, businessProgress, financialStatus } from "../../lib/bill-workflow";
+import {periodLabel} from "../../lib/billing-period";
 
 type Order = AdminOrderDetail["order"] & {
   currency: string; durationDays: number; updatedAt: string;
@@ -20,7 +21,7 @@ const regionNames: Record<string, string> = { US: "美国", JP: "日本", BR: "�
 const productName = (value: string) => productNames[value] || value;
 const regionName = (value: string) => regionNames[value] || value;
 const isRenewalOrder = (order: Order) => billKind(order) === "renewal";
-function billSummary(order:Order){if(isRenewalOrder(order))return{products:order.product==="cart-bundle"?"批量服务续费":`${productName(order.product)}续费`,regions:order.product==="cart-bundle"?`${order.bundleItems?.length||order.quantity} 项已有服务`:`${regionName(order.region)} · ${order.durationDays} 天`};const source=order.bundleItems?.length?order.bundleItems:[{product:order.product,region:order.region,quantity:order.quantity}],products=new Map<string,number>(),regions=new Map<string,number>();source.forEach(item=>{products.set(item.product,(products.get(item.product)||0)+item.quantity);regions.set(item.region,(regions.get(item.region)||0)+item.quantity)});return{products:[...products].map(([value,count])=>`${productName(value)} × ${count}`).join("、"),regions:[...regions].map(([value,count])=>`${regionName(value)} × ${count}`).join("、")}}
+function billSummary(order:Order){if(isRenewalOrder(order))return{products:order.product==="cart-bundle"?"批量服务续费":`${productName(order.product)}续费`,regions:order.product==="cart-bundle"?`${order.bundleItems?.length||order.quantity} 项已有服务`:`${regionName(order.region)} · ${periodLabel(order.durationDays,order.billingCycle||"fixed-days")}`};const source=order.bundleItems?.length?order.bundleItems:[{product:order.product,region:order.region,quantity:order.quantity}],products=new Map<string,number>(),regions=new Map<string,number>();source.forEach(item=>{products.set(item.product,(products.get(item.product)||0)+item.quantity);regions.set(item.region,(regions.get(item.region)||0)+item.quantity)});return{products:[...products].map(([value,count])=>`${productName(value)} × ${count}`).join("、"),regions:[...regions].map(([value,count])=>`${regionName(value)} × ${count}`).join("、")}}
 
 export default function OrderManager({ search = "", kind = "all" }: { search?: string; kind?: "all" | "bills" | "products" }) {
   const [rows, setRows] = useState<Order[]>([]);
