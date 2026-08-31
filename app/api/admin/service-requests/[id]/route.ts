@@ -7,6 +7,7 @@ import { audit } from "../../../../../lib/audit";
 import { fetchXPanelTraffic, getXPanelBinding, resetXPanelCycle } from "../../../../../lib/xpanel";
 import { encryptCredential } from "../../../../../lib/inventory-crypto";
 import { normalizeCityName } from "../../../../../lib/cities";
+import {nextBusinessId} from "../../../../../lib/business-id";
 
 export async function PATCH(
   req: Request,
@@ -78,7 +79,7 @@ export async function PATCH(
           refundAmount=Number(linkedOrder.amount||0);
           const balanceAfter=Number((wallet.balance+refundAmount).toFixed(2));
           await db.update(wallets).set({balance:balanceAfter,updatedAt:now}).where(eq(wallets.customerId,customer.id));
-          await db.insert(walletTransactions).values({id:`WT-${crypto.randomUUID()}`,customerId:customer.id,type:"refund",amount:refundAmount,balanceAfter,referenceType:"service_request_reject",referenceId:id,note:`售后申请 ${id} 已拒绝，款项退回账户余额`,operatorId:admin.id,createdAt:now});
+          await db.insert(walletTransactions).values({id:await nextBusinessId("TX",now),customerId:customer.id,type:"refund",amount:refundAmount,balanceAfter,referenceType:"service_request_reject",referenceId:id,note:`售后申请 ${id} 已拒绝，款项退回账户余额`,operatorId:admin.id,createdAt:now});
         }
         await db.update(orders).set({status:"refunded",updatedAt:now,adminNote:`${linkedOrder.adminNote||""}\n[SERVICE_REQUEST_REJECTED]${id}`.trim()}).where(eq(orders.id,linkedBillId));
         refundedOrderId=linkedBillId;

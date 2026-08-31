@@ -10,7 +10,8 @@ const runtimeEntryFile = join(serverDirectory, ".vinext-worker-entry.mjs");
 const runtimeConfigFile = join(serverDirectory, "wrangler.runtime.json");
 const wrangler = join(root, "node_modules", "wrangler", "bin", "wrangler.js");
 const allowed = /^(DATABASE_DRIVER|INVENTORY_|INSTALL_|CRON_|XPANEL_|UPDATE_|PUBLIC_|APP_|IMAGE_|EMAIL_|RESEND_|SMTP_|SMS_)/;
-const values = { ...process.env, DATABASE_DRIVER: "sqlite" };
+const localValues = await readLocalEnvironment(join(root, ".env.local"));
+const values = { ...localValues, ...process.env, DATABASE_DRIVER: "sqlite" };
 const content = Object.entries(values)
   .filter(([key, value]) => allowed.test(key) && value !== undefined)
   .map(([key, value]) => `${key}=${JSON.stringify(String(value))}`)
@@ -72,4 +73,20 @@ async function cleanup() {
     unlink(runtimeEntryFile).catch(() => {}),
     unlink(runtimeConfigFile).catch(() => {}),
   ]);
+}
+
+async function readLocalEnvironment(path) {
+  const source = await readFile(path, "utf8").catch(() => "");
+  return Object.fromEntries(source.split(/\r?\n/).flatMap((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) return [];
+    const separator = trimmed.indexOf("=");
+    if (separator < 1) return [];
+    const name = trimmed.slice(0, separator).trim();
+    let value = trimmed.slice(separator + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    return [[name, value]];
+  }));
 }

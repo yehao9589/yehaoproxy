@@ -6,6 +6,7 @@ import { requireAdminApi } from "../../../../../../lib/admin-auth";
 import { audit } from "../../../../../../lib/audit";
 import { withRequestLock } from "../../../../../../lib/request-lock";
 import { createAlipayRefund, readAlipayConfig } from "../../../../../../lib/alipay";
+import {nextBusinessId} from "../../../../../../lib/business-id";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdminApi("orders");
@@ -53,7 +54,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         [wallet] = await db.select().from(wallets).where(eq(wallets.customerId, customer.id)).limit(1);
       }
       const nextBalance = Number((wallet.balance + order.amount).toFixed(2));
-      const txId = `WT-REFUND-${id}`;
+      const txId = await nextBusinessId("TX", now);
       const walletUpdate = db.update(wallets).set({ balance: nextBalance, updatedAt: now }).where(eq(wallets.customerId, customer.id));
       type BatchQuery = Parameters<typeof db.batch>[0][number];
       const writes: BatchQuery[] = [

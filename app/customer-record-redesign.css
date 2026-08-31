@@ -43,7 +43,7 @@
 .admin-pro .record-filterbar>span{color:#8293a7;font-size:10px!important}
 .admin-pro .record-data-table{margin:0 18px 18px;border:1px solid #e2e8ef;border-radius:12px;overflow:hidden}
 .admin-pro .record-table-head{display:grid;align-items:center;min-height:42px;padding:0 18px;background:#f5f7fa;color:#72849a;font-size:10px;font-weight:750;letter-spacing:.2px}
-.admin-pro .asset-data-table .record-table-head,.admin-pro .asset-data-table .customer-asset-row{grid-template-columns:minmax(235px,1.3fr) minmax(170px,1fr) minmax(165px,.82fr) 82px 88px}
+.admin-pro .asset-data-table .record-table-head,.admin-pro .asset-data-table .customer-asset-row{grid-template-columns:minmax(220px,1.25fr) minmax(160px,.95fr) minmax(90px,.55fr) minmax(155px,.82fr) 82px 88px}
 .admin-pro .order-data-table .record-table-head,.admin-pro .order-data-table .record-order-row{grid-template-columns:minmax(205px,1.2fr) minmax(200px,1fr) 110px 105px 94px}
 
 .admin-pro .asset-data-table .customer-asset-row{display:grid;align-items:center;gap:14px;min-height:72px;padding:10px 16px;border:0;border-top:1px solid #edf1f5;background:#fff;font-size:12px;cursor:pointer;transition:.15s}
@@ -73,6 +73,7 @@
 .admin-pro .asset-address small,.admin-pro .asset-product small,.admin-pro .asset-expiry small{margin:0!important;color:#8192a6;font-size:10px!important}
 .admin-pro .asset-product b{color:#293f59;font-size:12px}
 .admin-pro .asset-product small:last-child{color:#2b6ed4;font-weight:700}
+.admin-pro .asset-wifi-column{display:flex;min-width:0;align-items:center}.admin-pro .asset-wifi-column b{overflow:hidden;color:#29425f;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
 .admin-pro .asset-expiry{color:#30465f;font-size:11px!important;text-align:left!important;white-space:nowrap}
 
 .admin-pro .record-order-row{box-sizing:border-box;display:grid;align-items:center;gap:16px;width:100%;min-height:76px;padding:12px 18px!important;border:0!important;border-top:1px solid #edf1f5!important;border-radius:0!important;background:#fff!important;color:#314760!important;text-align:left;box-shadow:none!important;transition:.15s}
@@ -89,6 +90,7 @@
 .admin-pro .record-status.pending{background:#fff5df!important;color:#aa6a00!important}
 .admin-pro .record-status.provisioning{background:#f0ecff!important;color:#7152c4!important}
 .admin-pro .record-status.refunded,.admin-pro .record-status.failed{background:#f1f4f7!important;color:#68798a!important}
+.admin-pro .record-status.expired,.admin-pro .record-status.suspended,.admin-pro .record-status.revoked{background:#f1f4f7!important;color:#68798a!important}
 .admin-pro .redesigned-record-list{margin:0 18px 18px;border-radius:12px}
 .admin-pro .redesigned-record-list article{min-height:64px;padding:13px 18px;font-size:11px}
 .admin-pro .customer-detail-body>.detail-list{border:1px solid #e0e7ef;border-radius:14px;background:#fff;box-shadow:0 7px 22px rgba(23,43,70,.04)}
@@ -116,7 +118,7 @@
  .admin-pro .customer-drawer.customer-full{width:100vw}
  .admin-pro .customer-kpis.record{grid-template-columns:1fr 1fr}
  .admin-pro .record-summary-grid{grid-template-columns:1fr}
- .admin-pro .asset-data-table .record-table-head,.admin-pro .asset-data-table .customer-asset-row{grid-template-columns:minmax(210px,1.2fr) minmax(160px,1fr) 160px 82px}
+ .admin-pro .asset-data-table .record-table-head,.admin-pro .asset-data-table .customer-asset-row{grid-template-columns:minmax(200px,1.15fr) minmax(145px,.9fr) minmax(85px,.5fr) 150px 82px}
  .admin-pro .asset-data-table .record-table-head span:nth-last-child(2),.admin-pro .asset-data-table .customer-asset-row>em{display:none!important}
  .admin-pro .order-data-table .record-table-head,.admin-pro .order-data-table .record-order-row{grid-template-columns:minmax(190px,1.2fr) minmax(170px,1fr) 90px 90px}
  .admin-pro .order-data-table .record-table-head span:last-child,.admin-pro .record-order-row>i{display:none}

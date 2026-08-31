@@ -1,0 +1,26 @@
+/* Shared interaction language for customer and administrator workspaces. */
+:where(.unified-console,.admin-pro) :where(button,a,input,select,textarea){transition:border-color .16s ease,background-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease}
+:where(.unified-console,.admin-pro) button:focus-visible,
+:where(.unified-console,.admin-pro) a:focus-visible{outline:2px solid #8dbcf5!important;outline-offset:2px}
+
+/* Identifiers stay compact in list rows; full values remain available in details. */
+:where(.wallet-transaction-link,.customer-order-number,.order-number-link,.service-link,.service-resource-link){display:inline-flex!important;align-items:center!important;max-width:100%;min-height:27px!important;padding:4px 8px!important;border:1px solid transparent!important;border-radius:7px!important;background:transparent!important;color:#1768cf!important;text-decoration:none!important;white-space:nowrap;cursor:pointer}
+:where(.wallet-transaction-link,.customer-order-number,.order-number-link,.service-link,.service-resource-link):hover,
+:where(.wallet-transaction-link,.customer-order-number,.order-number-link,.service-link,.service-resource-link):focus-visible{border-color:#b9d5f7!important;background:#edf5ff!important;color:#0d58bb!important;box-shadow:0 3px 10px rgba(23,104,207,.1)!important;text-decoration:none!important}
+.wallet-transaction-link{display:block!important;width:178px!important;overflow:hidden!important;text-overflow:ellipsis!important}
+
+/* Table actions share one restrained blue hover instead of page-specific effects. */
+.unified-console :where(.standalone-table,.credit-statement-list) button:not([role="switch"]):not(.danger):not(.primary):not(.proxy-copy-value):hover,
+.admin-pro :where(.admin-table,.service-admin-table,.credit-table,.log-table) button:not([role="switch"]):not(.danger):not(.primary):hover{border-color:#9fc4f2!important;background:#edf5ff!important;color:#145fbe!important;box-shadow:0 3px 10px rgba(21,95,190,.08)}
+
+/* Category navigation stays visually quiet until hover; selection uses text instead of a blue tile. */
+.unified-console .service-category-tabs{padding:0!important;border:0!important;border-radius:0!important;background:transparent!important}
+.unified-console .service-category-tabs button.on{background:transparent!important;color:#1266e3!important;box-shadow:none!important}
+.unified-console .service-category-tabs button.on b{background:#edf4ff!important;color:#1266e3!important}
+.unified-console .service-category-tabs button:hover{background:#f5f8fc!important;color:#1768cf!important}
+
+/* Copyable proxy values should never leave a browser text-selection block behind. */
+.unified-console .managed-proxy-table .proxy-copy-value{user-select:none!important;-webkit-user-select:none!important}
+.unified-console .managed-proxy-table .proxy-copy-value:hover,.unified-console .managed-proxy-table .proxy-copy-value:focus{border-color:transparent!important;background:transparent!important;box-shadow:none!important;color:#2563eb!important}
+:where(.unified-console,.admin-pro) button.primary:hover{filter:brightness(.96);box-shadow:0 6px 16px rgba(37,99,235,.2)}
+:where(.unified-console,.admin-pro) button:disabled{box-shadow:none!important;transform:none!important;cursor:not-allowed}

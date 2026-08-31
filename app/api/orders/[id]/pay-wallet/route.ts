@@ -1,12 +1,14 @@
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "../../../../../db";
-import { couponRedemptions, coupons, orders, proxyAllocations, serviceRequests, wallets, walletTransactions } from "../../../../../db/schema";
+import { couponRedemptions, coupons, creditBills, orders, proxyAllocations, serviceRequests, wallets, walletTransactions } from "../../../../../db/schema";
 import { audit } from "../../../../../lib/audit";
 import { getCurrentCustomer } from "../../../../../lib/auth";
 import { addBillingPeriod, billingCycleFromNote } from "../../../../../lib/billing-period";
 import { parseReplacementSnapshot, replacementSnapshotLines } from "../../../../../lib/replacement-snapshot";
 import { withRequestLock } from "../../../../../lib/request-lock";
+import {creditCycleForDate,ensureCreditAccount,refreshCreditRisk} from "../../../../../lib/credit";
+import {nextBusinessId} from "../../../../../lib/business-id";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentCustomer();
@@ -16,6 +18,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   return withRequestLock(`wallet:${user.id}`, async () => {
     const body = await req.json().catch(() => null);
     const couponCode = String(body?.couponCode || "").trim().toUpperCase();
+    const fundingSource = body?.fundingSource === "credit" ? "credit" : "balance";
     const db = getDb();
     const [order] = await db.select().from(orders).where(and(eq(orders.id, id), eq(orders.customerEmail, user.email))).limit(1);
     if (!order) return NextResponse.json({ error: "订单不存在" }, { status: 404 });
@@ -37,16 +40,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const payable = Number((order.amount - discount).toFixed(2));
     let [wallet] = await db.select().from(wallets).where(eq(wallets.customerId, user.id)).limit(1);
     if (!wallet) {
-      await db.insert(wallets).values({ customerId: user.id, balance: 0, frozen: 0, creditLimit: 0, currency: "USD", updatedAt: new Date() });
+      await db.insert(wallets).values({ customerId: user.id, balance: 0, frozen: 0, creditLimit: 0, currency: order.currency, updatedAt: new Date() });
       [wallet] = await db.select().from(wallets).where(eq(wallets.customerId, user.id)).limit(1);
     }
-    const availableCredit = Math.max(0, wallet.creditLimit - Math.max(0, -wallet.balance));
+    await ensureCreditAccount(user.id);const credit=await refreshCreditRisk(user.id),availableCredit=credit.availableCredit;
     const spendingPower = Math.max(0, wallet.balance) + availableCredit;
-    if (spendingPower < payable) return NextResponse.json({ error: "余额和可用信用额度不足", balance: wallet.balance, creditLimit: wallet.creditLimit, availableCredit, payable }, { status: 409 });
+    if (fundingSource === "balance" && Math.max(0, wallet.balance) < payable) return NextResponse.json({ error: "账户余额不足，请充值或选择信用额支付", balance: wallet.balance, creditLimit: wallet.creditLimit, availableCredit, payable }, { status: 409 });
+    if (fundingSource === "credit" && credit.status !== "active") return NextResponse.json({ error: credit.status === "frozen" ? "信用功能已冻结，请先结清逾期账单" : "存在逾期信用账单，请先完成还款", availableCredit, payable }, { status: 409 });
+    if (fundingSource === "credit" && availableCredit < payable) return NextResponse.json({ error: "可用信用额度不足", balance: wallet.balance, creditLimit: wallet.creditLimit, availableCredit, payable }, { status: 409 });
+    if (spendingPower < payable) return NextResponse.json({ error: "账户可用资金不足", balance: wallet.balance, creditLimit: wallet.creditLimit, availableCredit, payable }, { status: 409 });
 
     const now = new Date();
-    const nextBalance = Number((wallet.balance - payable).toFixed(2));
-    const txId = `WT-PAY-${id}`;
+    const nextBalance = fundingSource === "credit" ? wallet.balance : Number((wallet.balance - payable).toFixed(2));
+    const txId = await nextBusinessId("TX", now);
     const renewalSourceId = order.adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1];
     const renewalAllocationId = order.adminNote?.match(/\[RENEW_ALLOCATION\]([^\n]+)/)?.[1];
     const replacementAllocationId = order.adminNote?.match(/\[REPLACE_ALLOCATION\]([^\n]+)/)?.[1];
@@ -79,15 +85,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     type BatchQuery = Parameters<typeof db.batch>[0][number];
     const writes: BatchQuery[] = [
       walletUpdate,
-      db.insert(walletTransactions).values({ id: txId, customerId: user.id, type: "purchase", amount: -payable, balanceAfter: nextBalance, referenceType: "order", referenceId: id, note: `订单 ${id}`, createdAt: now }),
-      db.update(orders).set({ status: bundleRenewal ? "active" : "provisioning", amount: payable, paymentMethod: "balance", paymentReference: txId, updatedAt: now }).where(and(eq(orders.id, id), eq(orders.status, "pending"))),
+      db.insert(walletTransactions).values({ id: txId, customerId: user.id, type: "purchase", amount: -payable, balanceAfter: nextBalance, referenceType: "order", referenceId: id, note: fundingSource === "credit" ? `信用额支付订单 ${id}` : `余额支付订单 ${id}`, createdAt: now }),
+      db.update(orders).set({ status: bundleRenewal ? "active" : "provisioning", amount: payable, paymentMethod: fundingSource, paymentReference: txId, updatedAt: now }).where(and(eq(orders.id, id), eq(orders.status, "pending"))),
     ];
+    if(fundingSource==="credit"){
+      const{statementAt,dueAt,graceEndsAt}=creditCycleForDate(now,credit.account.billDay,credit.account.repaymentDay,credit.account.graceDays);
+      writes.push(db.insert(creditBills).values({id:await nextBusinessId("CB",now,"month"),customerId:user.id,orderId:id,amount:payable,repaidAmount:0,currency:order.currency,status:"unpaid",statementAt,dueAt,graceEndsAt,createdAt:now,updatedAt:now}));
+    }
     if (coupon) {
       writes.push(db.insert(couponRedemptions).values({ id: crypto.randomUUID(), couponId: coupon.id, customerId: user.id, orderId: id, discount, createdAt: now }));
       writes.push(db.update(coupons).set({ usedCount: coupon.usedCount + 1 }).where(and(eq(coupons.id, coupon.id), eq(coupons.usedCount, coupon.usedCount))));
     }
     for (const child of bundleChildren) {
-      writes.push(db.update(orders).set({ status: child.adminNote?.includes("[RENEWAL_OF]") ? "active" : "provisioning", paymentMethod: "balance", paymentReference: txId, updatedAt: now }).where(eq(orders.id, child.id)));
+      writes.push(db.update(orders).set({ status: child.adminNote?.includes("[RENEWAL_OF]") ? "active" : "provisioning", paymentMethod: fundingSource, paymentReference: txId, updatedAt: now }).where(eq(orders.id, child.id)));
       const childSourceId=child.adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1];
       const childAllocationId=child.adminNote?.match(/\[RENEW_ALLOCATION\]([^\n]+)/)?.[1];
       if(childSourceId){
@@ -103,10 +113,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (order.product === "node-traffic-reset") {
       const sourceOrderId = order.adminNote?.match(/\[RESET_OF\]([^\n]+)/)?.[1] || targetOrderId;
       if (!sourceOrderId) return NextResponse.json({ error: "流量重置未关联原服务" }, { status: 409 });
-      writes.push(db.insert(serviceRequests).values({ id: `AS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, customerId: user.id, allocationId: sourceOrderId, type: "reset_traffic", durationDays: null, reason: `已付款重置订单 ${id}`, amount: payable, status: "pending", adminNote: null, createdAt: now, updatedAt: now }));
+      writes.push(db.insert(serviceRequests).values({ id: await nextBusinessId("AF",now), customerId: user.id, allocationId: sourceOrderId, type: "reset_traffic", durationDays: null, reason: `已付款重置订单 ${id}`, amount: payable, status: "pending", adminNote: null, createdAt: now, updatedAt: now }));
     }
     if (customOneTime && targetOrderId) {
-      writes.push(db.insert(serviceRequests).values({ id: `AS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, customerId: user.id, allocationId: targetOrderId, type: "custom", durationDays: null, reason: `${order.product}（已付款订单 ${id}）`, amount: payable, status: "pending", adminNote: null, createdAt: now, updatedAt: now }));
+      writes.push(db.insert(serviceRequests).values({ id: await nextBusinessId("AF",now), customerId: user.id, allocationId: targetOrderId, type: "custom", durationDays: null, reason: `${order.product}（已付款订单 ${id}）`, amount: payable, status: "pending", adminNote: null, createdAt: now, updatedAt: now }));
     }
     if (renewalSource) {
       const base = renewalSource.expiresAt && renewalSource.expiresAt > now ? renewalSource.expiresAt : now;
@@ -124,11 +134,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (replacementAllocation) {
       const reason = order.adminNote?.match(/\[REPLACE_REASON\]([^\n]+)/)?.[1] || "客户付费申请更换 IP";
       const sourceOrder=await db.select({region:orders.region}).from(orders).where(eq(orders.id,replacementAllocation.orderId)).limit(1),snapshot=parseReplacementSnapshot(order.adminNote),previousProxy=snapshot?String(order.adminNote||"").split("\n").filter(line=>line.startsWith("[PREVIOUS_PROXY_")).join("\n"):replacementSnapshotLines(replacementAllocation,sourceOrder[0]?.region||"");
-      writes.push(db.insert(serviceRequests).values({ id: `SR-${crypto.randomUUID().slice(0, 10)}`, customerId: user.id, allocationId: replacementAllocation.id, type: "replace", durationDays: null, reason: `${reason}（已付款订单 ${id}）\n${previousProxy}`, amount: payable, status: "pending", adminNote: null, createdAt: now, updatedAt: now }));
+      writes.push(db.insert(serviceRequests).values({ id: await nextBusinessId("AF",now), customerId: user.id, allocationId: replacementAllocation.id, type: "replace", durationDays: null, reason: `${reason}（已付款订单 ${id}）\n${previousProxy}`, amount: payable, status: "pending", adminNote: null, createdAt: now, updatedAt: now }));
     }
 
     await db.batch(writes as [BatchQuery, ...BatchQuery[]]);
-    await audit({ id: user.id, role: user.role }, "order.wallet_credit_pay", "order", id, { payable, discount, balanceAfter: nextBalance, creditUsed: Math.max(0, -nextBalance), txId, status: "provisioning" }, req);
-    return NextResponse.json({ ok: true, status: "provisioning", paid: payable, discount, balance: nextBalance, creditUsed: Math.max(0, -nextBalance), availableCredit: Math.max(0, wallet.creditLimit - Math.max(0, -nextBalance)) });
+    await audit({ id: user.id, role: user.role }, "order.wallet_credit_pay", "order", id, { payable, discount, fundingSource, balanceAfter: nextBalance, creditUsed: fundingSource==="credit"?credit.creditUsed+payable:credit.creditUsed, txId, status: "provisioning" }, req);
+    return NextResponse.json({ ok: true, status: "provisioning", paid: payable, discount, fundingSource, balance: nextBalance, creditUsed: fundingSource==="credit"?credit.creditUsed+payable:credit.creditUsed, availableCredit: fundingSource==="credit"?Math.max(0,availableCredit-payable):availableCredit });
   });
 }

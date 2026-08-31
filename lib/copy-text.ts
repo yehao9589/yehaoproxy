@@ -14,5 +14,6 @@ export async function copyText(value:string):Promise<void>{
   textarea.setSelectionRange(0,textarea.value.length);
   const copied=document.execCommand("copy");
   textarea.remove();
+  window.getSelection()?.removeAllRanges();
   if(!copied)throw new Error("浏览器拒绝复制");
 }

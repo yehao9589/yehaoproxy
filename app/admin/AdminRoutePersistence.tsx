@@ -14,6 +14,7 @@ const tabs: Record<string,string> = {
   finance:"财务中心",
   "finance-ledger":"交易流水",
   "finance-bills":"收款账单",
+  "finance-credit":"信用账期",
   sales:"销售业绩",
   tickets:"工单管理",
   coupons:"优惠券",

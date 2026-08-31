@@ -51,9 +51,8 @@ export default function AddonServiceStatusEnhancer() {
       document.querySelectorAll(".addon-service-state").forEach(node => node.remove());
 
       const proxyRows = [...document.querySelectorAll<HTMLElement>(".managed-proxy-table .orow:not(.head)")];
-      const proxies = proxyData?.items || [];
-      proxyRows.forEach((row, index) => {
-        const request = latest.get(String(proxies[index]?.id || ""));
+      proxyRows.forEach(row => {
+        const request = latest.get(String(row.dataset.allocationId || ""));
         const expiry = row.querySelector<HTMLElement>(".proxy-expiry");
         // Completed add-on work is already reflected by the service data (for
         // example, the new expiry date). Keep only actionable states in the

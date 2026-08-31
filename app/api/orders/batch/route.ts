@@ -6,6 +6,7 @@ import {currencies,productOffers} from "../../../../db/schema";
 import {sendOrderCreatedEmails} from "../../../../lib/order-notifications";
 import {notifyAdmins} from "../../../../lib/admin-event-notifications";
 import {ensureProductOfferSchema} from "../../../../lib/product-offer-schema";
+import {nextBusinessId} from "../../../../lib/business-id";
 
 const DURATIONS = new Set([7, 30, 90, 180]);
 type InputItem = {product: string; region: string; durationDays: number; quantity: number};
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
 
   const now = Math.floor(Date.now() / 1000);
   const d1 = getRawDatabase();
-  const bundleId = `YH-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  const bundleId = await nextBusinessId("YH", new Date(now * 1000));
   const created = items.flatMap(item => {
     const offer = offerByKey.get(`${item.product}:${item.region}`)!;
     const unit = item.durationDays === 7 ? offer.price7 : item.durationDays === 90 ? offer.price90 : item.durationDays === 180 ? offer.price180 : offer.price30;

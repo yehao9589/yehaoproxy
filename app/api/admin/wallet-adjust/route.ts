@@ -5,6 +5,7 @@ import { customers, wallets, walletTransactions } from "../../../../db/schema";
 import { requireAdminApi } from "../../../../lib/admin-auth";
 import { audit } from "../../../../lib/audit";
 import { withRequestLock } from "../../../../lib/request-lock";
+import {nextBusinessId} from "../../../../lib/business-id";
 
 export async function POST(req: Request) {
   const admin = await requireAdminApi("finance");
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
     }
     const nextBalance = Number((wallet.balance + amount).toFixed(2));
     if (nextBalance < 0) return NextResponse.json({ error: "调整后余额不能为负数" }, { status: 409 });
-    const transactionId = `WT-${crypto.randomUUID()}`;
+    const transactionId = await nextBusinessId("TX", now);
     const now = new Date();
     await db.batch([
       db.update(wallets).set({ balance: nextBalance, updatedAt: now }).where(eq(wallets.customerId, customerId)),

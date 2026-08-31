@@ -186,11 +186,13 @@ export default function ProductOffersModule() {
       {error && <div className="offer-toast error" role="alert"><span>!</span><b>{error}</b><button aria-label="关闭提示" onClick={() => setError("")}>×</button></div>}
       {success && <div className="offer-toast success" role="status"><span>✓</span><b>{success}</b></div>}
 
-      <div className="business-kpis">
-        <article><span>商品配置</span><b>{items.length}</b><small>地区独立定价</small></article>
-        <article><span>限量商品剩余额度</span><b>{items.filter(x => x.saleStock >= 0).reduce((n, x) => n + Math.max(0, x.saleStock - x.sold), 0)}</b><small>{items.filter(x => x.saleStock < 0).length} 项不限量</small></article>
-        <article><span>节点服务</span><b>{items.filter(x => typeCategory(x.product) === "node").length}</b><small>节点销售配置</small></article>
-        <article><span>在售配置</span><b>{items.filter(x => x.enabled).length}</b><small>前台可购买</small></article>
+      <section className="business-hero"><div><small>PRODUCT OPERATIONS</small><h2>商品运营中心</h2><p>集中管理商品分类、地区定价、销售周期、可售额度和服务规则，配置结果实时同步到客户购买页面。</p></div><button className="business-hero-primary" onClick={openOfferCreator}>＋ 添加商品</button></section>
+
+      <div className="business-metrics">
+        <article><i>商</i><span><small>商品配置</small><b>{items.length}</b><em>地区独立定价</em></span></article>
+        <article><i className="warning">额</i><span><small>限量商品剩余额度</small><b>{items.filter(x => x.saleStock >= 0).reduce((n, x) => n + Math.max(0, x.saleStock - x.sold), 0)}</b><em>{items.filter(x => x.saleStock < 0).length} 项不限量</em></span></article>
+        <article><i className="attention">节</i><span><small>节点服务</small><b>{items.filter(x => typeCategory(x.product) === "node").length}</b><em>节点销售配置</em></span></article>
+        <article><i className="success">售</i><span><small>在售配置</small><b>{items.filter(x => x.enabled).length}</b><em>前台当前可购买</em></span></article>
       </div>
 
       <div className="business-card">
@@ -199,7 +201,7 @@ export default function ProductOffersModule() {
             <h2>商品管理</h2>
             <p>通过“编辑商品”统一修改类型、地区、周期价格、销售额度和排序。</p>
           </div>
-          <div className="product-header-actions"><button onClick={()=>setShowDefaultPolicy(true)}>默认服务配置</button><button onClick={()=>setManagingTypes(true)}>管理商品类型</button><button className="primary" onClick={openOfferCreator}>＋ 添加商品</button></div>
+          <div className="product-header-actions"><button onClick={()=>setShowDefaultPolicy(true)}>默认服务配置</button><button onClick={()=>setManagingTypes(true)}>管理商品类型</button></div>
         </header>
 
         <div className="offer-category-tabs" aria-label="商品分类">

@@ -12,6 +12,7 @@ import { requireAdminApi } from "../../../../../../lib/admin-auth";
 import { audit } from "../../../../../../lib/audit";
 import { withRequestLock } from "../../../../../../lib/request-lock";
 import { databaseText } from "../../../../../../lib/database-text";
+import {nextBusinessId} from "../../../../../../lib/business-id";
 
 function noteValue(note: string | null, key: string) {
   return note?.match(new RegExp(`\\[${key}\\]([^\\n]*)`))?.[1]?.trim() ?? "";
@@ -85,7 +86,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const refund = Number(renewal.amount || 0);
   const balanceAfter = Number((wallet.balance + refund).toFixed(2));
   const refundInsert=db.insert(walletTransactions).values({
-    id: `WT-${crypto.randomUUID()}`,
+    id: await nextBusinessId("TX", now),
     customerId: customer.id,
     type: "refund",
     amount: refund,

@@ -7,6 +7,7 @@ import{setSystemOption}from"../../../../lib/db-upsert";
 import{getDb}from"../../../../db";
 import{systemOptions}from"../../../../db/schema";
 import{eq}from"drizzle-orm";
+import{runCreditRiskChecks}from"../../../../lib/credit";
 
 export async function POST(req:Request){
   const secret=String((env as unknown as Record<string,unknown>).CRON_SECRET||"");
@@ -16,8 +17,8 @@ export async function POST(req:Request){
   const[modeRow]=await getDb().select().from(systemOptions).where(eq(systemOptions.key,"scheduled_runner_mode")).limit(1);
   const selectedMode=modeRow?.value==="baota"?"baota":"container";
   if(source!==selectedMode)return NextResponse.json({ok:true,skipped:true,source,selectedMode,message:`当前已选择${selectedMode==="container"?"容器内置调度":"宝塔计划任务"}，本次请求未执行`});
-  const[reminders,vpsSync]=await Promise.all([runScheduledReminders(new URL(req.url).origin),syncDueXPanelServers()]);
-  const now=new Date(),result={...reminders,vpsSync,source};
+  const[reminders,vpsSync,creditRisk]=await Promise.all([runScheduledReminders(new URL(req.url).origin),syncDueXPanelServers(),runCreditRiskChecks()]);
+  const now=new Date(),result={...reminders,vpsSync,creditRisk,source};
   await setSystemOption("scheduled_reminder_runner",JSON.stringify({source,ranAt:now.toISOString(),selectedMode}),now);
   await systemAudit("scheduled.reminders.run","scheduled_task","service-reminders",result);
   return NextResponse.json({ok:true,result});

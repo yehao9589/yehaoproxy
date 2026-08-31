@@ -6,6 +6,7 @@ import { audit } from "../../../../../lib/audit";
 import {notifyAdmins} from "../../../../../lib/admin-event-notifications";
 import { getCurrentCustomer } from "../../../../../lib/auth";
 import { billingCycleFromNote,periodLabel } from "../../../../../lib/billing-period";
+import {nextBusinessId} from "../../../../../lib/business-id";
 
 const nodeProducts = new Set(["soft-router", "computer-node"]);
 
@@ -85,7 +86,7 @@ export async function PATCH(
     const unit = durationDays === 7 ? offer.price7 : durationDays === 90 ? offer.price90 : durationDays === 180 ? offer.price180 : offer.price30 * (durationDays / 30);
     if (unit < 0) return NextResponse.json({ error: `该服务暂不支持续费 ${durationDays} 天` }, { status: 409 });
     const amount = Number((unit * order.quantity).toFixed(2));
-    const renewalId = `RN-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+    const renewalId = await nextBusinessId("RN", now);
     const now = new Date();
     await db.insert(orders).values({
       id: renewalId,
@@ -146,7 +147,7 @@ export async function PATCH(
     const amount = Number.isFinite(configuredPrice) && configuredPrice > 0
       ? Number(configuredPrice.toFixed(2))
       : 5;
-    const resetOrderId = `RS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+    const resetOrderId = await nextBusinessId("AF", now);
     const now = new Date();
     await db.insert(orders).values({
       id: resetOrderId,

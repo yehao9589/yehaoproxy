@@ -1,0 +1,137 @@
+/* Unified visual language for every administrator module. Page-specific CSS may
+   control data layout; this layer owns spacing, surfaces and interaction tone. */
+.admin-pro{
+  --av-bg:#f3f6fa;
+  --av-surface:#fff;
+  --av-surface-soft:#f8fafc;
+  --av-line:#dfe7ef;
+  --av-line-soft:#e9eef4;
+  --av-text:#172f49;
+  --av-muted:#71849a;
+  --av-blue:#176fe5;
+  --av-blue-soft:#edf5ff;
+  --av-radius:14px;
+  --av-shadow:0 8px 26px rgba(22,50,78,.045);
+}
+.admin-pro .admin-content{background:var(--av-bg)}
+.admin-pro .admin-tab-panel{display:block;min-width:0}
+.admin-pro .admin-tab-panel>:where(
+  .business-page,.vps-page,.customer-center,.financial-page,.credit-admin-page,
+  .ticket-admin-page,.aftersales-center,.scheduled-center,.update-center,
+  .settings-stack,.log-center,.order-center
+){display:grid;gap:18px;min-width:0}
+
+/* Module headings */
+.admin-pro :where(
+  .vps-toolbar,.business-card>header,.product-order-list>header,
+  .service-admin-card>header,.financial-head,.credit-workbench>header,
+  .ticket-admin-card>header,.log-panel>header,.setting-title
+){box-sizing:border-box;min-height:72px;padding:17px 20px;border-color:var(--av-line-soft);background:var(--av-surface)}
+.admin-pro :where(
+  .vps-toolbar,.business-card>header,.product-order-list>header,
+  .service-admin-card>header,.financial-head,.credit-workbench>header,
+  .ticket-admin-card>header,.log-panel>header,.setting-title
+) h2,
+.admin-pro :where(.financial-head,.product-order-list>header,.ticket-admin-card>header,.log-panel>header) h3{
+  margin:0;color:var(--av-text);font-size:17px;font-weight:750;letter-spacing:-.01em
+}
+.admin-pro :where(
+  .vps-toolbar,.business-card>header,.product-order-list>header,
+  .service-admin-card>header,.financial-head,.credit-workbench>header,
+  .ticket-admin-card>header,.log-panel>header,.setting-title
+) p{margin:5px 0 0;color:var(--av-muted);font-size:11px;line-height:1.55}
+
+/* KPI cards */
+.admin-pro :where(
+  .business-kpis,.business-metrics,.vps-summary,.service-admin-kpis,
+  .product-order-stats,.financial-summary,.credit-kpis,.ticket-kpis
+){display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.admin-pro :where(
+  .business-kpis,.business-metrics,.vps-summary,.service-admin-kpis,
+  .product-order-stats,.financial-summary,.credit-kpis,.ticket-kpis
+)>article{
+  box-sizing:border-box;min-height:106px;padding:17px 19px;border:1px solid var(--av-line);border-radius:12px;background:var(--av-surface);box-shadow:none;transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease
+}
+.admin-pro :where(
+  .business-kpis,.business-metrics,.vps-summary,.service-admin-kpis,
+  .product-order-stats,.financial-summary,.credit-kpis,.ticket-kpis
+)>article:hover{border-color:#cbd9e7;box-shadow:var(--av-shadow);transform:translateY(-1px)}
+.admin-pro :where(
+  .business-kpis,.business-metrics,.vps-summary,.service-admin-kpis,
+  .product-order-stats,.financial-summary,.credit-kpis,.ticket-kpis
+) article :where(span,small){color:var(--av-muted)}
+.admin-pro :where(
+  .business-kpis,.business-metrics,.vps-summary,.service-admin-kpis,
+  .product-order-stats,.financial-summary,.credit-kpis,.ticket-kpis
+) article b{color:var(--av-text);font-size:22px;line-height:1.25}
+
+/* Main work surfaces */
+.admin-pro :where(
+  .business-card,.business-workbench,.vps-card,.service-admin-card,
+  .product-order-list,.financial-module,.credit-workbench,.ticket-admin-card,
+  .log-panel,.setting-card,.customer-table,.scheduled-panel,.update-card
+){border:1px solid var(--av-line)!important;border-radius:var(--av-radius)!important;background:var(--av-surface)!important;box-shadow:var(--av-shadow)!important}
+.admin-pro .vps-toolbar:not(.business-hero){border:1px solid var(--av-line);border-radius:var(--av-radius);box-shadow:var(--av-shadow)}
+.admin-pro .vps-toolbar.business-hero{padding:26px 30px;border-color:#cfe0f5;background:linear-gradient(120deg,#071d36 0%,#0c3564 58%,#1266e3 145%)}
+.admin-pro .vps-toolbar.business-hero h2{color:#fff;font-size:25px}
+.admin-pro .vps-toolbar.business-hero p{color:#c4d8ed}
+.admin-pro .vps-toolbar.business-hero>div:last-child{position:relative;z-index:2}
+.admin-pro .vps-toolbar>div:last-child{align-items:center}
+.admin-pro .vps-card{padding:18px}
+.admin-pro .vps-grid{gap:14px}
+
+/* Search, filters and tabs */
+.admin-pro :where(
+  .customer-toolbar,.financial-filters,.service-admin-toolbar,.service-admin-filters,
+  .ticket-filters,.module-toolbar,.log-tools,.offer-category-tabs
+){border-color:var(--av-line-soft);background:var(--av-surface-soft)}
+.admin-pro :where(input:not([type=checkbox]):not([type=radio]),select,textarea){
+  box-sizing:border-box;border-color:#d6e1eb;border-radius:8px;background:#fff;color:#2c445d;outline:0
+}
+.admin-pro :where(input:not([type=checkbox]):not([type=radio]),select,textarea):focus{
+  border-color:#78a9e8!important;box-shadow:0 0 0 3px rgba(23,111,229,.1)!important
+}
+.admin-pro :where(
+  .offer-category-tabs,.service-expiry-tabs,.service-type-tabs,.credit-tabs,
+  .ticket-tabs,.module-toolbar
+) button.on{border-color:#bdd7f6!important;background:var(--av-blue-soft)!important;color:#155fbd!important;box-shadow:none!important}
+
+/* Tables */
+.admin-pro :where(
+  .business-table,.admin-table,.product-order-table,.service-admin-table,
+  .financial-table,.credit-table,.customer-table,.ticket-table,.log-table
+){overflow-x:auto;background:var(--av-surface)}
+.admin-pro :where(
+  .brow.head,.arow.ahead,.product-order-row.head,.service-row.head,
+  .financial-row.head,.credit-row.head,.customer-row.head,.ticket-table-row.head,
+  .log-line.head
+){background:#f5f8fb!important;color:#6b7f94!important;font-weight:700}
+.admin-pro :where(
+  .brow:not(.head),.arow:not(.ahead),.product-order-row:not(.head),
+  .service-row:not(.head),.financial-row:not(.head),.credit-row:not(.head),
+  .customer-row:not(.head),.ticket-table-row:not(.head),.log-line:not(.head)
+){border-color:var(--av-line-soft)!important;transition:background-color .14s ease,box-shadow .14s ease}
+.admin-pro :where(
+  .brow:not(.head),.arow:not(.ahead),.product-order-row:not(.head),
+  .service-row:not(.head),.financial-row:not(.head),.credit-row:not(.head),
+  .customer-row:not(.head),.ticket-table-row:not(.head),.log-line:not(.head)
+):hover{background:#f8fbff!important;box-shadow:inset 3px 0 var(--av-blue)}
+
+/* Buttons use one hierarchy everywhere. */
+.admin-pro :where(button,.primary){border-radius:8px}
+.admin-pro button.primary,.admin-pro .primary{border-color:var(--av-blue);background:var(--av-blue);color:#fff}
+.admin-pro button.danger,.admin-pro .danger{border-color:#f1c9c9!important;background:#fff!important;color:#c94040!important}
+.admin-pro button.danger:hover,.admin-pro .danger:hover{border-color:#df9f9f!important;background:#fff5f5!important;color:#b72f2f!important}
+
+/* Modals and drawers keep their specific composition, but share the shell. */
+.admin-pro :where(.modal>form,.modal>section,.vps-editor,.ticket-policy-modal,.order-workspace,.customer-drawer){
+  border:1px solid #dbe4ed;border-radius:16px;background:#fff;box-shadow:0 24px 72px rgba(13,34,58,.25)
+}
+
+@media(max-width:1050px){
+  .admin-pro :where(.business-kpis,.business-metrics,.vps-summary,.service-admin-kpis,.product-order-stats,.financial-summary,.credit-kpis,.ticket-kpis){grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:620px){
+  .admin-pro :where(.business-kpis,.business-metrics,.vps-summary,.service-admin-kpis,.product-order-stats,.financial-summary,.credit-kpis,.ticket-kpis){grid-template-columns:1fr}
+  .admin-pro .vps-toolbar{align-items:flex-start;gap:14px;flex-direction:column}
+}

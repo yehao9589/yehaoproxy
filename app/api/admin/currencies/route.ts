@@ -1,7 +1,7 @@
 import {asc} from "drizzle-orm";
 import {NextResponse} from "next/server";
 import {getDb} from "../../../../db";
-import {currencies,systemOptions} from "../../../../db/schema";
+import {currencies,orders,systemOptions,wallets} from "../../../../db/schema";
 import {requireAdminApi} from "../../../../lib/admin-auth";
 import {upsertRecord} from "../../../../lib/db-upsert";
 
@@ -32,5 +32,6 @@ export async function POST(req:Request){
   await db.update(currencies).set({enabled:false,isDefault:false,updatedAt:now});
   const values={code,name:String(b.name),symbol:String(b.symbol),rate,enabled:true,isDefault:true,decimalPlaces,sortOrder,updatedAt:now};
   await upsertRecord(currencies,currencies.code,code,values,{name:values.name,symbol:values.symbol,rate,enabled:true,isDefault:true,decimalPlaces,sortOrder,updatedAt:now});
+  await Promise.all([db.update(wallets).set({currency:code,updatedAt:now}),db.update(orders).set({currency:code,updatedAt:now})]);
   return NextResponse.json({ok:true,code});
 }

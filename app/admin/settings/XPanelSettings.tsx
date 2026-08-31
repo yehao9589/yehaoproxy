@@ -109,7 +109,7 @@ export default function XPanelSettings() {
     }
   }
   return (
-    <div className="vps-page">
+    <div className="vps-page business-page">
       {message && (
         <div
           className="vps-toast"
@@ -124,10 +124,11 @@ export default function XPanelSettings() {
           <button onClick={() => setError("")}>×</button>
         </div>
       )}
-      <div className="vps-toolbar">
+      <section className="vps-toolbar business-hero">
         <div>
-          <h2>VPS 管理</h2>
-          <p>统一管理 X-Panel 服务器、同步周期与流量统计周期。</p>
+          <small>INFRASTRUCTURE OPERATIONS</small>
+          <h2>VPS 运营中心</h2>
+          <p>统一管理 X-Panel 服务器、入站节点、同步周期与流量统计，快速掌握全部节点运行状态。</p>
         </div>
         <div>
           <button
@@ -142,38 +143,24 @@ export default function XPanelSettings() {
             ＋ 添加 VPS
           </button>
         </div>
-      </div>
-      <div className="vps-summary">
-        <article>
-          <span>服务器</span>
+      </section>
+      <div className="vps-summary business-metrics">
+        <article><i>机</i><span>
+          <small>服务器</small>
           <b>
             {servers.filter((x) => x.enabled).length}
-            <small> / {servers.length} 台在线</small>
           </b>
-        </article>
-        <article>
-          <span>本周期流量</span>
+          <em>{servers.length} 台服务器 · {servers.filter((x) => x.enabled).length} 台在线</em>
+        </span></article>
+        <article><i className="warning">流</i><span>
+          <small>本周期流量</small>
           <b>
             {size(totals.used)}
-            <small>
-              {totals.total ? ` / ${size(totals.total)}` : " 不限量"}
-            </small>
           </b>
-        </article>
-        <article>
-          <span>入站节点</span>
-          <b>
-            {totals.nodes}
-            <small> 个</small>
-          </b>
-        </article>
-        <article>
-          <span>面板用户</span>
-          <b>
-            {totals.clients}
-            <small> 个</small>
-          </b>
-        </article>
+          <em>{totals.total ? `总额度 ${size(totals.total)}` : "当前不限量"}</em>
+        </span></article>
+        <article><i className="attention">节</i><span><small>入站节点</small><b>{totals.nodes}</b><em>已同步节点数量</em></span></article>
+        <article><i className="success">客</i><span><small>面板用户</small><b>{totals.clients}</b><em>当前用户数量</em></span></article>
       </div>
       {servers.length ? (
         <div className="vps-grid">

@@ -8,6 +8,7 @@ import { audit } from "../../../../lib/audit";
 import { billingCycleFromNote,periodLabel } from "../../../../lib/billing-period";
 import { notifyAdmins } from "../../../../lib/admin-event-notifications";
 import {ensureProductOfferSchema} from "../../../../lib/product-offer-schema";
+import {nextBusinessId} from "../../../../lib/business-id";
 
 export async function POST(req: Request) {
   await ensureProductOfferSchema();
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
     const durationDays = Number(body?.durationDays);
     if (!Number.isInteger(durationDays)||durationDays<1||durationDays>3650) return NextResponse.json({error:"续费周期无效"},{status:400});
     const offers = await db.select().from(productOffers).where(eq(productOffers.enabled,true));
-    const now = new Date(), bundleId=owned.length>1?`YH-${crypto.randomUUID().slice(0,8).toUpperCase()}`:null, created: Array<{id:string;amount:number;sourceOrderId:string;product:string;region:string}> = [];
+    const now = new Date(), bundleId=owned.length>1?await nextBusinessId("YH",now):null, created: Array<{id:string;amount:number;sourceOrderId:string;product:string;region:string}> = [];
     for (const row of owned) {
       const cycle = billingCycleFromNote(row.order.adminNote);
       if (cycle === "calendar-month"&&durationDays%30!==0) return NextResponse.json({error:"按月续费必须填写完整月数"},{status:409});
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
       const multiplier = durationDays===7?.35:durationDays/30;
       const amount = Number(((row.order.renewalAmount!=null&&row.order.renewalAmount>0?row.order.renewalAmount*multiplier:Number(listedPrice))).toFixed(2));
       if(!Number.isFinite(amount)||amount<=0)return NextResponse.json({error:`${row.order.product} / ${row.order.region} 尚未配置该续费价格`},{status:409});
-      const renewalId=`RN-${crypto.randomUUID().slice(0,8).toUpperCase()}`;
+      const renewalId=await nextBusinessId("RN",now);
       await db.insert(orders).values({id:renewalId,customerEmail:user.email,product:row.order.product,region:row.order.region,quantity:1,durationDays,amount,currency:row.order.currency,status:"pending",paymentMethod:"balance",renewalAmount:amount,adminNote:`${bundleId?`[BUNDLE_PARENT]${bundleId}\n`:""}[RENEWAL_OF]${row.order.id}\n[RENEW_ALLOCATION]${row.allocation.id}\n[BILLING_CYCLE]${cycle}`,createdAt:now,updatedAt:now});
       created.push({id:renewalId,amount,sourceOrderId:row.order.id,product:row.order.product,region:row.order.region});
     }

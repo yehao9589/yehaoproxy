@@ -7,6 +7,7 @@ import { billingCycleFromNote } from "../../../lib/billing-period";
 import {sendOrderCreatedEmails} from "../../../lib/order-notifications";
 import {notifyAdmins} from "../../../lib/admin-event-notifications";
 import {ensureProductOfferSchema} from "../../../lib/product-offer-schema";
+import {nextBusinessId} from "../../../lib/business-id";
 
 const durations = new Set([7, 30, 90, 180]);
 
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
   if (unit < 0) return NextResponse.json({error: `该商品暂不出售 ${durationDays} 天周期`}, {status: 409});
   const amount = Number((unit * quantity).toFixed(2));
   const now = Math.floor(Date.now() / 1000);
-  const id = `YH-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  const id = await nextBusinessId("YH", new Date(now * 1000));
   const d1 = getRawDatabase();
   const result = await d1.batch([
     d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,admin_note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,'pending',?,?,?)")

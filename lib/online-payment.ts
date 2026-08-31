@@ -3,6 +3,7 @@ import {getDb} from "../db";
 import {customers,orders,paymentTransactions,proxyAllocations,wallets,walletTransactions} from "../db/schema";
 import {withRequestLock} from "./request-lock";
 import {addBillingPeriod,billingCycleFromNote} from "./billing-period";
+import {nextBusinessId} from "./business-id";
 
 export async function completeOnlinePayment(input:{orderId:string;gatewayId:string;tradeNo:string;paidAmount:number}){
   return withRequestLock(`online-payment:${input.orderId}`,async()=>{
@@ -23,7 +24,7 @@ export async function completeOnlinePayment(input:{orderId:string;gatewayId:stri
       if(!wallet){await db.insert(wallets).values({customerId:customer.id,balance:0,frozen:0,creditLimit:0,currency:order.currency,updatedAt:now});[wallet]=await db.select().from(wallets).where(eq(wallets.customerId,customer.id)).limit(1)}
       const balance=Number((wallet.balance+order.amount).toFixed(2));
       writes.push(db.update(wallets).set({balance,updatedAt:now}).where(and(eq(wallets.customerId,customer.id),eq(wallets.balance,wallet.balance))));
-      writes.push(db.insert(walletTransactions).values({id:`WT-ALI-${order.id}`,customerId:customer.id,type:"deposit",amount:order.amount,balanceAfter:balance,referenceType:"order",referenceId:order.id,note:`支付宝充值 ${order.id}`,createdAt:now}));
+      writes.push(db.insert(walletTransactions).values({id:await nextBusinessId("TX",now),customerId:customer.id,type:"deposit",amount:order.amount,balanceAfter:balance,referenceType:"order",referenceId:order.id,note:`支付宝充值 ${order.id}`,createdAt:now}));
       writes.push(db.update(orders).set({status:"active",paymentMethod:"alipay",paymentReference:input.tradeNo,updatedAt:now}).where(eq(orders.id,order.id)));
     }else{
       const directRenewalSourceId=order.adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1],directRenewalAllocationId=order.adminNote?.match(/\[RENEW_ALLOCATION\]([^\n]+)/)?.[1],bundleRenewal=order.product==="cart-bundle"&&order.adminNote?.includes("[BUNDLE_RENEWAL]true");writes.push(db.update(orders).set({status:bundleRenewal||Boolean(directRenewalSourceId)?"active":"provisioning",paymentMethod:"alipay",paymentReference:input.tradeNo,updatedAt:now}).where(eq(orders.id,order.id)));

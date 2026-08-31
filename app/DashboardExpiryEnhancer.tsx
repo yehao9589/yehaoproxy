@@ -1,7 +1,7 @@
 "use client";
 import {useEffect} from "react";
 
-type ProxyExpiry={host:string;port:number;expiresAt:string|null};
+type ProxyExpiry={id:string;host:string;port:number;expiresAt:string|null};
 
 function formatMinute(value:string|null){
   if(!value)return "长期";
@@ -26,9 +26,9 @@ export default function DashboardExpiryEnhancer(){
     const render=()=>{
       if(stopped||!items.length)return;
       document.querySelectorAll<HTMLElement>(".proxy-row:not(.head), .standalone-table .orow:not(.head)").forEach(row=>{
+        const allocationId=row.dataset.allocationId;
         const address=row.querySelector<HTMLElement>(".mono")?.dataset.address||row.querySelector<HTMLElement>(".mono")?.textContent?.trim();
-        if(!address)return;
-        const item=items.find(x=>`${x.host}:${x.port}`===address);
+        const item=allocationId?items.find(x=>x.id===allocationId):address?items.find(x=>`${x.host}:${x.port}`===address):null;
         if(!item)return;
         const expiry=row.querySelector(".proxy-expiry")||(row.classList.contains("proxy-row")?row.children[5]:row.children[4]);
         if(expiry&&(expiry as HTMLElement).dataset.expiryValue!==(item.expiresAt||"长期"))renderMinute(expiry,item.expiresAt);

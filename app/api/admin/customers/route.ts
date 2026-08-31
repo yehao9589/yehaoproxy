@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     try {
       await db.batch([
         db.insert(customers).values({ id, email, name, passwordHash: await hashPassword(password), emailVerified, role: "customer", status, createdAt: now }),
-        db.insert(wallets).values({ customerId: id, balance: 0, frozen: 0, creditLimit: 0, currency: "USD", updatedAt: now }),
+        db.insert(wallets).values({ customerId: id, balance: 0, frozen: 0, creditLimit: 0, currency: "CNY", updatedAt: now }),
       ] as [BatchQuery, ...BatchQuery[]]);
     } catch { return NextResponse.json({ error: "客户创建失败，请检查邮箱是否重复后重试" }, { status: 409 }); }
     await audit({ id: admin.id, role: admin.role }, "customer.create", "customer", id, { email, name, emailVerified, status }, req);

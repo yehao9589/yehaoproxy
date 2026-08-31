@@ -4,6 +4,7 @@ import {getDb} from "../../../../db";
 import {couponRedemptions,coupons,orders,paymentGateways,paymentTransactions} from "../../../../db/schema";
 import {createAlipayCheckout,readAlipayConfig} from "../../../../lib/alipay";
 import {getCurrentCustomer} from "../../../../lib/auth";
+import {nextBusinessId} from "../../../../lib/business-id";
 import {convertCurrency} from "../../../../lib/currency-conversion";
 import {assertGateway,gatewayRuntimeSupported} from "../../../../lib/payments";
 
@@ -27,7 +28,7 @@ export async function POST(req:Request,{params}:{params:Promise<{gateway:string}
   const key=`${order.id}:${gateway}`,[existing]=await db.select().from(paymentTransactions).where(eq(paymentTransactions.idempotencyKey,key)).limit(1);
   if(existing?.status==="succeeded")return NextResponse.json({transactionId:existing.id,status:existing.status});
   try{
-    const origin=String(process.env.PUBLIC_APP_URL||new URL(req.url).origin).replace(/\/$/,""),payAmount=await convertCurrency(payable,order.currency,"CNY"),result=await createAlipayCheckout(await readAlipayConfig(config),{orderId:order.id,amount:payAmount,subject:`YehaoProxy 订单 ${order.id}`,origin,mobile:/Mobile|Android|iPhone|iPad/i.test(req.headers.get("user-agent")||"")}),now=new Date(),id=existing?.id||`PAY-${crypto.randomUUID().slice(0,10)}`;
+    const origin=String(process.env.PUBLIC_APP_URL||new URL(req.url).origin).replace(/\/$/,""),payAmount=await convertCurrency(payable,order.currency,"CNY"),result=await createAlipayCheckout(await readAlipayConfig(config),{orderId:order.id,amount:payAmount,subject:`YehaoProxy 订单 ${order.id}`,origin,mobile:/Mobile|Android|iPhone|iPad/i.test(req.headers.get("user-agent")||"")}),now=new Date(),id=existing?.id||await nextBusinessId("PT",now);
     type Q=Parameters<typeof db.batch>[0][number];const writes:Q[]=[existing?db.update(paymentTransactions).set({externalId:result.externalId,amount:payAmount,currency:"CNY",status:"created",updatedAt:now}).where(eq(paymentTransactions.id,existing.id)):db.insert(paymentTransactions).values({id,orderId:order.id,gatewayId:config.id,externalId:result.externalId,amount:payAmount,currency:"CNY",status:"created",idempotencyKey:key,createdAt:now,updatedAt:now})];
     if(coupon&&!existingRedemption){writes.push(db.update(orders).set({amount:payable,updatedAt:now}).where(and(eq(orders.id,order.id),eq(orders.amount,order.amount))));writes.push(db.insert(couponRedemptions).values({id:crypto.randomUUID(),couponId:coupon.id,customerId:user.id,orderId:order.id,discount,createdAt:now}));writes.push(db.update(coupons).set({usedCount:coupon.usedCount+1}).where(and(eq(coupons.id,coupon.id),eq(coupons.usedCount,coupon.usedCount))))}
     await db.batch(writes as[Q,...Q[]]);
