@@ -6,9 +6,9 @@ RUN corepack enable && corepack prepare pnpm@11.9.0 --activate
 
 FROM base AS build-deps
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile --ignore-scripts \
-    && pnpm rebuild esbuild sharp unrs-resolver workerd
+    && pnpm rebuild --pending
 
 FROM build-deps AS build
 
@@ -18,9 +18,9 @@ RUN pnpm run build
 # 生产依赖独立成稳定层。普通业务代码变化时不会重新生成 node_modules。
 FROM base AS prod-deps
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts \
-    && pnpm rebuild esbuild sharp unrs-resolver workerd \
+    && pnpm rebuild --pending \
     && pnpm store prune
 
 FROM docker.m.daocloud.io/library/node:22-bookworm-slim AS runtime

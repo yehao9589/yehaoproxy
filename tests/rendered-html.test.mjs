@@ -151,6 +151,8 @@ test("production deployment has health checks, backups, and rollback safety", as
   assert.match(sqliteCompose, /sqlite-runner\.mjs/);
   assert.match(sqliteCompose, /sqlite_data:\/workspace\/\.wrangler\/state/);
   assert.match(dockerfile, /cloudflare-node-loader\.mjs/);
+  assert.equal((dockerfile.match(/COPY package\.json pnpm-lock\.yaml pnpm-workspace\.yaml \.[/]/g) || []).length, 2);
+  assert.equal((dockerfile.match(/pnpm rebuild --pending/g) || []).length, 2);
   assert.match(sqliteRunner, /\.dev\.vars/);
   assert.ok(viteConfig.indexOf("vinext(),") < viteConfig.indexOf("cloudflare({"), "vinext must register before the Cloudflare plugin");
   assert.match(updater, /validateArchive/);
