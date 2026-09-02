@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     const webhook=process.env.UPDATE_WEBHOOK_URL,fileName=text(request.headers.get("x-backup-filename"),160);
     if(!webhook)return NextResponse.json({error:"备份执行器尚未配置"},{status:409});
     if(!fileName.toLowerCase().endsWith(".tar.gz"))return NextResponse.json({error:"只支持 .tar.gz 备份文件"},{status:400});
-    const response=await fetch(`${webhook.replace(/\/$/,"")}/import`,{method:"POST",headers:{...webhookHeaders(),"content-type":"application/gzip","x-backup-filename":fileName,...(request.headers.get("content-length")?{"content-length":request.headers.get("content-length")!}:{})},body:request.body});
+    const response=await fetch(`${webhook.replace(/\/$/,"")}/import`,{method:"POST",headers:{...webhookHeaders(),"content-type":"application/gzip","x-backup-filename":fileName,...(request.headers.get("content-length")?{"content-length":request.headers.get("content-length")!}:{})},body:request.body,duplex:"half"} as RequestInit&{duplex:"half"});
     const result=await response.json().catch(()=>({})) as ExecutorResult;if(!response.ok)return NextResponse.json({error:result.error||"备份文件导入失败"},{status:502});
     await audit(admin,"backup.import","system_backup",result.record?.id||null,{fileName},request);return NextResponse.json(result,{status:201});
   }

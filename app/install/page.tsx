@@ -24,7 +24,7 @@ export default function InstallPage() {
   const [testing, setTesting] = useState(false);
   const [done, setDone] = useState(false);
   const [mysqlConfig, setMysqlConfig] = useState({
-    mysqlHost: "mysql",
+    mysqlHost: "127.0.0.1",
     mysqlPort: "3306",
     mysqlDatabase: "yehaoproxy",
     mysqlUser: "yehaoproxy",
@@ -169,7 +169,7 @@ export default function InstallPage() {
                 <div className="installer-section-title"><i>3</i><span><b>{databaseType === "mysql" ? "MySQL 连接信息" : "SQLite 运行方式"}</b><small>{databaseType === "mysql" ? "信息只用于连接数据库，不会展示在前台" : "无需填写服务器地址和账号"}</small></span></div>
                 {databaseType === "mysql" ? (
                   <div className="installer-mysql-form">
-                    <label>数据库地址<input value={mysqlConfig.mysqlHost} onChange={(event) => updateMysql("mysqlHost", event.target.value)} placeholder="mysql 或数据库服务器地址" /></label>
+                    <label>数据库地址<input value={mysqlConfig.mysqlHost} onChange={(event) => updateMysql("mysqlHost", event.target.value)} placeholder="宝塔单容器填写 127.0.0.1" /></label>
                     <label>端口<input value={mysqlConfig.mysqlPort} onChange={(event) => updateMysql("mysqlPort", event.target.value)} inputMode="numeric" /></label>
                     <label>数据库名<input value={mysqlConfig.mysqlDatabase} onChange={(event) => updateMysql("mysqlDatabase", event.target.value)} /></label>
                     <label>用户名<input value={mysqlConfig.mysqlUser} onChange={(event) => updateMysql("mysqlUser", event.target.value)} /></label>

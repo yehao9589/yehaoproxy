@@ -7,6 +7,12 @@ type Release={version:string;publishedAt?:string;title?:string;notes?:string[]};
 type Data={runtime:{currentVersion:string;image:string;commit:string;deployment:string};source:{repository:string;image:string;channel:string};executor:{ready:boolean;running:boolean;history:Backup[]}};
 type CheckResult={currentVersion:string;remoteVersion:string;hasUpdate:boolean;releaseNotes:string;publishedAt:string;currentCommit?:string;remoteCommit?:string;releases?:Release[]};
 
+async function responseValue(response:Response){
+  const raw=await response.text();
+  if(!raw)return {error:`服务器未返回内容（${response.status}）`};
+  try{return JSON.parse(raw)}catch{return {error:`服务器返回了无法识别的内容（${response.status}）`}}
+}
+
 export default function UpdateCenter(){
   const [data,setData]=useState<Data|null>(null);
   const [result,setResult]=useState<CheckResult|null>(null);
@@ -15,14 +21,21 @@ export default function UpdateCenter(){
 
   async function load(){
     const response=await fetch("/api/admin/update-center",{cache:"no-store"});
-    const value=await response.json();
+    const value=await responseValue(response);
     if(response.ok)setData(value);else setMessage(value.error||"更新与备份页面加载失败");
   }
-  useEffect(()=>{void load();},[]);
+  useEffect(()=>{
+    let active=true;
+    void fetch("/api/admin/update-center",{cache:"no-store"}).then(async response=>({response,value:await responseValue(response)})).then(({response,value})=>{
+      if(!active)return;
+      if(response.ok)setData(value);else setMessage(value.error||"更新与备份页面加载失败");
+    });
+    return()=>{active=false};
+  },[]);
   async function call(body:Record<string,unknown>){
     setBusy(String(body.action));setMessage("");
     const response=await fetch("/api/admin/update-center",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
-    const value=await response.json();setBusy("");
+    const value=await responseValue(response);setBusy("");
     if(!response.ok){setMessage(value.error||"操作失败");return null}return value;
   }
   async function check(){const value=await call({action:"check"});if(value){setResult(value);setMessage(value.hasUpdate?`发现新版本 ${value.remoteVersion}`:"当前已经是最新版本")}}
@@ -38,7 +51,7 @@ export default function UpdateCenter(){
   async function importBackup(file:File){
     if(!file.name.toLowerCase().endsWith(".tar.gz")){setMessage("请选择 .tar.gz 备份文件");return}
     setBusy("import");const response=await fetch("/api/admin/update-center",{method:"POST",headers:{"content-type":"application/gzip","x-backup-filename":file.name},body:file});
-    const value=await response.json();setBusy("");if(!response.ok){setMessage(value.error||"导入失败");return}setMessage("备份文件已导入");await load();
+    const value=await responseValue(response);setBusy("");if(!response.ok){setMessage(value.error||"导入失败");return}setMessage("备份文件已导入");await load();
   }
   async function deleteBackup(id:string){
     if(!confirm(`确定永久删除备份 ${id} 吗？删除后无法恢复。`))return;
