@@ -66,7 +66,7 @@ test("credentials, authentication, and installer use production-safe controls", 
   assert.match(crypto, /AES-GCM/);
   assert.match(crypto, /INVENTORY_ENCRYPTION_KEY/);
   assert.doesNotMatch(mail, /previewDelivery|NextResponse\.json\(\{[^)]*\bcode\b/);
-  assert.match(installer, /INSTALL_TOKEN/);
+  assert.doesNotMatch(installer, /INSTALL_TOKEN|installToken|部署密钥/);
   assert.match(installer, /before\.installed/);
   assert.match(mail, /consumeRateLimit/);
 });
@@ -102,6 +102,8 @@ test("unfinished payment and notification adapters fail closed", async () => {
 
 test("production deployment has health checks, backups, and rollback safety", async () => {
   const compose = await read("docker-compose.production.yml");
+  const singleCompose = await read("docker-compose.single.yml");
+  const singleController = await read("scripts/single-container.mjs");
   const sqliteCompose = await read("docker-compose.sqlite.yml");
   const dockerfile = await read("Dockerfile");
   const viteConfig = await read("vite.config.ts");
@@ -110,7 +112,10 @@ test("production deployment has health checks, backups, and rollback safety", as
   const health = await read("app/api/health/route.ts");
   assert.match(compose, /restart:\s*unless-stopped/);
   assert.match(compose, /healthcheck:/);
-  assert.match(compose, /INSTALL_TOKEN/);
+  assert.doesNotMatch(compose, /INSTALL_TOKEN/);
+  assert.doesNotMatch(singleCompose, /INSTALL_TOKEN|\?请配置 (?:MYSQL_BRIDGE_SECRET|INVENTORY_ENCRYPTION_KEY|CRON_SECRET|XPANEL_BRIDGE_SECRET|UPDATE_WEBHOOK_TOKEN)/);
+  assert.match(singleController, /system-secrets\.json/);
+  assert.match(singleController, /randomBytes\(32\)/);
   assert.match(sqliteCompose, /DATABASE_DRIVER:\s*sqlite/);
   assert.doesNotMatch(sqliteCompose, /mysql-bridge/);
   assert.match(sqliteCompose, /sqlite-runner\.mjs/);

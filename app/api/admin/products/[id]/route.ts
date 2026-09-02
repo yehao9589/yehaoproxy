@@ -5,9 +5,11 @@ import {getDb} from "../../../../../db";
 import {productOffers} from "../../../../../db/schema";
 import {getProductTypes} from "../../../../../lib/product-types";
 import {ensureProductOfferSchema} from "../../../../../lib/product-offer-schema";
+import {audit} from "../../../../../lib/audit";
 
 export async function PATCH(req: Request, {params}: {params: Promise<{id: string}>}) {
-  if (!await requireAdminApi("products")) {
+  const admin=await requireAdminApi("products");
+  if (!admin) {
     return NextResponse.json({error: "无管理员权限"}, {status: 403});
   }
 
@@ -64,5 +66,6 @@ export async function PATCH(req: Request, {params}: {params: Promise<{id: string
 
   await ensureProductOfferSchema();
   await getDb().update(productOffers).set(patch).where(eq(productOffers.id, id));
+  await audit(admin,"product.update","product",id,{fields:Object.keys(patch).filter(key=>key!=="updatedAt"),...patch,updatedAt:undefined},req);
   return NextResponse.json({ok: true});
 }

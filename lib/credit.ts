@@ -2,6 +2,7 @@ import {and,asc,eq,inArray} from "drizzle-orm";
 import {getDb} from "../db";
 import {creditAccounts,creditBills,customers,notifications,orders,proxyAllocations,wallets} from "../db/schema";
 import {ensureCreditSchema} from "./credit-schema";
+import {systemAudit} from "./audit";
 
 export async function getCreditSummary(customerId:string){
   await ensureCreditSchema();
@@ -39,7 +40,7 @@ export async function ensureCreditAccount(customerId:string,billDay=1,repaymentD
 export async function refreshCreditRisk(customerId:string,now=new Date()){
   const summary=await getCreditSummary(customerId),db=getDb();let status:"active"|"overdue"|"frozen"="active";
   for(const bill of summary.openBills){if(bill.dueAt<=now){await db.update(creditBills).set({status:"overdue",updatedAt:now}).where(eq(creditBills.id,bill.id));status=bill.graceEndsAt<=now?"frozen":"overdue"}}
-  if(summary.account.status!==status)await db.update(creditAccounts).set({status,updatedAt:now}).where(eq(creditAccounts.customerId,customerId));
+  if(summary.account.status!==status){await db.update(creditAccounts).set({status,updatedAt:now}).where(eq(creditAccounts.customerId,customerId));await systemAudit("credit.risk_status.update","credit",customerId,{previousStatus:summary.account.status,status,creditUsed:summary.creditUsed,creditLimit:summary.creditLimit})}
   return{...summary,status};
 }
 

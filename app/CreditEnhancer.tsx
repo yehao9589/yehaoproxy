@@ -66,7 +66,13 @@ export default function CreditEnhancer() {
           const input = overlay.querySelector<HTMLInputElement>("[data-limit]")!;
           const error = overlay.querySelector<HTMLElement>(".credit-modal-error")!;
           overlay.querySelector<HTMLElement>("[data-cancel]")!.onclick = () => overlay.remove();
-          overlay.onclick = (event) => { if (event.target === overlay) overlay.remove(); };
+          let pressedOnOverlay = false;
+          overlay.onpointerdown = (event) => { pressedOnOverlay = event.target === overlay; };
+          overlay.onpointerup = (event) => {
+            if (pressedOnOverlay && event.target === overlay) overlay.remove();
+            pressedOnOverlay = false;
+          };
+          overlay.onpointercancel = () => { pressedOnOverlay = false; };
           overlay.querySelector<HTMLButtonElement>("[data-save]")!.onclick = async (event) => {
             const save = event.currentTarget as HTMLButtonElement;
             save.disabled = true;

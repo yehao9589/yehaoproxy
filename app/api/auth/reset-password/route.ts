@@ -4,6 +4,7 @@ import { getDb } from "../../../../db";
 import { authSessions, customers, emailVerifications } from "../../../../db/schema";
 import { hashPassword, sha256 } from "../../../../lib/auth";
 import { clientAddress, consumeRateLimit } from "../../../../lib/rate-limit";
+import { audit } from "../../../../lib/audit";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -29,5 +30,6 @@ export async function POST(req: Request) {
     db.update(customers).set({ passwordHash }).where(eq(customers.id, user.id)),
     db.delete(authSessions).where(eq(authSessions.customerId, user.id)),
   ] as [BatchQuery, ...BatchQuery[]]);
+  await audit({id:user.id,role:"customer"},"auth.password.reset","auth",user.id,{email,sessionsRevoked:true},req);
   return NextResponse.json({ ok: true, message: "密码已重置，请重新登录" });
 }

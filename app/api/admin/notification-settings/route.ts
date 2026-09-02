@@ -4,6 +4,7 @@ import {getDb} from "../../../../db";
 import {emailProviders, systemOptions} from "../../../../db/schema";
 import {requireAdminApi} from "../../../../lib/admin-auth";
 import {setSystemOption} from "../../../../lib/db-upsert";
+import {audit} from "../../../../lib/audit";
 
 export const DEFAULT_TEMPLATES = [
   {id: "register_code", name: "注册验证码", scene: "账户安全", enabled: true, emailEnabled: true, smsEnabled: false, emailSubject: "注册验证码", emailBody: "你的验证码是：{{code}}，10 分钟内有效。", smsBody: "【YehaoProxy】注册验证码：{{code}}，10分钟内有效。"},
@@ -65,7 +66,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!await requireAdminApi("settings")) return NextResponse.json({error: "无系统设置权限"}, {status: 403});
+  const admin=await requireAdminApi("settings");
+  if (!admin) return NextResponse.json({error: "无系统设置权限"}, {status: 403});
   const body = await request.json().catch(() => null) as NotificationSettingsInput | null;
   const now = new Date();
   if (body?.kind === "sms") {
@@ -82,6 +84,7 @@ export async function POST(request: Request) {
     };
     if(config.enabled)return NextResponse.json({error:"短信发送适配器尚未实现，当前只能保存停用配置"},{status:409});
     await setSystemOption("sms_provider_config",JSON.stringify(config),now);
+    await audit(admin,"notification.sms.update","notification","sms",{provider:config.provider,enabled:config.enabled,signName:config.signName,region:config.region,endpointConfigured:Boolean(config.endpoint),senderId:config.senderId},request);
     return NextResponse.json({ok: true, config});
   }
   if (body?.kind === "templates") {
@@ -99,12 +102,14 @@ export async function POST(request: Request) {
       smsBody: String(item.smsBody).slice(0, 500),
     }));
     await setSystemOption("notification_templates",JSON.stringify(templates),now);
+    await audit(admin,"notification.templates.update","notification","customer-templates",{count:templates.length,enabled:templates.filter(item=>item.enabled).length,emailEnabled:templates.filter(item=>item.emailEnabled).length},request);
     return NextResponse.json({ok: true, templates});
   }
   if (body?.kind === "admin-templates") {
     if (!Array.isArray(body.templates) || !body.templates.length) return NextResponse.json({error:"管理员模板数据无效"},{status:400});
     const templates=body.templates.map(item=>({id:String(item.id),name:String(item.name).slice(0,50),scene:String(item.scene).slice(0,30),enabled:item.enabled!==false,emailEnabled:item.emailEnabled!==false,smsEnabled:false,emailSubject:String(item.emailSubject).slice(0,100),emailBody:String(item.emailBody).slice(0,5000),smsBody:""}));
     await setSystemOption("admin_notification_templates",JSON.stringify(templates),now);
+    await audit(admin,"notification.admin_templates.update","notification","admin-templates",{count:templates.length,enabled:templates.filter(item=>item.enabled).length,emailEnabled:templates.filter(item=>item.emailEnabled).length},request);
     return NextResponse.json({ok:true,templates});
   }
   return NextResponse.json({error: "通知配置类型无效"}, {status: 400});

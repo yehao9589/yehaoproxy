@@ -7,6 +7,7 @@ import {getCurrentCustomer} from "../../../../lib/auth";
 import {nextBusinessId} from "../../../../lib/business-id";
 import {convertCurrency} from "../../../../lib/currency-conversion";
 import {assertGateway,gatewayRuntimeSupported} from "../../../../lib/payments";
+import {audit} from "../../../../lib/audit";
 
 export async function POST(req:Request,{params}:{params:Promise<{gateway:string}>}){
   const user=await getCurrentCustomer();if(!user)return NextResponse.json({error:"请先登录"},{status:401});
@@ -32,6 +33,7 @@ export async function POST(req:Request,{params}:{params:Promise<{gateway:string}
     type Q=Parameters<typeof db.batch>[0][number];const writes:Q[]=[existing?db.update(paymentTransactions).set({externalId:result.externalId,amount:payAmount,currency:"CNY",status:"created",updatedAt:now}).where(eq(paymentTransactions.id,existing.id)):db.insert(paymentTransactions).values({id,orderId:order.id,gatewayId:config.id,externalId:result.externalId,amount:payAmount,currency:"CNY",status:"created",idempotencyKey:key,createdAt:now,updatedAt:now})];
     if(coupon&&!existingRedemption){writes.push(db.update(orders).set({amount:payable,updatedAt:now}).where(and(eq(orders.id,order.id),eq(orders.amount,order.amount))));writes.push(db.insert(couponRedemptions).values({id:crypto.randomUUID(),couponId:coupon.id,customerId:user.id,orderId:order.id,discount,createdAt:now}));writes.push(db.update(coupons).set({usedCount:coupon.usedCount+1}).where(and(eq(coupons.id,coupon.id),eq(coupons.usedCount,coupon.usedCount))))}
     await db.batch(writes as[Q,...Q[]]);
+    await audit({id:user.id,role:user.role},"payment.checkout.create","order",order.id,{gateway,transactionId:id,originalAmount:order.amount,payable,currency:order.currency,payAmount,paymentCurrency:"CNY",couponCode:coupon?.code||null,discount},req);
     return NextResponse.json({transactionId:id,...result,payAmount,currency:"CNY",discount,orderAmount:payable},{status:existing?200:201});
   }catch(error){return NextResponse.json({error:error instanceof Error?error.message:"创建支付宝支付失败"},{status:502})}
 }

@@ -3,11 +3,12 @@ import {getDb} from "../../../../db";
 import {systemOptions} from "../../../../db/schema";
 import {requireAdminApi} from "../../../../lib/admin-auth";
 import {setSystemOption} from "../../../../lib/db-upsert";
+import {audit} from "../../../../lib/audit";
 
 const allowed=new Set(["nodeTrafficResetPrice","ipReplacementPrice","ipReplacementFreeDays","ipReplacementFreeCount"]);
 
 export async function POST(request:Request){
-  if(!await requireAdminApi("products"))return NextResponse.json({error:"无商品管理权限"},{status:403});
+  const admin=await requireAdminApi("products");if(!admin)return NextResponse.json({error:"无商品管理权限"},{status:403});
   const body=await request.json().catch(()=>null);
   const offerId=String(body?.offerId||"");
   const name=String(body?.name||"");
@@ -21,5 +22,6 @@ export async function POST(request:Request){
   }
   const key=`productPolicy:${offerId}:${name}`;
   await setSystemOption(key,value,new Date());
+  await audit(admin,"product.policy.update","product",offerId,{name,value:value===""?null:Number(value)},request);
   return NextResponse.json({ok:true});
 }

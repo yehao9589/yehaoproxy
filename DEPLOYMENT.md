@@ -41,20 +41,15 @@
 1. 编排名称填写 `yehaoproxy`。
 2. Compose 内容粘贴仓库中的 `docker-compose.single.yml`。
 3. `.env` 内容按下面模板填写。
-4. 每个密钥都必须单独生成，至少 32 字符，不要复用。
 
 ```dotenv
 YEHAOPROXY_IMAGE=ghcr.io/yehao9589/yehaoproxy:pre-release
 PUBLIC_APP_URL=http://服务器IP:3000
 APP_VERSION=pre-release
-INVENTORY_ENCRYPTION_KEY=独立随机密钥
-INSTALL_TOKEN=独立随机部署密钥
-MYSQL_BRIDGE_SECRET=独立随机密钥
-CRON_SECRET=独立随机密钥
-XPANEL_BRIDGE_SECRET=独立随机密钥
-UPDATE_WEBHOOK_TOKEN=独立随机密钥
 CRON_INTERVAL_MS=60000
 ```
+
+单容器会在首次启动时自动生成内部服务认证与代理资产加密密钥，并持久化到 `data/system-secrets.json`。部署者不需要手工填写，也不存在软件授权码。已有部署在 `.env` 中配置的密钥会继续沿用并自动写入持久化文件，避免旧数据无法解密。
 
 正式发布后应把镜像标签从 `pre-release` 换成固定版本，例如 `v1.0.0`，避免不可控升级。
 
@@ -89,7 +84,6 @@ http://服务器IP:3000/install
 - 数据库名称：宝塔创建的名称
 - 用户名：宝塔数据库用户名
 - 密码：宝塔数据库密码
-- 部署密钥：Compose `.env` 中的 `INSTALL_TOKEN`
 
 先点击测试连接，成功后再建立管理员和站点。初始化完成后，数据库配置会写入 `/app/data/runtime.env`，相关子进程自动重启，安装入口随后锁定。
 
@@ -153,7 +147,7 @@ docker compose up -d --force-recreate
 
 ### 安全要求
 
-- 不在聊天、仓库、截图或日志中公开数据库密码和部署密钥。
+- 不在聊天、仓库、截图或日志中公开数据库密码和内部密钥文件。
 - 密码意外暴露后立即在宝塔改密，并同步更新安装配置。
 - `INVENTORY_ENCRYPTION_KEY` 在产生加密业务数据后不能随意更换。
 

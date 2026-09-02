@@ -75,6 +75,7 @@ export async function POST(req: Request) {
     if (owned.some(row => row.allocation.expiresAt && row.allocation.expiresAt.getTime() <= Date.now())) return NextResponse.json({ error: "已到期代理不能开启自动续费，请先手动续费" }, { status: 409 });
     const enabled=body?.enabled===true;
     await db.update(proxyAllocations).set({autoRenew:enabled}).where(inArray(proxyAllocations.id,ids));
+    await audit({id:user.id,role:user.role},"proxy.auto_renew.update","proxy",null,{allocationIds:ids,count:ids.length,enabled},req);
     return NextResponse.json({ok:true,updated:ids.length});
   }
   return NextResponse.json({error:"不支持的批量操作"},{status:400});

@@ -5,6 +5,7 @@ import {sendTransactionalEmail} from "./email";
 import {brandedEmail} from "./branded-email";
 import {AFTER_SALES_TICKET_CATEGORIES} from "./ticket-categories";
 import {setSystemOption} from "./db-upsert";
+import {systemAudit} from "./audit";
 
 export type TicketAutomationConfig={
   enabled:boolean;
@@ -87,6 +88,7 @@ export async function runTicketAutomation(origin:string){
         await sendTransactionalEmail(ticket.email,"工单已自动关闭",await brandedEmail({title:"工单已自动关闭",eyebrow:"SUPPORT CENTER",greeting:`尊敬的 ${ticket.name||ticket.email}：`,body:`工单因超过 ${config.autoCloseDays} 天未收到回复，系统已按照服务规则自动关闭。`,actionLabel:"查看工单记录",actionUrl:`${origin}${link}`,details:[{label:"工单编号",value:ticket.id,accent:true},{label:"工单主题",value:ticket.subject},{label:"当前状态",value:"已关闭"}],notice:"如果问题仍未解决，你可以在客户中心重新提交工单，我们会继续为你处理。"}));
         result.emailed++;
       }catch{result.emailFailed++}
+      await systemAudit("ticket.automation.close","ticket",ticket.id,{customerId:ticket.customerId,subject:ticket.subject,idleDays:config.autoCloseDays,previousStatus:ticket.status,status:"closed"});
       result.closed++;
       continue;
     }

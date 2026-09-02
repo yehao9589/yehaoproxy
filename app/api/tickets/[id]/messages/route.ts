@@ -17,6 +17,7 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
  if(!t||["closed","resolved"].includes(t.status))return NextResponse.json({error:"工单不可回复"},{status:409});
  if(body.length<2)return NextResponse.json({error:"回复内容为空"},{status:400});
  const now=new Date();await db.insert(ticketMessages).values({id:crypto.randomUUID(),ticketId:id,authorId:u.id,authorRole:"customer",body,internal:false,createdAt:now});await db.update(tickets).set({status:"waiting_staff",updatedAt:now}).where(eq(tickets.id,id));
+ await audit({id:u.id,role:u.role},"ticket.customer_reply","ticket",id,{previousStatus:t.status,status:"waiting_staff"},req);
  return NextResponse.json({ok:true});
 }
 export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){

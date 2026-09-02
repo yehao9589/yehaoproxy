@@ -5,6 +5,7 @@ import { customers, emailVerifications } from "../../../../db/schema";
 import { createSession, hashPassword, sha256 } from "../../../../lib/auth";
 import { clientAddress, consumeRateLimit } from "../../../../lib/rate-limit";
 import { withRequestLock } from "../../../../lib/request-lock";
+import { audit } from "../../../../lib/audit";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: duplicate ? "该邮箱已经注册" : "客户编号生成冲突，请重试" }, { status: 409 });
     }
     const session = await createSession(id, req);
+    await audit({id,role:"customer"},"auth.register","customer",id,{email,name},req);
     const response = NextResponse.json({ ok: true, customer: { id, email, name } }, { status: 201 });
     response.cookies.set("yh_session", session.token, { httpOnly: true, secure: new URL(req.url).protocol === "https:", sameSite: "lax", path: "/", expires: session.expires });
     return response;

@@ -29,8 +29,8 @@ export async function POST(req: Request) {
     }
     const nextBalance = Number((wallet.balance + amount).toFixed(2));
     if (nextBalance < 0) return NextResponse.json({ error: "调整后余额不能为负数" }, { status: 409 });
-    const transactionId = await nextBusinessId("TX", now);
     const now = new Date();
+    const transactionId = await nextBusinessId("TX", now);
     await db.batch([
       db.update(wallets).set({ balance: nextBalance, updatedAt: now }).where(eq(wallets.customerId, customerId)),
       db.insert(walletTransactions).values({ id: transactionId, customerId, type: "adjustment", amount, balanceAfter: nextBalance, referenceType: "admin", referenceId: admin.id, note, operatorId: admin.id, createdAt: now }),

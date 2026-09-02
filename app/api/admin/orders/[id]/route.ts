@@ -120,6 +120,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     const expiresAt=order.expiresAt||addBillingPeriod(now,order.durationDays,billingCycleFromNote(order.adminNote));
     await db.update(orders).set({adminNote,status:"active",expiresAt,updatedAt:now}).where(eq(orders.id,id));
     await syncBundleParent(db,order,now,expiresAt);
+    await audit({id:admin.id,role:admin.role},"order.subscription_deliver","order",id,{configured:true,expiresAt:expiresAt?.toISOString()||null},req);
     return NextResponse.json({ok:true,status:"active",subscriptionUrl,expiresAt});
   }
   if(action==="service-update"){
@@ -134,7 +135,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     if(["refunded","failed"].includes(order.status))return NextResponse.json({error:"已退款或已取消订单不可重新激活"},{status:409});
     await db.update(orders).set({paymentMethod,expiresAt,renewalAmount,durationDays,autoRenew,adminNote,status:nextStatus as typeof order.status,amount:Number(amount.toFixed(2)),updatedAt:now}).where(eq(orders.id,id));
     if(expiresAt)await db.update(proxyAllocations).set({expiresAt,autoRenew}).where(eq(proxyAllocations.orderId,id));
-    if(Math.abs(amount-order.amount)>0.001)await audit({id:admin.id,role:admin.role},"order.amount.update","order",id,{beforeAmount:order.amount,afterAmount:Number(amount.toFixed(2)),currency:order.currency},req);
+    await audit({id:admin.id,role:admin.role},"order.service_update","order",id,{previousStatus:order.status,status:nextStatus,beforeAmount:order.amount,afterAmount:Number(amount.toFixed(2)),currency:order.currency,paymentMethod,durationDays,billingMode:cycle,expiresAt:expiresAt?.toISOString()||null,autoRenew},req);
     return NextResponse.json({ok:true,status:nextStatus});
   }
   if(action==="update"){
@@ -148,6 +149,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     await db.update(productOffers).set({sold:sql`max(0, ${productOffers.sold} - ${order.quantity})`,updatedAt:now}).where(and(eq(productOffers.product,order.product),eq(productOffers.region,order.region)));
     await db.update(productOffers).set({sold:sql`${productOffers.sold} + ${quantity}`,updatedAt:now}).where(eq(productOffers.id,offer.id));
     await db.update(orders).set({product,region,quantity,durationDays,amount,updatedAt:now}).where(eq(orders.id,id));
+    await audit({id:admin.id,role:admin.role},"order.update","order",id,{previousProduct:order.product,product,previousRegion:order.region,region,previousQuantity:order.quantity,quantity,previousDurationDays:order.durationDays,durationDays,beforeAmount:order.amount,afterAmount:amount,currency:order.currency},req);
     return NextResponse.json({ok:true});
   }
   if(action==="cancel"){
@@ -158,6 +160,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     await db.update(orders).set({status:"failed",updatedAt:now}).where(eq(orders.id,id));
     for(const child of children)await db.update(orders).set({status:"failed",updatedAt:now}).where(eq(orders.id,child.id));
     for(const item of stockItems)await db.update(productOffers).set({sold:sql`max(0, ${productOffers.sold} - ${item.quantity})`,updatedAt:now}).where(and(eq(productOffers.product,item.product),eq(productOffers.region,item.region)));
+    await audit({id:admin.id,role:admin.role},"order.cancel","order",id,{previousStatus:order.status,bundleItems:children.length,restoredItems:stockItems.length},req);
     return NextResponse.json({ok:true});
   }
   if(action==="confirm"){
@@ -167,6 +170,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
       const all=await db.select().from(orders).where(eq(orders.customerEmail,order.customerEmail));
       for(const child of all.filter(item=>item.adminNote?.includes(`[BUNDLE_PARENT]${id}`)))await db.update(orders).set({status:"provisioning",paymentReference:String(b?.reference||"manual"),paymentMethod:String(b?.paymentMethod||"manual"),updatedAt:now}).where(eq(orders.id,child.id));
     }
+    await audit({id:admin.id,role:admin.role},"order.confirm","order",id,{previousStatus:order.status,status:"provisioning",paymentMethod:String(b?.paymentMethod||"manual"),referenceConfigured:Boolean(b?.reference)},req);
     return NextResponse.json({ok:true});
   }
   if(action==="manual-allocate"){
@@ -180,12 +184,18 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     const requestedExpiry=b?.expiresAt?adminDate(b.expiresAt):null;
     if(requestedExpiry&&Number.isNaN(requestedExpiry.getTime()))return NextResponse.json({error:"到期时间无效"},{status:400});
     const expiry=completes?(requestedExpiry||addBillingPeriod(now,order.durationDays,billingCycleFromNote(order.adminNote))):null;
-    await db.insert(proxyAllocations).values({id:crypto.randomUUID(),orderId:id,host,port,username,encryptedPassword:password?await encryptCredential(password):null,wifiName,protocol,note:`[CITY]${city}\n[ACTIVATED_AT]${now.toISOString()}`,expiresAt:expiry,autoRenew:order.autoRenew,status:"active"});
+    const allocationId=crypto.randomUUID();
+    await db.insert(proxyAllocations).values({id:allocationId,orderId:id,host,port,username,encryptedPassword:password?await encryptCredential(password):null,wifiName,protocol,note:`[CITY]${city}\n[ACTIVATED_AT]${now.toISOString()}`,expiresAt:expiry,autoRenew:order.autoRenew,status:"active"});
     if(completes){
       await db.update(proxyAllocations).set({expiresAt:expiry,autoRenew:order.autoRenew}).where(eq(proxyAllocations.orderId,id));
       await db.update(orders).set({status:"active",region:country,expiresAt:expiry,updatedAt:now}).where(eq(orders.id,id));
       await syncBundleParent(db,order,now,expiry);
     }else await db.update(orders).set({status:"provisioning",expiresAt:null,updatedAt:now}).where(eq(orders.id,id));
+    await audit({id:admin.id,role:admin.role},"order.manual_allocate","order",id,{
+      allocationId,address:`${host}:${port}`,username,wifiName,protocol,country,city,
+      allocated:existing.length+1,required:order.quantity,completed:completes,
+      expiresAt:expiry?.toISOString()||null,
+    },req);
     return NextResponse.json({ok:true,allocated:existing.length+1,remaining:Math.max(0,order.quantity-existing.length-1),status:completes?"active":"provisioning",expiresAt:expiry});
   }
   return NextResponse.json({error:"不支持的操作"},{status:400});

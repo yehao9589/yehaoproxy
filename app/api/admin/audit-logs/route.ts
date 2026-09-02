@@ -4,6 +4,8 @@ import { getDb } from "../../../../db";
 import { auditLogs, customers, proxyAllocations } from "../../../../db/schema";
 import { requireAdminApi } from "../../../../lib/admin-auth";
 import { auditActionName, auditDetailText, auditObjectName, auditResourceName } from "../../../../lib/audit-display";
+import { sanitizeAuditDetail } from "../../../../lib/audit-sanitize";
+import { ensureAuditSchema } from "../../../../lib/audit-schema";
 
 type Category = "all" | "login" | "system" | "email" | "scheduled";
 
@@ -33,6 +35,7 @@ export async function GET(req: Request) {
   if (!await requireAdminApi("audit")) {
     return NextResponse.json({ error: "无日志查看权限" }, { status: 403 });
   }
+  await ensureAuditSchema();
 
   const url = new URL(req.url);
   const requestedCategory = url.searchParams.get("category") || "all";
@@ -76,7 +79,7 @@ export async function GET(req: Request) {
   const scheduled = Number(scheduledRows[0]?.value || 0);
   const customerMap=new Map(customerRows.map(customer=>[customer.id,customer])),proxyMap=new Map(proxyRows.map(proxy=>[proxy.id,`${proxy.host}:${proxy.port}`]));
   const displayProxy=(id:unknown)=>proxyMap.get(String(id||""))||"历史资源（已删除或已更换）";
-  const enrichDetail=(raw:string|null)=>{if(!raw)return raw;try{const value=JSON.parse(raw);for(const key of ["allocationId","resourceId"]){if(value[key])value[key]=displayProxy(value[key])}if(Array.isArray(value.allocationIds))value.allocationIds=value.allocationIds.map(displayProxy);return JSON.stringify(value)}catch{return raw}};
+  const enrichDetail=(raw:string|null)=>{if(!raw)return raw;try{const value=sanitizeAuditDetail(JSON.parse(raw)) as Record<string,unknown>;for(const key of ["allocationId","resourceId"]){if(value[key]&&value[key]!=="[已脱敏]")value[key]=displayProxy(value[key])}if(Array.isArray(value.allocationIds))value.allocationIds=value.allocationIds.map(displayProxy);return JSON.stringify(value)}catch{return JSON.stringify({note:"历史日志内容无法解析"})}};
   const namedItems=items.map(item=>{
     const detail=enrichDetail(item.detail),resourceDisplay=item.resourceType==="proxy"&&item.resourceId?displayProxy(item.resourceId):null,resourceCustomerName=item.resourceType==="customer"&&item.resourceId?customerMap.get(item.resourceId)?.name||null:null;
     const displayLog={...item,detail,resourceDisplay,resourceCustomerName};

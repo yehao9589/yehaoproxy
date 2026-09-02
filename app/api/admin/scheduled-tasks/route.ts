@@ -5,6 +5,7 @@ import {orders,systemOptions} from "../../../../db/schema";
 import {requireAdminApi} from "../../../../lib/admin-auth";
 import {DEFAULT_REMINDER_CONFIG,getReminderConfig,runScheduledReminders} from "../../../../lib/scheduled-reminders";
 import {setSystemOption} from "../../../../lib/db-upsert";
+import {audit} from "../../../../lib/audit";
 
 export async function GET(){
   if(!await requireAdminApi("automation"))return NextResponse.json({error:"无定时任务管理权限"},{status:403});
@@ -29,17 +30,19 @@ export async function GET(){
   return NextResponse.json({config,runnerMode:selectedMode,lastRun,script:{path:"/www/wwwroot/你的域名/scripts/yehaoproxy-cron.sh",status:scriptStatus,ageMinutes,endpoint:"/api/cron/reminders",recommendedCron:"0 * * * *",source,mode},summary:{active:active.length,expiring,waiting:waiting.length},defaults:DEFAULT_REMINDER_CONFIG});
 }
 export async function POST(req:Request){
-  if(!await requireAdminApi("automation"))return NextResponse.json({error:"无定时任务管理权限"},{status:403});
+  const admin=await requireAdminApi("automation");if(!admin)return NextResponse.json({error:"无定时任务管理权限"},{status:403});
   const body=await req.json().catch(()=>null);
-  if(body?.action==="run")return NextResponse.json({ok:true,result:await runScheduledReminders(new URL(req.url).origin)});
+  if(body?.action==="run"){const result=await runScheduledReminders(new URL(req.url).origin);await audit(admin,"scheduled.reminders.manual_run","scheduled_task","service-reminders",result,req);return NextResponse.json({ok:true,result})}
   if(body?.action==="runner-mode"){
     const mode=body.mode==="baota"?"baota":body.mode==="container"?"container":null;
     if(!mode)return NextResponse.json({error:"执行方式无效"},{status:400});
     const now=new Date();await setSystemOption("scheduled_runner_mode",mode,now);
+    await audit(admin,"scheduled.runner_mode.update","scheduled_task","service-reminders",{mode},req);
     return NextResponse.json({ok:true,runnerMode:mode});
   }
   const expiryDays=Array.isArray(body?.expiryDays)?body.expiryDays.map(Number).filter((x:number)=>Number.isInteger(x)&&x>=0&&x<=90).slice(0,8):[];
   const config={enabled:Boolean(body?.enabled),emailEnabled:Boolean(body?.emailEnabled),siteEnabled:Boolean(body?.siteEnabled),expiryDays:expiryDays.length?expiryDays:[7,3,1,0],newOrderEnabled:Boolean(body?.newOrderEnabled),provisioningEnabled:Boolean(body?.provisioningEnabled),provisioningMinutes:Math.min(10080,Math.max(5,Number(body?.provisioningMinutes)||30))};
   const now=new Date();await setSystemOption("scheduled_reminder_config",JSON.stringify(config),now);
+  await audit(admin,"scheduled.settings.update","scheduled_task","service-reminders",config,req);
   return NextResponse.json({ok:true,config});
 }

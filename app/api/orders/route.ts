@@ -8,6 +8,7 @@ import {sendOrderCreatedEmails} from "../../../lib/order-notifications";
 import {notifyAdmins} from "../../../lib/admin-event-notifications";
 import {ensureProductOfferSchema} from "../../../lib/product-offer-schema";
 import {nextBusinessId} from "../../../lib/business-id";
+import {audit} from "../../../lib/audit";
 
 const durations = new Set([7, 30, 90, 180]);
 
@@ -68,6 +69,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "商城可售额度刚刚发生变化，请重试" }, { status: 409 });
   }
   void sendOrderCreatedEmails({id,customerEmail:user.email,product,region,quantity,durationDays,billingCycle:offer.billingCycle,amount,currency}).catch(()=>{});
+  await audit({id:user.id,role:user.role},"order.create","order",id,{product,region,quantity,durationDays,billingMode:offer.billingCycle,amount,currency},req);
   return NextResponse.json({
     id,
     status: "pending",

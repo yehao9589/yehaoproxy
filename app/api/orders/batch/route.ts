@@ -7,6 +7,7 @@ import {sendOrderCreatedEmails} from "../../../../lib/order-notifications";
 import {notifyAdmins} from "../../../../lib/admin-event-notifications";
 import {ensureProductOfferSchema} from "../../../../lib/product-offer-schema";
 import {nextBusinessId} from "../../../../lib/business-id";
+import {audit} from "../../../../lib/audit";
 
 const DURATIONS = new Set([7, 30, 90, 180]);
 type InputItem = {product: string; region: string; durationDays: number; quantity: number};
@@ -105,6 +106,7 @@ export async function POST(req: Request) {
   }
 
   void sendOrderCreatedEmails({id:bundleId,customerEmail:user.email,product:singleItem?.product||"cart-bundle",region:singleItem?.region||"MULTI",quantity:created.length,durationDays:singleItem?.durationDays||0,billingCycle:singleItem?offerByKey.get(`${singleItem.product}:${singleItem.region}`)?.billingCycle:undefined,amount:total,currency}).catch(()=>{});
+  await audit({id:user.id,role:user.role},"order.batch_create","order",bundleId,{bundleItems:created.length,quantity:created.reduce((sum,item)=>sum+item.quantity,0),total,currency,orderIds:created.map(item=>item.id)},req);
 
   return NextResponse.json({
     ok: true,

@@ -1,12 +1,43 @@
 import {createServer,request as httpRequest} from "node:http";
+import {randomBytes} from "node:crypto";
 import {spawn} from "node:child_process";
 import {mkdir,readFile,rename,writeFile} from "node:fs/promises";
 import {dirname} from "node:path";
 
 const runtimeFile=process.env.RUNTIME_ENV_FILE||"/app/data/runtime.env";
-const token=String(process.env.UPDATE_WEBHOOK_TOKEN||"");
+const secretsFile=process.env.SYSTEM_SECRETS_FILE||"/app/data/system-secrets.json";
 const children=new Map();
 let restarting=false;
+
+async function managedSecrets(){
+  let saved={};
+  try{saved=JSON.parse(await readFile(secretsFile,"utf8"))}catch{/* 首次启动自动生成 */}
+  const runtime={};
+  try{
+    const content=await readFile(runtimeFile,"utf8");
+    for(const line of content.split(/\r?\n/)){
+      const match=line.match(/^([A-Z0-9_]+)=(.*)$/);
+      if(match)runtime[match[1]]=match[2];
+    }
+  }catch{/* 首次安装尚无运行配置 */}
+  const keys=["INVENTORY_ENCRYPTION_KEY","MYSQL_BRIDGE_SECRET","CRON_SECRET","XPANEL_BRIDGE_SECRET","UPDATE_WEBHOOK_TOKEN"];
+  const values={};
+  let changed=false;
+  for(const key of keys){
+    values[key]=String(saved[key]||process.env[key]||runtime[key]||randomBytes(32).toString("hex"));
+    if(saved[key]!==values[key])changed=true;
+  }
+  if(changed){
+    await mkdir(dirname(secretsFile),{recursive:true});
+    await writeFile(`${secretsFile}.tmp`,JSON.stringify(values,null,2)+"\n",{mode:0o600});
+    await rename(`${secretsFile}.tmp`,secretsFile);
+  }
+  return values;
+}
+
+const secrets=await managedSecrets();
+Object.assign(process.env,secrets);
+const token=secrets.UPDATE_WEBHOOK_TOKEN;
 
 function normalizedIp(value){
   const ip=String(value||"").trim();

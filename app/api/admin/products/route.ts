@@ -5,6 +5,7 @@ import {getDb} from "../../../../db";
 import {productOffers} from "../../../../db/schema";
 import {getProductTypes} from "../../../../lib/product-types";
 import {ensureProductOfferSchema} from "../../../../lib/product-offer-schema";
+import {audit} from "../../../../lib/audit";
 
 export async function GET() {
   if (!await requireAdminApi("products")) return NextResponse.json({error: "无商品管理权限"}, {status: 403});
@@ -13,7 +14,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!await requireAdminApi("products")) return NextResponse.json({error: "无商品管理权限"}, {status: 403});
+  const admin=await requireAdminApi("products");
+  if (!admin) return NextResponse.json({error: "无商品管理权限"}, {status: 403});
   const body = await req.json().catch(() => null);
   const product = String(body?.product || "");
   const types=await getProductTypes(),type=types.find(x=>x.id===product&&x.enabled),isNode=type?.category==="node";
@@ -48,5 +50,6 @@ export async function POST(req: Request) {
     createdAt: now,
     updatedAt: now,
   });
+  await audit(admin,"product.create","product",id,{product,region,regionName,billingMode:billingCycle,price7,price30,price90,price180,saleStock,enabled:body?.enabled!==false,sortOrder:Number(body?.sortOrder)||100},req);
   return NextResponse.json({ok: true, id}, {status: 201});
 }

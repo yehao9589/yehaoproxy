@@ -4,6 +4,7 @@ import {getDb} from "../../../../db";
 import {currencies,orders,systemOptions,wallets} from "../../../../db/schema";
 import {requireAdminApi} from "../../../../lib/admin-auth";
 import {upsertRecord} from "../../../../lib/db-upsert";
+import {audit} from "../../../../lib/audit";
 
 export async function GET(){
   if(!await requireAdminApi("settings"))return NextResponse.json({error:"无系统设置权限"},{status:403});
@@ -26,12 +27,13 @@ export async function GET(){
 }
 
 export async function POST(req:Request){
-  if(!await requireAdminApi("settings"))return NextResponse.json({error:"无系统设置权限"},{status:403});
+  const admin=await requireAdminApi("settings");if(!admin)return NextResponse.json({error:"无系统设置权限"},{status:403});
   const b=await req.json().catch(()=>null),db=getDb(),now=new Date(),code=String(b?.code||"").toUpperCase(),rate=Number(b?.rate),decimalPlaces=Number(b?.decimalPlaces),sortOrder=Number(b?.sortOrder||100);
   if(!/^[A-Z]{3,5}$/.test(code)||!b?.name||!b?.symbol||!Number.isFinite(rate)||rate<=0||!Number.isInteger(decimalPlaces)||decimalPlaces<0||decimalPlaces>4)return NextResponse.json({error:"币种配置无效"},{status:400});
   await db.update(currencies).set({enabled:false,isDefault:false,updatedAt:now});
   const values={code,name:String(b.name),symbol:String(b.symbol),rate,enabled:true,isDefault:true,decimalPlaces,sortOrder,updatedAt:now};
   await upsertRecord(currencies,currencies.code,code,values,{name:values.name,symbol:values.symbol,rate,enabled:true,isDefault:true,decimalPlaces,sortOrder,updatedAt:now});
   await Promise.all([db.update(wallets).set({currency:code,updatedAt:now}),db.update(orders).set({currency:code,updatedAt:now})]);
+  await audit(admin,"currency.default.update","currency",code,{code,name:values.name,symbol:values.symbol,rate,decimalPlaces,walletsUpdated:true,ordersUpdated:true},req);
   return NextResponse.json({ok:true,code});
 }
