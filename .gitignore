@@ -30,6 +30,7 @@ yarn-error.log*
 /.pnpm-store/
 /.dev-server.*.log
 /.dev*.log
+/.local-server.*.log
 /.dev*.pid
 
 # env files (can opt-in for committing if needed)

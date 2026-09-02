@@ -104,7 +104,7 @@ export default function Home() {
   const unitPrice = currentOffer
     ? duration === 7 ? currentOffer.price7 : duration === 90 ? currentOffer.price90 : duration === 180 ? currentOffer.price180 : currentOffer.price30
     : fallbackUnitPrice;
-  const total = useMemo(() => unitPrice * quantity, [unitPrice, quantity]);
+  const total = unitPrice * quantity;
   const productEnabled = (id: string) => saleOffers === null || saleOffers.some(offer => offer.product === id);
   const currentEnabled = (saleOffers === null || saleOffers.some(offer => offer.product === product && (isNode || offer.region === orderRegion))) && durationAvailable(duration);
   useEffect(()=>{if(!currentOffer||durationAvailable(duration))return;const next=[30,90,180,7].find(day=>durationAvailable(day));if(next)setDuration(next)},[currentOffer,duration]);

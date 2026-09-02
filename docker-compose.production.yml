@@ -93,7 +93,7 @@ services:
     restart: unless-stopped
 
   updater:
-    image: ${YEHAOPROXY_UPDATER_IMAGE:-ghcr.io/yehao9589/yehaoproxy-updater:pre-release}
+    image: ${YEHAOPROXY_UPDATER_IMAGE:-ghcr.io/yehao9589/yehaoproxy-updater:v1.0.0}
     environment:
       PORT: 8788
       UPDATE_WEBHOOK_TOKEN: ${UPDATE_WEBHOOK_TOKEN:?请配置 UPDATE_WEBHOOK_TOKEN}

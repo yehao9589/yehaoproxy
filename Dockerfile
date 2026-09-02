@@ -41,9 +41,9 @@ COPY --from=build /app/scripts ./scripts
 EXPOSE 3000
 
 # 版本信息放在稳定依赖层之后，提交号变化不会让系统组件和依赖层失效。
-ARG APP_VERSION=pre-release
+ARG APP_VERSION=v1.0.0
 ARG APP_COMMIT=""
-ARG IMAGE_REPOSITORY=ghcr.io/yehao9589/yehaoproxy:pre-release
+ARG IMAGE_REPOSITORY=ghcr.io/yehao9589/yehaoproxy:v1.0.0
 
 ENV NODE_ENV=production
 ENV NODE_OPTIONS=--experimental-loader=/app/scripts/cloudflare-node-loader.mjs

@@ -14,11 +14,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const user = await getCurrentCustomer();
   if (!user) return NextResponse.json({ error: "请先登录" }, { status: 401 });
   const { id } = await params;
+  const body = await req.json().catch(() => null);
+  const couponCode = String(body?.couponCode || "").trim().toUpperCase();
+  const fundingSource = body?.fundingSource === "credit" ? "credit" : "balance";
 
-  return withRequestLock(`wallet:${user.id}`, async () => {
-    const body = await req.json().catch(() => null);
-    const couponCode = String(body?.couponCode || "").trim().toUpperCase();
-    const fundingSource = body?.fundingSource === "credit" ? "credit" : "balance";
+  return withRequestLock(couponCode?`coupon:${couponCode}`:`wallet-payment:${user.id}`, () => withRequestLock(`wallet:${user.id}`, async () => {
     const db = getDb();
     const [order] = await db.select().from(orders).where(and(eq(orders.id, id), eq(orders.customerEmail, user.email))).limit(1);
     if (!order) return NextResponse.json({ error: "订单不存在" }, { status: 404 });
@@ -140,5 +140,5 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     await db.batch(writes as [BatchQuery, ...BatchQuery[]]);
     await audit({ id: user.id, role: user.role }, "order.wallet_credit_pay", "order", id, { payable, discount, fundingSource, balanceAfter: nextBalance, creditUsed: fundingSource==="credit"?credit.creditUsed+payable:credit.creditUsed, txId, status: "provisioning" }, req);
     return NextResponse.json({ ok: true, status: "provisioning", paid: payable, discount, fundingSource, balance: nextBalance, creditUsed: fundingSource==="credit"?credit.creditUsed+payable:credit.creditUsed, availableCredit: fundingSource==="credit"?Math.max(0,availableCredit-payable):availableCredit });
-  });
+  }));
 }

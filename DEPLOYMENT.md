@@ -43,15 +43,15 @@
 3. `.env` 内容按下面模板填写。
 
 ```dotenv
-YEHAOPROXY_IMAGE=ghcr.io/yehao9589/yehaoproxy:pre-release
+YEHAOPROXY_IMAGE=ghcr.io/yehao9589/yehaoproxy:v1.0.0
 PUBLIC_APP_URL=http://服务器IP:3000
-APP_VERSION=pre-release
+APP_VERSION=v1.0.0
 CRON_INTERVAL_MS=60000
 ```
 
 单容器会在首次启动时自动生成内部服务认证与代理资产加密密钥，并持久化到 `data/system-secrets.json`。部署者不需要手工填写，也不存在软件授权码。已有部署在 `.env` 中配置的密钥会继续沿用并自动写入持久化文件，避免旧数据无法解密。
 
-正式发布后应把镜像标签从 `pre-release` 换成固定版本，例如 `v1.0.0`，避免不可控升级。
+生产环境使用固定版本标签 `v1.0.0`，不要改成移动的 `latest` 或 `pre-release`，避免不可控升级。
 
 ## 4. 持久化目录
 
@@ -101,9 +101,9 @@ http://127.0.0.1:3000
 
 ## 7. 更新
 
-测试分支镜像更新流程：
+正式版本镜像更新流程：
 
-1. GitHub Actions 构建 `ghcr.io/yehao9589/yehaoproxy:pre-release`。
+1. GitHub Actions 通过代码检查后构建 `ghcr.io/yehao9589/yehaoproxy:v1.0.0`。
 2. 先备份宝塔 MySQL 和三个持久化目录。
 3. 在宝塔容器编排点击“更新镜像”。
 4. 确认容器重新创建后检查日志和 `/api/health`。
@@ -118,7 +118,7 @@ http://127.0.0.1:3000
 - `/www/wwwroot/yehaoproxy/data`
 - `/www/wwwroot/yehaoproxy/uploads`
 - `/www/wwwroot/yehaoproxy/backups`
-- Compose `.env` 中的全部密钥（保存在独立密码管理器，不放进普通备份包）
+- `/www/wwwroot/yehaoproxy/data/system-secrets.json`（内部服务认证与资产解密所需，必须和数据目录一起保护）
 
 数据库与文件备份应定期复制到服务器外，并在隔离环境进行恢复演练。
 
@@ -141,7 +141,7 @@ http://127.0.0.1:3000
 点击“更新镜像”后保存并重建编排。若仍未更新，在宝塔终端执行拉取并强制重建：
 
 ```bash
-docker pull ghcr.io/yehao9589/yehaoproxy:pre-release
+docker pull ghcr.io/yehao9589/yehaoproxy:v1.0.0
 docker compose up -d --force-recreate
 ```
 

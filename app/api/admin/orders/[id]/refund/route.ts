@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "../../../../../../db";
-import { customers, orders, paymentGateways, paymentTransactions, proxyAllocations, wallets, walletTransactions } from "../../../../../../db/schema";
+import { currencies, customers, orders, paymentGateways, paymentTransactions, proxyAllocations, wallets, walletTransactions } from "../../../../../../db/schema";
 import { requireAdminApi } from "../../../../../../lib/admin-auth";
 import { audit } from "../../../../../../lib/audit";
 import { withRequestLock } from "../../../../../../lib/request-lock";
@@ -34,7 +34,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if(!transaction)return NextResponse.json({error:"未找到成功的支付宝交易，无法原路退款"},{status:409});
       const[gateway]=await db.select().from(paymentGateways).where(eq(paymentGateways.id,transaction.gatewayId)).limit(1);
       if(!gateway?.enabled)return NextResponse.json({error:"原支付渠道当前未启用"},{status:409});
-      const result=await createAlipayRefund(await readAlipayConfig(gateway),{orderId:id,amount:order.amount,reason,requestId:`RF-${id}`});
+      const result=await createAlipayRefund(await readAlipayConfig(gateway),{orderId:id,amount:transaction.amount,reason,requestId:`RF-${id}`});
       const now=new Date();type BatchQuery=Parameters<typeof db.batch>[0][number];const writes:BatchQuery[]=[
         db.update(paymentTransactions).set({status:"refunded",updatedAt:now}).where(eq(paymentTransactions.id,transaction.id)),
         db.update(proxyAllocations).set({status:"revoked",autoRenew:false}).where(eq(proxyAllocations.orderId,id)),
@@ -42,15 +42,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ];
       for(const child of children){writes.push(db.update(proxyAllocations).set({status:"revoked",autoRenew:false}).where(eq(proxyAllocations.orderId,child.id)));writes.push(db.update(orders).set({status:"refunded",autoRenew:false,updatedAt:now}).where(eq(orders.id,child.id)))}
       await db.batch(writes as [BatchQuery,...BatchQuery[]]);
-      await audit({id:admin.id,role:admin.role},"order.refund","order",id,{amount:order.amount,reason,destination:"original",tradeNo:result.tradeNo,revokedAllocations:allocations.length,bundleItems:children.length},req);
-      return NextResponse.json({ok:true,status:"refunded",amount:order.amount,destination:"original",tradeNo:result.tradeNo,revokedAllocations:allocations.length});
+      await audit({id:admin.id,role:admin.role},"order.refund","order",id,{amount:transaction.amount,currency:transaction.currency,reason,destination:"original",tradeNo:result.tradeNo,revokedAllocations:allocations.length,bundleItems:children.length},req);
+      return NextResponse.json({ok:true,status:"refunded",amount:transaction.amount,currency:transaction.currency,destination:"original",tradeNo:result.tradeNo,revokedAllocations:allocations.length});
     }
 
     return withRequestLock(`wallet:${customer.id}`, async () => {
       let [wallet] = await db.select().from(wallets).where(eq(wallets.customerId, customer.id)).limit(1);
       const now = new Date();
       if (!wallet) {
-        await db.insert(wallets).values({ customerId: customer.id, balance: 0, frozen: 0, creditLimit: 0, currency: "USD", updatedAt: now });
+        const [activeCurrency] = await db.select({ code: currencies.code }).from(currencies).where(eq(currencies.isDefault, true)).limit(1);
+        await db.insert(wallets).values({ customerId: customer.id, balance: 0, frozen: 0, creditLimit: 0, currency: activeCurrency?.code || order.currency || "CNY", updatedAt: now });
         [wallet] = await db.select().from(wallets).where(eq(wallets.customerId, customer.id)).limit(1);
       }
       const nextBalance = Number((wallet.balance + order.amount).toFixed(2));

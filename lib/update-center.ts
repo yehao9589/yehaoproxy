@@ -16,10 +16,10 @@ export type UpdateSettings = {
 export const defaultUpdateSettings: UpdateSettings = {
   deploymentMode: "docker",
   repository: "https://github.com/yehao9589/yehaoproxy",
-  branch: "codex/pre-release-hardening",
-  image: "ghcr.io/yehao9589/yehaoproxy:pre-release",
+  branch: "main",
+  image: "ghcr.io/yehao9589/yehaoproxy:v1.0.0",
   channel: "stable",
-  manifestUrl: "https://raw.githubusercontent.com/yehao9589/yehaoproxy/codex/pre-release-hardening/public/releases.json",
+  manifestUrl: "https://raw.githubusercontent.com/yehao9589/yehaoproxy/main/public/releases.json",
   autoCheck: true,
 };
 

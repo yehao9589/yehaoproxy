@@ -33,7 +33,7 @@ const resources: Record<string, string> = {
 
 const keys: Record<string, string> = {
   originalProduct:"原商品",previousProduct:"原商品",previousRegion:"原地区",previousQuantity:"原数量",previousDurationDays:"原服务周期",regionName:"地区名称",paymentMethod:"付款方式",referenceConfigured:"已填写收款凭证",configured:"已配置",autoRenew:"自动续费",provider:"服务商",fromName:"发件名称",fromEmail:"发件邮箱",secretUpdated:"密钥已更新",keyMaterialUpdated:"密钥已更新",keyMaterialConfigured:"密钥已配置",configurationCount:"配置项数量",endpointConfigured:"接口地址已配置",senderId:"发送方标识",mode:"执行方式",targetGb:"校准流量",succeeded:"成功数量",failed:"失败数量",idleDays:"未回复天数",walletsUpdated:"钱包币种已同步",ordersUpdated:"订单币种已同步",
-  email:"邮箱",name:"名称",reason:"原因",amount:"金额",note:"备注",status:"状态",to:"收件人",subject:"标题",provider:"邮件服务商",error:"错误信息",
+  email:"邮箱",name:"名称",reason:"原因",amount:"金额",note:"备注",status:"状态",to:"收件人",subject:"标题",error:"错误信息",
   scanned:"检查数量",created:"生成通知数量",emailed:"发送邮件数量",emailFailed:"邮件失败数量",skipped:"跳过数量",requestId:"售后单号",resetOrderId:"重置账单号",paidOrderId:"付款账单号",refundedOrderId:"退款账单号",refundAmount:"退款金额",
   sourceOrderId:"原服务订单",targetOrderId:"目标订单",orderId:"订单号",orderIds:"订单列表",bundleOrderId:"合并账单号",txId:"交易流水号",transactionId:"支付流水号",tradeNo:"支付平台流水号",destination:"退款去向",
   durationDays:"服务时长",renewalDays:"续费周期",expiresAt:"到期时间",previousExpiresAt:"原到期时间",restoredExpiry:"恢复到期时间",eligibleUntil:"免费更换有效期",

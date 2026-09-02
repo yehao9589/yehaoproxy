@@ -1,141 +1,111 @@
 # YehaoProxy
 
 <p align="center">
+  <strong>An integrated operations platform for proxy IP and node-service businesses</strong>
+</p>
+
+<p align="center">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.0.0-2563eb">
+  <img alt="Node" src="https://img.shields.io/badge/Node.js-%3E%3D22.13-339933?logo=nodedotjs&logoColor=white">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ed?logo=docker&logoColor=white">
+  <img alt="MySQL" src="https://img.shields.io/badge/MySQL-5.7%20%7C%208.x-4479a1?logo=mysql&logoColor=white">
+</p>
+
+<p align="center">
   <a href="./README.md">中文</a> · <strong>English</strong>
 </p>
 
-YehaoProxy is a full-stack business management system for selling proxy IP and node services. It covers storefront sales, customer accounts, orders and invoices, manual provisioning, renewals, after-sales requests, finance, notifications, auditing, VPS/X-Panel integration, online updates, backups, and disaster recovery.
+YehaoProxy brings storefront sales, customers, orders, billing, payments, provisioning, renewals, after-sales service, credit billing, notifications, auditing, and operations into one system. It is designed for proxy IPs, computer nodes, router relay services, and other recurring network products.
 
-> This project is under active development. Before production deployment, validate the complete payment, provisioning, renewal, refund, backup, and recovery workflows in a staging environment.
+## Highlights
 
-## Features
+| Area | Capabilities |
+| --- | --- |
+| Products and sales | Product types, regional pricing, fixed-day/calendar-month billing, stock, coupons, and batch ordering |
+| Customer portal | Orders, proxy assets, node subscriptions, service requests, wallet, credit bills, transactions, notifications, and tickets |
+| Operations | Product orders, renewal verification, service management, manual provisioning, IP replacement, and traffic reset |
+| Finance | Billing, transaction ledger, wallet/credit payments, Alipay checkout, original-route or wallet refunds |
+| Automation | Expiry reminders, stock alerts, customer/admin email, scheduled jobs, and auto-renewal |
+| Administration | Role permissions, customer impersonation, audit logs, real client IP capture, backup, and recovery |
+| Integrations | X-Panel node management, traffic synchronization, subscription URLs, and QR codes |
 
-- Product management for proxy IPs, computer nodes, router relay services, and custom product types
-- Customer portal for orders, invoices, services, wallet activity, tickets, and after-sales requests
-- Operations for product orders, renewal orders, service management, and manual provisioning
-- Finance tools for transaction records, billing, wallet recharge, and coupons
-- Service features including auto-renewal, IP replacement, traffic reset, subscription URLs, and QR codes
-- Scheduled jobs, email/SMS notifications, audit logs, and administrator permissions
-- X-Panel integration for VPS traffic synchronization and inbound-node inspection
-- MySQL 8 and SQLite/D1 deployment modes
-- Pre-update backups, automatic rollback, manual backup, download, import, and recovery
+## Recommended Deployment
+
+For Baota deployments, use Baota MySQL with one YehaoProxy Docker container:
+
+```text
+Internet → Nginx / HTTPS → YehaoProxy :3000 → Baota MySQL :3306
+```
+
+- Use [`docker-compose.single.yml`](./docker-compose.single.yml).
+- Keep Baota MySQL restricted to `Localhost`; never expose port `3306` publicly.
+- Run the first-time installer at `/install` and use `127.0.0.1` as the database host.
+- Internal service and asset-encryption secrets are generated and persisted automatically.
+- `data`, `uploads`, and `backups` are mounted on the host and survive container recreation.
+
+See the Chinese [deployment guide](./DEPLOYMENT.md) for the complete procedure and the [v1.0.0 release checklist](./RELEASE_CHECKLIST.md) before production rollout.
+
+## Quick Start
+
+Use [`docker-compose.single.yml`](./docker-compose.single.yml) in Baota and provide a minimal `.env` file:
+
+```dotenv
+YEHAOPROXY_IMAGE=ghcr.io/yehao9589/yehaoproxy:v1.0.0
+PUBLIC_APP_URL=https://your-domain.example
+APP_VERSION=v1.0.0
+CRON_INTERVAL_MS=60000
+```
+
+Then open:
+
+```text
+https://your-domain.example/install
+```
+
+The installer tests the database connection, creates the schema, configures the site, and provisions the first super administrator.
+
+## Development
+
+```bash
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+Run the complete quality gate before committing:
+
+```bash
+pnpm run check
+```
+
+It runs ESLint, TypeScript checks, a production build, and the critical business regression suite.
 
 ## Requirements
 
 - Node.js `>= 22.13.0`
 - pnpm `11.x`
-- Docker and Docker Compose are recommended
-- MySQL `8.4` is recommended for MySQL deployments
+- Docker and Docker Compose
+- MySQL `5.7` or `8.x`; MySQL 8 is recommended for production
 
-## Docker Deployment
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/yehao9589/yehaoproxy.git
-cd yehaoproxy
-```
-
-### 2. Configure environment variables
-
-```bash
-cp .env.example .env
-```
-
-At minimum, replace these values before production use:
-
-- `INVENTORY_ENCRYPTION_KEY`
-- `MYSQL_ROOT_PASSWORD`
-- `MYSQL_PASSWORD`
-- `MYSQL_BRIDGE_SECRET`
-- Scheduler, updater, and X-Panel bridge secrets in Docker Compose
-
-Use long random values and never commit real secrets to Git.
-
-### 3. Start the services
-
-MySQL deployment (recommended):
-
-```bash
-docker compose --profile mysql --profile system-update up -d --build
-```
-
-SQLite deployment:
-
-```bash
-docker compose --profile system-update up -d --build
-```
-
-### 4. Run first-time installation
-
-Open:
+## Project Layout
 
 ```text
-http://your-server:3000/install
+app/                         Pages, components, and API routes
+db/                          Drizzle schema and database adapters
+lib/                         Authentication, payments, billing, and shared services
+scripts/                     Single-container controller, bridges, migrations, jobs, and backups
+public/                      Static assets, uploads, and release manifest
+docker-compose.single.yml    Recommended Baota single-container stack
+DEPLOYMENT.md                Deployment and operations guide
+RELEASE_CHECKLIST.md         Production release acceptance checklist
 ```
 
-The installer lets you select a database, test the MySQL connection, initialize tables, set the site name, and create the first super administrator.
+## Data, Security, and Updates
 
-After installation:
-
-- Storefront: `http://your-server:3000/`
-- Customer portal: `http://your-server:3000/dashboard`
-- Administration: `http://your-server:3000/admin`
-
-## Local Development
-
-```bash
-pnpm install
-pnpm dev
-```
-
-Useful commands:
-
-```bash
-pnpm build       # Verify the production build
-pnpm test        # Run project tests
-pnpm lint        # Run code checks
-pnpm db:generate # Generate Drizzle migrations
-```
-
-## Database Modes
-
-- MySQL is recommended for production and multi-container deployments.
-- SQLite/D1 is suitable for lightweight deployments, development, or Cloudflare environments.
-- Both modes use the same business layer, but database switching requires a migration and a verified backup.
-- Do not overwrite MySQL with a copied SQLite file. Use the installer, migration scripts, or the backup and recovery workflow.
-
-## Backup and Recovery
-
-Go to `System Management → Updates & Backups` in the administration panel to:
-
-- Create a complete system backup
-- Download a `.tar.gz` backup archive
-- Import an existing backup
-- Restore the database, uploaded files, and critical configuration
-- Create backups before updates and automatically roll back failed updates
-
-Backup archives contain database content and sensitive configuration. Store them securely and copy them regularly to an off-site or object-storage location.
-
-## Project Structure
-
-```text
-app/                 Pages, components, and API routes
-db/                  Drizzle schema and database adapters
-drizzle/             Database migrations
-lib/                 Business services and shared utilities
-scripts/             Scheduler, MySQL/X-Panel bridges, and update runner
-public/uploads/      Uploaded site assets
-docker-compose.yml   Docker service orchestration
-```
-
-## Security Recommendations
-
-- Replace every example password and default secret in production.
-- Restrict update, recovery, finance, and permission management to trusted administrators.
-- Configure HTTPS, a reverse proxy, firewall rules, and database access controls.
-- Download backups regularly and test the recovery procedure.
-- Validate callback signatures, idempotency, and refund handling before enabling production payments.
+- Back up Baota MySQL and all three persistent directories before every update.
+- Pin production to a versioned image; do not use moving `latest` or `pre-release` tags.
+- Configure a production domain and HTTPS before enabling payment callbacks and email links.
+- Rehearse payments, refunds, backup restoration, and external provider integration in staging.
+- Backup archives contain database content and sensitive configuration; encrypt and store them off-site.
 
 ## License
 

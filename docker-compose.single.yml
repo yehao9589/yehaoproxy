@@ -1,6 +1,6 @@
 services:
   yehaoproxy:
-    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:pre-release}
+    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.0}
     container_name: yehaoproxy
     command: ["node", "scripts/single-container.mjs"]
     network_mode: host
@@ -17,7 +17,10 @@ services:
       UPDATE_WEBHOOK_URL: http://127.0.0.1:8788
       UPDATE_WEBHOOK_TOKEN: ${UPDATE_WEBHOOK_TOKEN:-}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:?请配置 PUBLIC_APP_URL}
-      APP_VERSION: ${APP_VERSION:-pre-release}
+      APP_VERSION: ${APP_VERSION:-v1.0.0}
+      IMAGE_REPOSITORY: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.0}
+      UPDATE_CHANNEL: stable
+      UPDATE_MANIFEST_URL: https://raw.githubusercontent.com/yehao9589/yehaoproxy/main/public/releases.json
       CRON_INTERVAL_MS: ${CRON_INTERVAL_MS:-60000}
       RUNTIME_ENV_FILE: /app/data/runtime.env
     volumes:

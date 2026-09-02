@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
   const db = getDb();
   const [activeCurrency] = await db.select({code:currencies.code}).from(currencies).where(eq(currencies.enabled,true)).limit(1);
-  const currency = activeCurrency?.code || "USD";
+  const currency = activeCurrency?.code || "CNY";
   const offerByKey = new Map<string, typeof productOffers.$inferSelect>();
   const requiredByKey = new Map<string, number>();
   for (const item of items) {

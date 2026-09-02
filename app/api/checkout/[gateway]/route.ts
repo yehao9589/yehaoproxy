@@ -8,12 +8,15 @@ import {nextBusinessId} from "../../../../lib/business-id";
 import {convertCurrency} from "../../../../lib/currency-conversion";
 import {assertGateway,gatewayRuntimeSupported} from "../../../../lib/payments";
 import {audit} from "../../../../lib/audit";
+import {withRequestLock} from "../../../../lib/request-lock";
 
 export async function POST(req:Request,{params}:{params:Promise<{gateway:string}>}){
   const user=await getCurrentCustomer();if(!user)return NextResponse.json({error:"请先登录"},{status:401});
   const{gateway}=await params;try{assertGateway(gateway)}catch{return NextResponse.json({error:"支付渠道不支持"},{status:404})}
   if(!gatewayRuntimeSupported(gateway))return NextResponse.json({error:"该支付渠道尚未完成生产接入，请使用余额支付"},{status:409});
   const body=await req.json().catch(()=>null);if(!body?.orderId)return NextResponse.json({error:"缺少订单号"},{status:400});
+  const requestedOrderId=String(body.orderId),requestedCouponCode=String(body?.couponCode||"").trim().toUpperCase();
+  return withRequestLock(requestedCouponCode?`coupon:${requestedCouponCode}`:`checkout:${requestedOrderId}`,async()=>{
   const db=getDb(),[order]=await db.select().from(orders).where(eq(orders.id,String(body.orderId))).limit(1),[config]=await db.select().from(paymentGateways).where(eq(paymentGateways.type,gateway)).limit(1);
   if(!order||order.customerEmail!==user.email)return NextResponse.json({error:"订单不存在"},{status:404});
   if(order.status!=="pending")return NextResponse.json({error:"当前订单不能重复支付"},{status:409});
@@ -36,4 +39,5 @@ export async function POST(req:Request,{params}:{params:Promise<{gateway:string}
     await audit({id:user.id,role:user.role},"payment.checkout.create","order",order.id,{gateway,transactionId:id,originalAmount:order.amount,payable,currency:order.currency,payAmount,paymentCurrency:"CNY",couponCode:coupon?.code||null,discount},req);
     return NextResponse.json({transactionId:id,...result,payAmount,currency:"CNY",discount,orderAmount:payable},{status:existing?200:201});
   }catch(error){return NextResponse.json({error:error instanceof Error?error.message:"创建支付宝支付失败"},{status:502})}
+  });
 }

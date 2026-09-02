@@ -8,7 +8,7 @@ import {
   type UpdateSettings,
 } from "../../../../lib/update-center";
 
-const currentVersion = process.env.APP_VERSION || process.env.IMAGE_TAG || "0.1.0-dev";
+const currentVersion = process.env.APP_VERSION || process.env.IMAGE_TAG || "v1.0.0-dev";
 const currentCommit = process.env.APP_COMMIT || "";
 type ExecutorResult={error?:string;record?:{id?:string;[key:string]:unknown};[key:string]:unknown};
 
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
       if (!remoteVersion) throw new Error("版本清单缺少 version 字段");
       let remoteCommit=text(manifest.commit,80);
       try{
-        const commitResponse=await fetch("https://api.github.com/repos/yehao9589/yehaoproxy/commits/codex%2Fpre-release-hardening",{headers:{accept:"application/vnd.github+json","user-agent":"YehaoProxy-Update-Checker"},cache:"no-store"});
+        const commitResponse=await fetch(`https://api.github.com/repos/yehao9589/yehaoproxy/commits/${encodeURIComponent(settings.branch)}`,{headers:{accept:"application/vnd.github+json","user-agent":"YehaoProxy-Update-Checker"},cache:"no-store"});
         if(commitResponse.ok){const commitData=await commitResponse.json();remoteCommit=text(commitData.sha,80)}
       }catch{/* version manifest remains the fallback */}
       const hasUpdate=remoteCommit?remoteCommit!==currentCommit:remoteVersion!==currentVersion;

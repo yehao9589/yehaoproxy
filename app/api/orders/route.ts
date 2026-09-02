@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
   const db = getDb();
   const [activeCurrency] = await db.select({code:currencies.code}).from(currencies).where(eq(currencies.enabled,true)).limit(1);
-  const currency = activeCurrency?.code || "USD";
+  const currency = activeCurrency?.code || "CNY";
   const [offer] = await db
     .select()
     .from(productOffers)
@@ -133,7 +133,7 @@ export async function GET() {
     const replacementAllocationId=adminNote?.match(/\[REPLACE_ALLOCATION\]([^\n]+)/)?.[1]?.trim()||null;
     const resourceRows=replacementAllocationId?[allocationById.get(replacementAllocationId)].filter((item):item is typeof allocationRows[number]=>Boolean(item)):sourceIds.flatMap((id:string)=>allocationsByOrder.get(id)||[]);
     const resources=resourceRows.map((resource:typeof allocationRows[number])=>({id:resource.id,orderId:resource.orderId,ip:`${resource.host}:${resource.port}`,wifiName:resource.wifiName||null,country:resource.orderRegion||orderRegionById.get(resource.orderId)||order.region,city:resource.note?.match(/\[CITY\]([^\n]*)/)?.[1]?.trim()||null,protocol:resource.protocol,status:resource.status}));
-    const nodeSource=renewalOf?orderById.get(renewalOf):order,nodeSubscriptionUrl=nodeSource?.adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1]||null;
+    const nodeSource=renewalOf?orderById.get(renewalOf):null,nodeSubscriptionUrl=(nodeSource?.adminNote||adminNote)?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1]||null;
     return {
       ...order,
       couponCode:coupon?.code||null,

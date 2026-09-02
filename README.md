@@ -1,151 +1,111 @@
 # YehaoProxy
 
 <p align="center">
+  <strong>面向代理 IP 与节点服务销售的一体化运营管理平台</strong>
+</p>
+
+<p align="center">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.0.0-2563eb">
+  <img alt="Node" src="https://img.shields.io/badge/Node.js-%3E%3D22.13-339933?logo=nodedotjs&logoColor=white">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ed?logo=docker&logoColor=white">
+  <img alt="MySQL" src="https://img.shields.io/badge/MySQL-5.7%20%7C%208.x-4479a1?logo=mysql&logoColor=white">
+</p>
+
+<p align="center">
   <strong>中文</strong> · <a href="./README.en.md">English</a>
 </p>
 
-YehaoProxy 是一个面向代理 IP 与节点服务销售场景的全栈业务管理系统，包含商品销售、客户中心、订单与账单、人工交付、续费、售后、财务、通知、审计、VPS/X-Panel 对接、在线更新和灾难恢复等功能。
+YehaoProxy 将商城、客户、订单、账单、支付、资源交付、续费、售后、信用账单、通知、审计和运维集中到一个系统中，适合代理 IP、电脑节点、软路由中转及其他周期型网络服务的销售与运营。
 
-> 当前项目仍处于持续开发阶段。正式部署前请先在测试环境完成支付、交付、续费、退款、备份恢复等完整流程验证。
+## 功能概览
 
-## 主要功能
+| 模块 | 能力 |
+| --- | --- |
+| 商品与销售 | 商品类型、地区价格、固定天数/自然月周期、库存、优惠券、批量下单 |
+| 客户中心 | 订单、代理资产、节点订阅、售后申请、余额、信用账单、流水、通知、工单 |
+| 业务运营 | 产品订单、续费核验、服务管理、人工交付、IP 更换、流量重置 |
+| 财务支付 | 账单、交易流水、余额/信用额支付、支付宝支付、原路退款或退至余额 |
+| 自动化 | 到期提醒、库存预警、客户与管理员邮件、定时任务、自动续费 |
+| 管理与审计 | 角色权限、模拟客户登录、完整操作日志、真实来源 IP、备份与恢复 |
+| 外部集成 | X-Panel 节点管理、流量同步、订阅链接与二维码 |
 
-- 商品管理：代理 IP、电脑节点、软路由中转及自定义商品类型
-- 客户中心：订单、账单、服务、余额、工单和售后申请
-- 业务管理：产品订单、续费订单、服务管理和人工交付
-- 财务运营：交易流水、收款账单、余额充值和优惠券
-- 服务能力：自动续费、IP 更换、流量重置、订阅链接和二维码
-- 运维能力：定时任务、邮件/短信通知、审计日志和管理员权限
-- VPS 集成：对接 X-Panel，同步流量并查看入站节点
-- 数据库：支持 MySQL 8 与 SQLite/D1，两种模式均可部署
-- 更新与备份：更新前备份、失败回滚、手动备份、下载、导入与恢复
+## 推荐部署架构
+
+宝塔环境推荐使用“宝塔 MySQL + 单个 YehaoProxy Docker 容器”：
+
+```text
+Internet → Nginx / HTTPS → YehaoProxy :3000 → 宝塔 MySQL :3306
+```
+
+- 使用 [`docker-compose.single.yml`](./docker-compose.single.yml)。
+- 宝塔 MySQL 权限保持 `Localhost`，不要向公网开放 `3306`。
+- 首次安装从 `/install` 完成，数据库主机填写 `127.0.0.1`。
+- 内部服务密钥和资产加密密钥首次启动时自动生成并持久化，无需手工配置。
+- `data`、`uploads` 和 `backups` 均挂载到宿主机，重建容器不会清空业务数据。
+
+完整步骤请阅读 [部署指南](./DEPLOYMENT.md)。正式上线前请逐项完成 [v1.0.0 发布核对清单](./RELEASE_CHECKLIST.md)。
+
+## 快速部署
+
+在宝塔“Docker → 容器编排”中使用 [`docker-compose.single.yml`](./docker-compose.single.yml)，`.env` 最少填写：
+
+```dotenv
+YEHAOPROXY_IMAGE=ghcr.io/yehao9589/yehaoproxy:v1.0.0
+PUBLIC_APP_URL=https://你的域名
+APP_VERSION=v1.0.0
+CRON_INTERVAL_MS=60000
+```
+
+启动后访问：
+
+```text
+https://你的域名/install
+```
+
+安装向导会测试数据库连接、初始化数据表、配置站点并创建首个超级管理员。
+
+## 本地开发
+
+```bash
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+提交前运行完整质量门禁：
+
+```bash
+pnpm run check
+```
+
+该命令依次执行 ESLint、TypeScript 类型检查、生产构建和关键业务回归测试。
 
 ## 运行要求
 
 - Node.js `>= 22.13.0`
 - pnpm `11.x`
-- 推荐使用 Docker 与 Docker Compose
-- MySQL 部署推荐 MySQL `8.4`
-
-## Docker 部署
-
-宝塔面板推荐使用单容器部署，MySQL 直接使用宝塔创建的数据库：
-
-```bash
-docker compose -f docker-compose.single.yml up -d
-```
-
-该方案在宝塔中只显示一个 `yehaoproxy` 容器。网站、MySQL 桥接、X-Panel 桥接和定时任务在容器内部统一运行；宝塔数据库可以保持 `Localhost` 权限，也不要向公网开放 `3306`。
-
-首次启动后打开 `/install`，在安装向导中填写 `127.0.0.1`、宝塔数据库名称、用户名和密码；连接测试与初始化成功后，系统会保存运行配置并自动重启相关进程。完整步骤见 [部署指南](./DEPLOYMENT.md)。
-
-### 1. 获取代码
-
-```bash
-git clone https://github.com/yehao9589/yehaoproxy.git
-cd yehaoproxy
-```
-
-### 2. 配置环境变量
-
-```bash
-cp .env.example .env
-```
-
-正式部署前至少应修改以下值：
-
-- `INVENTORY_ENCRYPTION_KEY`
-- `MYSQL_ROOT_PASSWORD`
-- `MYSQL_PASSWORD`
-- `MYSQL_BRIDGE_SECRET`
-- Docker Compose 中的任务、更新和 X-Panel 桥接密钥
-
-请使用足够长的随机字符串，不要把真实密钥提交到 Git 仓库。
-
-### 3. 启动服务
-
-使用 MySQL（推荐）：
-
-```bash
-docker compose --profile mysql --profile system-update up -d --build
-```
-
-使用 SQLite：
-
-```bash
-docker compose --profile system-update up -d --build
-```
-
-### 4. 首次安装
-
-浏览器访问：
-
-```text
-http://服务器地址:3000/install
-```
-
-安装向导可选择数据库、检测 MySQL 连接、初始化数据表、设置站点名称并创建首个超级管理员。
-
-安装完成后访问：
-
-- 前台：`http://服务器地址:3000/`
-- 客户中心：`http://服务器地址:3000/dashboard`
-- 管理后台：`http://服务器地址:3000/admin`
-
-## 本地开发
-
-```bash
-pnpm install
-pnpm dev
-```
-
-常用命令：
-
-```bash
-pnpm build       # 生产构建检查
-pnpm test        # 运行项目测试
-pnpm lint        # 代码检查
-pnpm db:generate # 生成 Drizzle 数据库迁移
-```
-
-## 数据库说明
-
-- MySQL：推荐用于正式部署和多容器环境。
-- SQLite/D1：适合轻量部署、开发测试或 Cloudflare 环境。
-- 两种数据库使用统一业务接口，但切换数据库前必须先完成迁移与备份。
-- 不要直接复制 SQLite 文件覆盖 MySQL；请使用安装向导、迁移脚本或备份恢复流程。
-
-## 备份与恢复
-
-进入管理后台的 `系统管理 → 更新与备份`：
-
-- 创建完整系统备份
-- 下载 `.tar.gz` 备份文件
-- 导入已有备份
-- 从恢复点还原数据库、上传文件与关键配置
-- 更新前自动建立备份，更新失败时自动回滚
-
-备份文件包含数据库和敏感配置，请存放在受保护的位置，并定期复制到异地或对象存储。
+- Docker 与 Docker Compose
+- MySQL `5.7` 或 `8.x`，生产环境推荐 MySQL 8
 
 ## 目录结构
 
 ```text
-app/                 页面、组件和 API 路由
-db/                  Drizzle 数据结构与数据库适配
-drizzle/             数据库迁移文件
-lib/                 业务服务与通用能力
-scripts/             定时任务、MySQL/X-Panel 桥接和更新执行器
-public/uploads/      站点上传文件
-docker-compose.yml   Docker 服务编排
+app/                         页面、组件与 API 路由
+db/                          Drizzle 数据结构与数据库适配
+lib/                         认证、支付、账单、通知等业务能力
+scripts/                     单容器启动器、桥接、迁移、定时任务与备份
+public/                      静态资源、上传目录与版本清单
+docker-compose.single.yml    宝塔推荐单容器编排
+DEPLOYMENT.md                完整部署与运维说明
+RELEASE_CHECKLIST.md         正式发布前验收清单
 ```
 
-## 安全建议
+## 数据、安全与升级
 
-- 生产环境必须更换示例密码和默认密钥。
-- 仅向可信管理员开放更新、恢复、财务和权限管理功能。
-- 配置 HTTPS、反向代理、防火墙及数据库访问白名单。
-- 定期下载备份并实际演练恢复流程。
-- 上线支付功能前验证回调签名、幂等处理和退款链路。
+- 更新前同时备份宝塔 MySQL 与三个持久化目录。
+- 生产环境使用固定版本镜像，不使用移动的 `latest` 或 `pre-release` 标签。
+- 配置正式域名和 HTTPS 后再启用支付回调与邮件链接。
+- 支付、退款、备份恢复和外部供应商接口必须先在预发布环境完成真实演练。
+- 备份文件包含数据库和敏感配置，应加密保存并定期复制到异地。
 
 ## 许可证
 

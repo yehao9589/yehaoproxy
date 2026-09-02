@@ -96,6 +96,16 @@ function start(name,command,args,extra={}){
   });
 }
 
+async function migrateRuntime(){
+  const saved=await runtimeEnv();
+  if(!saved.DATABASE_URL)return;
+  await new Promise((resolve,reject)=>{
+    const child=spawn("node",["scripts/mysql-runtime-migrations.mjs"],{cwd:"/app",env:{...process.env,...saved},stdio:"inherit"});
+    child.once("error",reject);
+    child.once("exit",code=>code===0?resolve():reject(new Error(`数据库兼容迁移失败（退出码 ${code}）`)));
+  });
+}
+
 async function bootOne(name){
   const saved=await runtimeEnv();
   const common={...saved};
@@ -118,6 +128,7 @@ async function restartRuntime(){
   await new Promise(resolve=>setTimeout(resolve,1200));
   children.clear();
   restarting=false;
+  await migrateRuntime();
   for(const name of ["mysql","xpanel","web","scheduler","backup"])await bootOne(name);
 }
 
@@ -153,6 +164,7 @@ createServer(async(req,res)=>{
   }catch(error){return json(res,500,{error:error instanceof Error?error.message:"执行失败"})}
 }).listen(8788,"127.0.0.1",()=>console.log("YehaoProxy single-container controller listening on 8788"));
 
+await migrateRuntime();
 for(const name of ["mysql","xpanel","web","scheduler","backup"])await bootOne(name);
 
 async function shutdown(){restarting=true;gateway.close();for(const child of children.values())child.kill("SIGTERM");process.exit(0)}

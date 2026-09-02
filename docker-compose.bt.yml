@@ -1,6 +1,6 @@
 services:
   mysql-bridge:
-    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:pre-release}
+    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.0}
     command: ["node", "scripts/mysql-bridge.mjs"]
     network_mode: host
     environment:
@@ -16,7 +16,7 @@ services:
     restart: unless-stopped
 
   xpanel-bridge:
-    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:pre-release}
+    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.0}
     command: ["node", "scripts/xpanel-bridge.mjs"]
     environment:
       PORT: 8787
@@ -29,7 +29,7 @@ services:
     restart: unless-stopped
 
   yehaoproxy:
-    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:pre-release}
+    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.0}
     ports:
       - "${APP_PORT:-3000}:3000"
     extra_hosts:
@@ -47,8 +47,8 @@ services:
       UPDATE_WEBHOOK_URL: http://updater:8788
       UPDATE_WEBHOOK_TOKEN: ${UPDATE_WEBHOOK_TOKEN:?请配置 UPDATE_WEBHOOK_TOKEN}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:?请配置 PUBLIC_APP_URL}
-      APP_VERSION: ${APP_VERSION:-pre-release}
-      IMAGE_REPOSITORY: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:pre-release}
+      APP_VERSION: ${APP_VERSION:-v1.0.0}
+      IMAGE_REPOSITORY: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.0}
     depends_on:
       xpanel-bridge:
         condition: service_healthy
@@ -63,7 +63,7 @@ services:
     restart: unless-stopped
 
   scheduler:
-    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:pre-release}
+    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.0}
     command: ["node", "scripts/cron-runner.mjs"]
     environment:
       CRON_URL: http://yehaoproxy:3000/api/cron/reminders
@@ -75,7 +75,7 @@ services:
     restart: unless-stopped
 
   updater:
-    image: ${YEHAOPROXY_UPDATER_IMAGE:-ghcr.io/yehao9589/yehaoproxy-updater:pre-release}
+    image: ${YEHAOPROXY_UPDATER_IMAGE:-ghcr.io/yehao9589/yehaoproxy-updater:v1.0.0}
     network_mode: host
     environment:
       PORT: 8788
@@ -85,7 +85,7 @@ services:
       UPDATE_HEALTH_URL: http://127.0.0.1:${APP_PORT:-3000}/api/health
       UPDATE_COMPOSE_FILE: docker-compose.bt.yml
       UPDATE_SERVICES: yehaoproxy scheduler xpanel-bridge mysql-bridge
-      YEHAOPROXY_IMAGE: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:pre-release}
+      YEHAOPROXY_IMAGE: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.0}
       DATABASE_DRIVER: mysql
       # 首次启动可留空；安装向导完成后由更新执行器写入 .env。
       DATABASE_URL: ${DATABASE_URL:-}

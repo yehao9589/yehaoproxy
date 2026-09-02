@@ -1,12 +1,12 @@
 {
-  "version": "pre-release",
-  "publishedAt": "2026-08-13",
-  "image": "ghcr.io/yehao9589/yehaoproxy:pre-release",
-  "releaseNotes": "首次宝塔单容器预发布版本：支持安装向导、外部 MySQL、手动完整备份、备份下载与恢复。",
+  "version": "v1.0.0",
+  "publishedAt": "2026-09-02",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.0",
+  "releaseNotes": "YehaoProxy v1.0.0 正式版：完成商品、订单、账单、信用账单、服务交付、续费、售后、支付、通知、审计、备份恢复和宝塔单容器部署的上线加固。",
   "releases": [{
-    "version": "pre-release",
-    "publishedAt": "2026-08-13",
-    "title": "宝塔单容器预发布版",
-    "notes": ["支持宝塔单容器部署", "支持已有 MySQL 数据库自动初始化", "增加系统完整备份、下载和恢复", "更新来源改为随部署自动识别"]
+    "version": "v1.0.0",
+    "publishedAt": "2026-09-02",
+    "title": "YehaoProxy v1.0.0 正式版",
+    "notes": ["统一前后台运营中心与账单工作流", "完善支付宝支付、优惠券、信用账单及退款", "完善代理与节点交付、续费、售后和审计记录", "支持宝塔 MySQL 单容器部署、健康检查、备份恢复及安全回滚"]
   }]
 }

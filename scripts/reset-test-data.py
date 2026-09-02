@@ -49,7 +49,7 @@ users = [
 ]
 for index, (uid, email, name, balance, credit) in enumerate(users):
     add("customers", id=uid, email=email, name=name, password_hash=password_hash("test123456"), email_verified=1, role="customer", status="active", created_at=now-(90-index*17)*day)
-    add("wallets", customer_id=uid, balance=balance, frozen=0, credit_limit=credit, currency="USD", updated_at=now-index*3600)
+    add("wallets", customer_id=uid, balance=balance, frozen=0, credit_limit=credit, currency="CNY", updated_at=now-index*3600)
 
 permissions = ["overview","orders","products","inventory","customers","finance","sales","tickets","coupons","requests","automation","settings","audit","admins"]
 add("admin_roles", id="role-super-admin", name="超级管理员", permissions=json.dumps(permissions, ensure_ascii=False), created_at=now-120*day, updated_at=now)
@@ -65,7 +65,7 @@ offers = [
 ]
 for oid, product, region, name, p7, p30, p90, sort in offers:
     add("product_offers", id=oid, product=product, region=region, region_name=name, price_7=p7, price_30=p30, price_90=p90, sale_stock=0, sold=0, enabled=1, sort_order=sort, created_at=now-100*day, updated_at=now)
-for code, name, symbol, rate, enabled, default, sort in [("USD","美元","$",1,1,1,1),("CNY","人民币","¥",7.2,1,0,2),("EUR","欧元","€",0.92,0,0,3)]:
+for code, name, symbol, rate, enabled, default, sort in [("CNY","人民币","¥",7.2,1,1,1),("USD","美元","$",1,0,0,2),("EUR","欧元","€",0.92,0,0,3)]:
     add("currencies", code=code, name=name, symbol=symbol, rate=rate, enabled=enabled, is_default=default, decimal_places=2, sort_order=sort, updated_at=now)
 
 options = {
@@ -92,7 +92,7 @@ order_rows = [
 ]
 for row in order_rows:
     oid,email,product,region,qty,duration,amount,status,reference,method,created,updated,expires,note=row
-    add("orders", id=oid, customer_email=email, product=product, region=region, quantity=qty, duration_days=duration, amount=amount, currency="USD", status=status, payment_reference=reference, payment_method=method, expires_at=expires, renewal_amount=amount if duration else None, auto_renew=1 if oid in ("YH-T10001-01","YH-T10002") else 0, admin_note=note, created_at=created, updated_at=updated)
+    add("orders", id=oid, customer_email=email, product=product, region=region, quantity=qty, duration_days=duration, amount=amount, currency="CNY", status=status, payment_reference=reference, payment_method=method, expires_at=expires, renewal_amount=amount if duration else None, auto_renew=1 if oid in ("YH-T10001-01","YH-T10002") else 0, admin_note=note, created_at=created, updated_at=updated)
 
 # 库存与已分配代理。
 inventory_rows = [

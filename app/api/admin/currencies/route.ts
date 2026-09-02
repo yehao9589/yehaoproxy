@@ -12,8 +12,8 @@ export async function GET(){
   if(!items.length){
     const now=new Date();
     const defaults=[
-      {code:"USD",name:"美元",symbol:"$",rate:1,enabled:true,isDefault:true,decimalPlaces:2,sortOrder:10,updatedAt:now},
-      {code:"CNY",name:"人民币",symbol:"¥",rate:7.2,enabled:false,isDefault:false,decimalPlaces:2,sortOrder:20,updatedAt:now},
+      {code:"CNY",name:"人民币",symbol:"¥",rate:7.2,enabled:true,isDefault:true,decimalPlaces:2,sortOrder:10,updatedAt:now},
+      {code:"USD",name:"美元",symbol:"$",rate:1,enabled:false,isDefault:false,decimalPlaces:2,sortOrder:20,updatedAt:now},
       {code:"EUR",name:"欧元",symbol:"€",rate:.92,enabled:false,isDefault:false,decimalPlaces:2,sortOrder:30,updatedAt:now},
       {code:"GBP",name:"英镑",symbol:"£",rate:.79,enabled:false,isDefault:false,decimalPlaces:2,sortOrder:40,updatedAt:now},
       {code:"JPY",name:"日元",symbol:"¥",rate:157,enabled:false,isDefault:false,decimalPlaces:0,sortOrder:50,updatedAt:now},

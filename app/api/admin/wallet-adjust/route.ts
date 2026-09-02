@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "../../../../db";
-import { customers, wallets, walletTransactions } from "../../../../db/schema";
+import { currencies, customers, wallets, walletTransactions } from "../../../../db/schema";
 import { requireAdminApi } from "../../../../lib/admin-auth";
 import { audit } from "../../../../lib/audit";
 import { withRequestLock } from "../../../../lib/request-lock";
@@ -24,7 +24,8 @@ export async function POST(req: Request) {
     if (!customer) return NextResponse.json({ error: "客户不存在" }, { status: 404 });
     let [wallet] = await db.select().from(wallets).where(eq(wallets.customerId, customerId)).limit(1);
     if (!wallet) {
-      await db.insert(wallets).values({ customerId, balance: 0, frozen: 0, creditLimit: 0, currency: "USD", updatedAt: new Date() });
+      const [activeCurrency] = await db.select({ code: currencies.code }).from(currencies).where(eq(currencies.isDefault, true)).limit(1);
+      await db.insert(wallets).values({ customerId, balance: 0, frozen: 0, creditLimit: 0, currency: activeCurrency?.code || "CNY", updatedAt: new Date() });
       [wallet] = await db.select().from(wallets).where(eq(wallets.customerId, customerId)).limit(1);
     }
     const nextBalance = Number((wallet.balance + amount).toFixed(2));

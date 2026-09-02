@@ -69,17 +69,43 @@ test("credentials, authentication, and installer use production-safe controls", 
   assert.doesNotMatch(installer, /INSTALL_TOKEN|installToken|部署密钥/);
   assert.match(installer, /before\.installed/);
   assert.match(mail, /consumeRateLimit/);
+  assert.match(await read("app/api/admin/site-logo/route.ts"), /matchesImageSignature/);
 });
 
 test("wallet payment and refunds are atomic and idempotent", async () => {
   const payment = await read("app/api/orders/[id]/pay-wallet/route.ts");
   const refund = await read("app/api/admin/orders/[id]/refund/route.ts");
   assert.match(payment, /db\.batch/);
-  assert.match(payment, /WT-PAY-/);
+  assert.match(payment, /nextBusinessId\("TX"/);
   assert.match(payment, /serviceRequests/);
   assert.match(refund, /db\.batch/);
-  assert.match(refund, /WT-REFUND-/);
+  assert.match(refund, /nextBusinessId\("TX"/);
   assert.match(refund, /wallet:/);
+  assert.match(refund, /amount:transaction\.amount/);
+});
+
+test("system currency defaults stay consistent across new orders and wallets", async () => {
+  const [schema, installSchema, currenciesApi, orderApi, batchApi, rechargeApi, adjustApi, refundApi, enhancer] = await Promise.all([
+    read("db/schema.ts"),
+    read("lib/install-schema.ts"),
+    read("app/api/admin/currencies/route.ts"),
+    read("app/api/orders/route.ts"),
+    read("app/api/orders/batch/route.ts"),
+    read("app/api/wallet/recharge/route.ts"),
+    read("app/api/admin/wallet-adjust/route.ts"),
+    read("app/api/admin/orders/[id]/refund/route.ts"),
+    read("app/CurrencyEnhancer.tsx"),
+  ]);
+  assert.doesNotMatch(schema, /default\("USD"\)/);
+  assert.doesNotMatch(installSchema, /DEFAULT 'USD'/);
+  assert.match(currenciesApi, /code:"CNY"[^\n]+enabled:true,isDefault:true/);
+  assert.match(orderApi, /activeCurrency\?\.code \|\| "CNY"/);
+  assert.match(batchApi, /activeCurrency\?\.code \|\| "CNY"/);
+  assert.match(rechargeApi, /activeCurrency\?\.code\|\|"CNY"/);
+  assert.match(adjustApi, /activeCurrency\?\.code \|\| "CNY"/);
+  assert.match(refundApi, /activeCurrency\?\.code \|\| order\.currency \|\| "CNY"/);
+  assert.match(enhancer, /symbol="¥",code="CNY"/);
+  assert.match(enhancer, /select\[name="currency"\]/);
 });
 
 test("legacy preview routes redirect into authenticated real applications", async () => {
@@ -110,12 +136,16 @@ test("production deployment has health checks, backups, and rollback safety", as
   const updater = await read("scripts/update-runner.mjs");
   const sqliteRunner = await read("scripts/sqlite-runner.mjs");
   const health = await read("app/api/health/route.ts");
+  const runtimeMigrations = await read("scripts/mysql-runtime-migrations.mjs");
   assert.match(compose, /restart:\s*unless-stopped/);
   assert.match(compose, /healthcheck:/);
   assert.doesNotMatch(compose, /INSTALL_TOKEN/);
   assert.doesNotMatch(singleCompose, /INSTALL_TOKEN|\?请配置 (?:MYSQL_BRIDGE_SECRET|INVENTORY_ENCRYPTION_KEY|CRON_SECRET|XPANEL_BRIDGE_SECRET|UPDATE_WEBHOOK_TOKEN)/);
   assert.match(singleController, /system-secrets\.json/);
   assert.match(singleController, /randomBytes\(32\)/);
+  assert.match(singleController, /migrateRuntime/);
+  assert.match(runtimeMigrations, /SHOW COLUMNS FROM/);
+  assert.match(runtimeMigrations, /ALTER TABLE/);
   assert.match(sqliteCompose, /DATABASE_DRIVER:\s*sqlite/);
   assert.doesNotMatch(sqliteCompose, /mysql-bridge/);
   assert.match(sqliteCompose, /sqlite-runner\.mjs/);
@@ -127,6 +157,25 @@ test("production deployment has health checks, backups, and rollback safety", as
   assert.match(updater, /rolling_back/);
   assert.doesNotMatch(updater, /\.env\.local.*tar/);
   assert.match(health, /encryptionConfigured/);
+});
+
+test("v1 release metadata and workflow are pinned behind a quality gate", async () => {
+  const [pkg, compose, manifest, workflow, updateCenter] = await Promise.all([
+    read("package.json"),
+    read("docker-compose.single.yml"),
+    read("public/releases.json"),
+    read(".github/workflows/publish-images.yml"),
+    read("lib/update-center.ts"),
+  ]);
+  assert.match(pkg, /"version": "1\.0\.0"/);
+  assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
+  assert.match(compose, /yehaoproxy:v1\.0\.0/);
+  assert.match(compose, /UPDATE_CHANNEL: stable/);
+  assert.match(manifest, /"version": "v1\.0\.0"/);
+  assert.match(workflow, /quality:/);
+  assert.match(workflow, /needs: quality/);
+  assert.match(updateCenter, /branch: "main"/);
+  assert.doesNotMatch(updateCenter, /codex\/pre-release-hardening/);
 });
 
 test("MySQL bridge preserves duplicate columns for Drizzle row mapping", async () => {
@@ -183,15 +232,17 @@ test("Alipay checkout applies coupons server-side and opens externally", async (
   assert.match(checkoutApi, /couponRedemptions/);
   assert.match(checkoutApi, /couponCode/);
   assert.match(checkoutApi, /convertCurrency\(payable/);
+  assert.match(checkoutApi, /withRequestLock\(requestedCouponCode/);
   assert.match(orderUi, /window\.open\("about:blank","_blank"\)/);
   assert.match(orderUi, /couponCode:couponCode\.trim\(\)/);
   assert.match(orderUi, /externalPaymentOrderId/);
   assert.match(orderUi, /已完成支付/);
   assert.match(orderUi, /location\.reload\(\)/);
-  assert.match(adminOrders, /couponCode:coupon\?\.code/);
+  assert.match(adminOrders, /couponCode:\s*coupon\?\.code/);
   assert.match(adminOrders, /originalAmount/);
   assert.match(insights, /redemptionsByOrder/);
   assert.match(insights, /discountAmount/);
+  assert.match(await read("app/api/orders/[id]/pay-wallet/route.ts"), /withRequestLock\(couponCode/);
 });
 
 test("renewals complete for customers while remaining pending verification for admins", async () => {
@@ -265,9 +316,9 @@ test("audit logs use one Chinese display layer for admin and customer records", 
   assert.match(auditClient, /item\.actionLabel/);
   assert.match(customerApi, /actionLabel:auditActionName/);
   assert.match(customerApi, /detailLabel:auditDetailText/);
-  assert.match(customerClient, /row\.actionLabel\|\|"系统操作"/);
+  assert.match(customerClient, /row\.actionLabel\s*\|\|\s*"系统操作"/);
   assert.match(customerClient, /className="customer-log-list"/);
-  assert.match(customerClient, /row\.detailLabel\|\|"操作已记录"/);
+  assert.match(customerClient, /row\.detailLabel\s*\|\|\s*"操作已记录"/);
 });
 
 test("required commercial pages and deployment configuration exist", async () => {

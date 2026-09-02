@@ -28,8 +28,6 @@ const statusNames: Record<RequestItem["status"], string> = {
 export default function AddonServiceStatusEnhancer() {
   useEffect(() => {
     let stopped = false;
-    let timer: ReturnType<typeof setInterval> | undefined;
-    let renderObserver: MutationObserver | undefined;
 
     async function sync() {
       if (!location.pathname.startsWith("/dashboard")) return;
@@ -78,7 +76,7 @@ export default function AddonServiceStatusEnhancer() {
       return badge;
     }
 
-    renderObserver = new MutationObserver(() => {
+    const renderObserver = new MutationObserver(() => {
       const serviceRow = document.querySelector(".managed-proxy-table .orow:not(.head), .managed-node-table .orow:not(.head)");
       if (!serviceRow) return;
       renderObserver?.disconnect();
@@ -86,13 +84,13 @@ export default function AddonServiceStatusEnhancer() {
     });
     renderObserver.observe(document.body, { childList: true, subtree: true });
     void sync();
-    timer = setInterval(() => void sync(), 15000);
+    const timer = setInterval(() => void sync(), 15000);
     const refresh = () => void sync();
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);
     return () => {
       stopped = true;
-      if (timer) clearInterval(timer);
+      clearInterval(timer);
       renderObserver?.disconnect();
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", refresh);
