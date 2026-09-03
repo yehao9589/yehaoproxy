@@ -26,7 +26,7 @@ export async function GET(){
       let permissions:string[]=[];
       if(superAdmin)permissions=[...ALL_ADMIN_PERMISSIONS];
       else try{permissions=JSON.parse(role?.permissions||"[]")}catch{}
-      return {...item,superAdmin,roleName:superAdmin?"超级管理员":role?.name||"未分配角色",permissions};
+      return {...item,superAdmin,profileEditable:!superAdmin||operator.id===item.id,roleName:superAdmin?"超级管理员":role?.name||"未分配角色",permissions};
     }),
     permissionOptions:ALL_ADMIN_PERMISSIONS,
   });
@@ -53,15 +53,28 @@ export async function PATCH(req:Request){
   const body=await req.json().catch(()=>null),id=String(body?.id||""),db=getDb();
   const [target]=await db.select().from(customers).where(eq(customers.id,id)).limit(1);
   if(!target||target.role!=="admin")return NextResponse.json({error:"管理员不存在"},{status:404});
+  const targetIsSuperAdmin=isSuperAdmin(target),operatorIsSuperAdmin=isSuperAdmin(operator);
+  if(targetIsSuperAdmin&&(!operatorIsSuperAdmin||operator.id!==target.id))return NextResponse.json({error:"只有超级管理员本人可以修改超级管理员账户"},{status:403});
+  if(body?.profile){
+    const email=String(body.email||"").trim().toLowerCase(),name=String(body.name||"").trim();
+    if(!email)return NextResponse.json({error:"请输入登录账号"},{status:400});
+    const [duplicate]=await db.select({id:customers.id}).from(customers).where(eq(customers.email,email)).limit(1);
+    if(duplicate&&duplicate.id!==id)return NextResponse.json({error:"该登录账号已被使用"},{status:409});
+    await db.update(customers).set({email,name:name||null}).where(eq(customers.id,id));
+    const loginChanged=email!==target.email;
+    if(loginChanged)await db.delete(authSessions).where(eq(authSessions.customerId,id));
+    await audit(operator,"admin.profile.update","admin",id,{email,name:name||null,loginChanged,sessionsRevoked:loginChanged},req);
+    return NextResponse.json({ok:true,sessionsRevoked:loginChanged,currentSessionRevoked:loginChanged&&operator.id===id});
+  }
   const password=String(body?.password||"");
   if(password){
     if(password.length<8)return NextResponse.json({error:"新密码至少需要 8 位"},{status:400});
     await db.update(customers).set({passwordHash:await hashPassword(password)}).where(eq(customers.id,id));
     await db.delete(authSessions).where(eq(authSessions.customerId,id));
     await audit(operator,"admin.password.update","admin",id,{sessionsRevoked:true},req);
-    return NextResponse.json({ok:true,sessionsRevoked:true});
+    return NextResponse.json({ok:true,sessionsRevoked:true,currentSessionRevoked:operator.id===id});
   }
-  if(isSuperAdmin(target))return NextResponse.json({error:"超级管理员账户不可降级、停用或修改权限"},{status:409});
+  if(targetIsSuperAdmin)return NextResponse.json({error:"超级管理员账户不可降级、停用或修改权限"},{status:409});
   const permissions=cleanPermissions(body?.permissions),status=body?.status==="suspended"?"suspended":"active";
   const [membership]=await db.select().from(adminMemberships).where(eq(adminMemberships.customerId,id)).limit(1),now=new Date();
   await db.update(customers).set({status}).where(eq(customers.id,id));

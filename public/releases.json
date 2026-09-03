@@ -1,9 +1,14 @@
 {
-  "version": "v1.0.1",
+  "version": "v1.0.2",
   "publishedAt": "2026-09-03",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.1",
-  "releaseNotes": "YehaoProxy v1.0.1 补丁版：修复全新安装访问首页时未自动进入安装向导的问题，并统一、简化宝塔单容器部署说明。",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.2",
+  "releaseNotes": "YehaoProxy v1.0.2 补丁版：修复 stable 通道版本显示，完善审计日志中文展示，并增加超级管理员账户资料修改入口与会话安全控制。",
   "releases": [{
+    "version": "v1.0.2",
+    "publishedAt": "2026-09-03",
+    "title": "YehaoProxy v1.0.2 补丁版",
+    "notes": ["修复 stable 镜像通道名被当作当前版本号展示的问题", "当前版本统一从应用版本信息读取并显示为 v1.0.2", "完善商品、售后规则及价格配置的审计日志中文名称", "将自然月、固定天数、全球节点、国家代码和不出售价格统一转换为中文展示", "增加超级管理员名称和登录账号修改入口，并记录中文审计日志", "修改登录账号或密码后仅注销对应账户会话，禁止普通管理员修改超级管理员"]
+  }, {
     "version": "v1.0.1",
     "publishedAt": "2026-09-03",
     "title": "YehaoProxy v1.0.1 补丁版",

@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-v1.0.1-2563eb">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.0.2-2563eb">
   <img alt="Node" src="https://img.shields.io/badge/Node.js-%3E%3D22.13-339933?logo=nodedotjs&logoColor=white">
   <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ed?logo=docker&logoColor=white">
   <img alt="MySQL" src="https://img.shields.io/badge/MySQL-5.7%20%7C%208.x-4479a1?logo=mysql&logoColor=white">
@@ -43,7 +43,7 @@ Internet → Nginx / HTTPS → YehaoProxy :3000 → 宝塔 MySQL :3306
 - 内部服务密钥和资产加密密钥首次启动时自动生成并持久化，无需手工配置。
 - `data`、`uploads` 和 `backups` 均挂载到宿主机，重建容器不会清空业务数据。
 
-完整步骤请阅读 [部署指南](./DEPLOYMENT.md)。正式上线前请逐项完成 [v1.0.1 发布核对清单](./RELEASE_CHECKLIST.md)。
+完整步骤请阅读 [部署指南](./DEPLOYMENT.md)。正式上线前请逐项完成 [v1.0.2 发布核对清单](./RELEASE_CHECKLIST.md)。
 
 ## 快速部署
 
