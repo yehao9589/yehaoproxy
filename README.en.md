@@ -81,13 +81,6 @@ services:
       XPANEL_BRIDGE_URL: http://127.0.0.1:8787
       UPDATE_WEBHOOK_URL: http://127.0.0.1:8788
 
-      # Leave empty. Strong internal secrets are generated and persisted on first boot.
-      MYSQL_BRIDGE_SECRET: ${MYSQL_BRIDGE_SECRET:-}
-      INVENTORY_ENCRYPTION_KEY: ${INVENTORY_ENCRYPTION_KEY:-}
-      CRON_SECRET: ${CRON_SECRET:-}
-      XPANEL_BRIDGE_SECRET: ${XPANEL_BRIDGE_SECRET:-}
-      UPDATE_WEBHOOK_TOKEN: ${UPDATE_WEBHOOK_TOKEN:-}
-
       # Set this to the real public URL; prefer an HTTPS domain in production.
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:?PUBLIC_APP_URL is required}
       APP_VERSION: ${APP_VERSION:-v1.0.0}
@@ -134,7 +127,7 @@ APP_VERSION=v1.0.0
 CRON_INTERVAL_MS=60000
 ```
 
-You do not need to set `INSTALL_TOKEN`, `MYSQL_BRIDGE_SECRET`, `INVENTORY_ENCRYPTION_KEY`, `CRON_SECRET`, `XPANEL_BRIDGE_SECRET`, or `UPDATE_WEBHOOK_TOKEN` manually. Generated values are persisted at `data/system-secrets.json` on the host. If GHCR responds with `denied` or `unauthorized`, run `docker login ghcr.io` using your GitHub username and a token with `read:packages` permission.
+Internal authentication and asset-encryption settings are generated automatically on first boot and must not be declared in Compose or `.env`. They persist with the `data` directory, so do not delete or replace that directory independently. If GHCR responds with `denied` or `unauthorized`, run `docker login ghcr.io` using your GitHub username and a token with `read:packages` permission.
 
 Then open:
 

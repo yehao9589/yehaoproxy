@@ -140,7 +140,7 @@ test("production deployment has health checks, backups, and rollback safety", as
   assert.match(compose, /restart:\s*unless-stopped/);
   assert.match(compose, /healthcheck:/);
   assert.doesNotMatch(compose, /INSTALL_TOKEN/);
-  assert.doesNotMatch(singleCompose, /INSTALL_TOKEN|\?请配置 (?:MYSQL_BRIDGE_SECRET|INVENTORY_ENCRYPTION_KEY|CRON_SECRET|XPANEL_BRIDGE_SECRET|UPDATE_WEBHOOK_TOKEN)/);
+  assert.doesNotMatch(singleCompose, /INSTALL_TOKEN|MYSQL_BRIDGE_SECRET|INVENTORY_ENCRYPTION_KEY|CRON_SECRET|XPANEL_BRIDGE_SECRET|UPDATE_WEBHOOK_TOKEN/);
   assert.match(singleController, /system-secrets\.json/);
   assert.match(singleController, /randomBytes\(32\)/);
   assert.match(singleController, /migrateRuntime/);

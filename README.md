@@ -81,13 +81,6 @@ services:
       XPANEL_BRIDGE_URL: http://127.0.0.1:8787
       UPDATE_WEBHOOK_URL: http://127.0.0.1:8788
 
-      # 留空即可；首次启动会自动生成并持久化内部密钥。
-      MYSQL_BRIDGE_SECRET: ${MYSQL_BRIDGE_SECRET:-}
-      INVENTORY_ENCRYPTION_KEY: ${INVENTORY_ENCRYPTION_KEY:-}
-      CRON_SECRET: ${CRON_SECRET:-}
-      XPANEL_BRIDGE_SECRET: ${XPANEL_BRIDGE_SECRET:-}
-      UPDATE_WEBHOOK_TOKEN: ${UPDATE_WEBHOOK_TOKEN:-}
-
       # PUBLIC_APP_URL 必须改成实际访问地址，配置域名后建议使用 HTTPS。
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:?请配置 PUBLIC_APP_URL}
       APP_VERSION: ${APP_VERSION:-v1.0.0}
@@ -134,7 +127,7 @@ APP_VERSION=v1.0.0
 CRON_INTERVAL_MS=60000
 ```
 
-`INSTALL_TOKEN`、`MYSQL_BRIDGE_SECRET`、`INVENTORY_ENCRYPTION_KEY`、`CRON_SECRET`、`XPANEL_BRIDGE_SECRET` 和 `UPDATE_WEBHOOK_TOKEN` 无需手工填写；系统会将自动生成的值保存到宿主机的 `data/system-secrets.json`。若 GHCR 返回 `denied` 或 `unauthorized`，再使用 GitHub 用户名和具有 `read:packages` 权限的令牌执行 `docker login ghcr.io`。
+内部认证和资产加密参数由系统在首次启动时自动生成，无需在 Compose 或 `.env` 中声明。自动生成的数据会随 `data` 目录持久化，请勿单独删除或覆盖该目录。若 GHCR 返回 `denied` 或 `unauthorized`，再使用 GitHub 用户名和具有 `read:packages` 权限的令牌执行 `docker login ghcr.io`。
 
 启动后访问：
 
