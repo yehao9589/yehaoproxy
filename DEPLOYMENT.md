@@ -163,6 +163,14 @@ http://127.0.0.1:3000
 
 申请 HTTPS 证书后，把 `PUBLIC_APP_URL` 改成正式的 `https://域名`，保存编排并重启容器。公网防火墙无需长期开放 `3000`，只允许 Nginx 从本机反向代理即可。
 
+例如二级域名是 `proxy.yehaonc.com`，`.env` 应填写：
+
+```dotenv
+PUBLIC_APP_URL=https://proxy.yehaonc.com
+```
+
+这里不要追加 `:3000`。浏览器访问的是 Nginx 提供的 HTTPS 默认端口 `443`；宝塔反向代理的目标地址才使用应用监听端口 `http://127.0.0.1:3000`。保存 `.env` 和编排后重新创建容器，再直接访问 `https://proxy.yehaonc.com`。
+
 单容器入口会在 `3000` 端口接收请求，再转发到容器内部的 Web 服务，并写入真实来源 IP。直接通过 `服务器IP:3000` 访问和以后使用宝塔 Nginx 反向代理时，登录日志、操作日志都能读取客户端 IP；不要在外层代理中清除 `X-Forwarded-For`。
 
 ## 7. 更新

@@ -345,7 +345,16 @@ test("required commercial pages and deployment configuration exist", async () =>
   const englishReadme = await read("README.en.md");
   assert.match(deployment, /### Compose 内容[\s\S]*network_mode: host/);
   assert.match(deployment, /### \.env 内容[\s\S]*PUBLIC_APP_URL=http:\/\/服务器IP:3000/);
+  assert.match(deployment, /PUBLIC_APP_URL=https:\/\/proxy\.yehaonc\.com/);
+  assert.match(deployment, /不要追加 `:3000`/);
   assert.doesNotMatch(deployment, /INSTALL_TOKEN|MYSQL_BRIDGE_SECRET|INVENTORY_ENCRYPTION_KEY|CRON_SECRET|XPANEL_BRIDGE_SECRET|UPDATE_WEBHOOK_TOKEN/);
   assert.match(readme, /部署时只需要按照这一份文档操作/);
   assert.match(englishReadme, /Follow only that document when deploying/);
+});
+
+test("storefront sends an uninstalled instance to the installer before loading data", async () => {
+  const storefront = await read("app/page.tsx");
+  assert.match(storefront, /fetch\("\/api\/install", \{cache:"no-store"\}\)/);
+  assert.match(storefront, /window\.location\.replace\("\/install"\)/);
+  assert.match(storefront, /if \(!installationChecked\) return/);
 });

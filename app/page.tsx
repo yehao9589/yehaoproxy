@@ -62,6 +62,7 @@ const initialSiteConfig: SiteConfig = {
 };
 
 export default function Home() {
+  const [installationChecked, setInstallationChecked] = useState(false);
   const [category, setCategory] = useState<ProductCategory>("proxy");
   const [products,setProducts]=useState(defaultProducts);
   const [product, setProduct] = useState("static-isp");
@@ -110,6 +111,20 @@ export default function Home() {
   useEffect(()=>{if(!currentOffer||durationAvailable(duration))return;const next=[30,90,180,7].find(day=>durationAvailable(day));if(next)setDuration(next)},[currentOffer,duration]);
 
   useEffect(() => {
+    fetch("/api/install", {cache:"no-store"})
+      .then(response => response.json())
+      .then(status => {
+        if (!status.installed) {
+          window.location.replace("/install");
+          return;
+        }
+        setInstallationChecked(true);
+      })
+      .catch(() => window.location.replace("/install"));
+  }, []);
+
+  useEffect(() => {
+    if (!installationChecked) return;
     fetch("/api/catalog").then(response => response.json()).then(data => {
       if (Array.isArray(data.items)) setSaleOffers(data.items.map((item: CatalogOffer) => ({
         product: item.product,
@@ -133,7 +148,7 @@ export default function Home() {
     fetch("/api/auth/me", {cache:"no-store"})
       .then(async response => response.ok ? setCurrentUser(await response.json()) : setCurrentUser(null))
       .catch(() => setCurrentUser(null));
-  }, []);
+  }, [installationChecked]);
   useEffect(() => {
     setSelected(0);
     setQuantity(1);
@@ -170,6 +185,8 @@ export default function Home() {
       setLoggingOut(false);
     }
   }
+
+  if (!installationChecked) return <main className="page-loading" aria-busy="true" aria-label="正在检查安装状态" />;
 
   return <main>
     {siteConfig.topAdEnabled && siteConfig.topAdText && <div className="notice">{siteConfig.topAdLink ? <a href={siteConfig.topAdLink}>{siteConfig.topAdText}</a> : siteConfig.topAdText}</div>}
