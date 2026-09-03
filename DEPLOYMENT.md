@@ -111,9 +111,20 @@ PUBLIC_APP_URL=http://服务器IP:3000
 CRON_INTERVAL_MS=60000
 ```
 
-“同时存为模板”无需勾选，备注可填写 `YehaoProxy v1.0.1 宝塔单容器部署`。内部认证与资产加密数据由系统自动生成并随 `data` 目录持久化，Compose 和 `.env` 均不需要填写授权码或密钥。
+“同时存为模板”无需勾选，备注可填写 `YehaoProxy 正式版宝塔单容器部署`。内部认证与资产加密数据由系统自动生成并随 `data` 目录持久化，Compose 和 `.env` 均不需要填写授权码或密钥。
 
 默认使用正式更新通道 `stable`。以后发布正式版本后，直接在宝塔容器编排点击“更新镜像”并重建容器即可，不需要修改 `.env`。系统仍同时发布 `v1.0.1` 这类固定标签；需要严格锁定版本或回滚时，可临时把 `YEHAOPROXY_IMAGE` 改成对应固定标签。
+
+### 从 v1.0.0 / v1.0.1 固定配置迁移
+
+已经使用旧版编排时，只需迁移这一次：
+
+1. 把 Compose 和 `.env` 中镜像地址末尾的 `v1.0.0` 或 `v1.0.1` 改为 `stable`。
+2. 删除 `.env` 中的 `APP_VERSION=...`，同时删除 Compose `environment` 中手工设置的 `APP_VERSION`；后台版本号由镜像自身提供。
+3. 保留 `PUBLIC_APP_URL`、`CRON_INTERVAL_MS` 和三个持久化目录，不要删除服务器上的 `data`、`uploads`、`backups`。
+4. 保存编排，点击“更新镜像”，确认日志显示 `ghcr.io/yehao9589/yehaoproxy:stable`，然后重新创建容器。
+
+迁移完成后，今后升级只需要点击“更新镜像”，不再修改 Compose 或 `.env`。如果日志仍显示 `v1.0.0`，说明 Compose 或 `.env` 至少还有一处旧镜像地址没有替换。
 
 ## 4. 持久化目录
 
