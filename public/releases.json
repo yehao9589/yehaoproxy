@@ -1,9 +1,14 @@
 {
-  "version": "v1.0.0",
-  "publishedAt": "2026-09-02",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.0",
-  "releaseNotes": "YehaoProxy v1.0.0 正式版：完成商品、订单、账单、信用账单、服务交付、续费、售后、支付、通知、审计、备份恢复和宝塔单容器部署的上线加固。",
+  "version": "v1.0.1",
+  "publishedAt": "2026-09-03",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.1",
+  "releaseNotes": "YehaoProxy v1.0.1 补丁版：修复全新安装访问首页时未自动进入安装向导的问题，并统一、简化宝塔单容器部署说明。",
   "releases": [{
+    "version": "v1.0.1",
+    "publishedAt": "2026-09-03",
+    "title": "YehaoProxy v1.0.1 补丁版",
+    "notes": ["修复全新安装直接进入首页而未进入安装向导的问题", "未安装实例访问首页时自动跳转至 /install", "统一宝塔单容器部署指南并补充域名、HTTPS 与反向代理示例", "内部认证及加密密钥改为容器自动生成，无需在 Compose 或 .env 中手工填写"]
+  }, {
     "version": "v1.0.0",
     "publishedAt": "2026-09-02",
     "title": "YehaoProxy v1.0.0 正式版",

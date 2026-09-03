@@ -161,7 +161,7 @@ test("production deployment has health checks, backups, and rollback safety", as
   assert.match(health, /encryptionConfigured/);
 });
 
-test("v1 release metadata and workflow are pinned behind a quality gate", async () => {
+test("v1.0.1 release metadata and workflow are pinned behind a quality gate", async () => {
   const [pkg, compose, manifest, workflow, updateCenter] = await Promise.all([
     read("package.json"),
     read("docker-compose.single.yml"),
@@ -169,11 +169,11 @@ test("v1 release metadata and workflow are pinned behind a quality gate", async 
     read(".github/workflows/publish-images.yml"),
     read("lib/update-center.ts"),
   ]);
-  assert.match(pkg, /"version": "1\.0\.0"/);
+  assert.match(pkg, /"version": "1\.0\.1"/);
   assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
-  assert.match(compose, /yehaoproxy:v1\.0\.0/);
+  assert.match(compose, /yehaoproxy:v1\.0\.1/);
   assert.match(compose, /UPDATE_CHANNEL: stable/);
-  assert.match(manifest, /"version": "v1\.0\.0"/);
+  assert.match(manifest, /"version": "v1\.0\.1"/);
   assert.match(workflow, /quality:/);
   assert.match(workflow, /needs: quality/);
   assert.match(updateCenter, /branch: "main"/);

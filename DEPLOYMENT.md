@@ -48,7 +48,7 @@
 services:
   yehaoproxy:
     # GitHub Container Registry 正式版镜像；生产环境固定版本号。
-    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.0}
+    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.1}
     container_name: yehaoproxy
 
     # 统一启动网站、数据库桥接、X-Panel 桥接和定时任务。
@@ -71,8 +71,8 @@ services:
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:?请配置 PUBLIC_APP_URL}
 
       # 固定版本与稳定更新通道。
-      APP_VERSION: ${APP_VERSION:-v1.0.0}
-      IMAGE_REPOSITORY: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.0}
+      APP_VERSION: ${APP_VERSION:-v1.0.1}
+      IMAGE_REPOSITORY: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.1}
       UPDATE_CHANNEL: stable
       UPDATE_MANIFEST_URL: https://raw.githubusercontent.com/yehao9589/yehaoproxy/main/public/releases.json
 
@@ -103,21 +103,21 @@ services:
 
 ```dotenv
 # GitHub 正式版镜像；升级时修改版本号。
-YEHAOPROXY_IMAGE=ghcr.io/yehao9589/yehaoproxy:v1.0.0
+YEHAOPROXY_IMAGE=ghcr.io/yehao9589/yehaoproxy:v1.0.1
 
 # 没有域名时使用 http://服务器IP:3000，配置证书后改成 HTTPS 域名。
 PUBLIC_APP_URL=http://服务器IP:3000
 
 # 后台显示的版本号。
-APP_VERSION=v1.0.0
+APP_VERSION=v1.0.1
 
 # 定时任务检查间隔，单位为毫秒。
 CRON_INTERVAL_MS=60000
 ```
 
-“同时存为模板”无需勾选，备注可填写 `YehaoProxy v1.0.0 宝塔单容器部署`。内部认证与资产加密数据由系统自动生成并随 `data` 目录持久化，Compose 和 `.env` 均不需要填写授权码或密钥。
+“同时存为模板”无需勾选，备注可填写 `YehaoProxy v1.0.1 宝塔单容器部署`。内部认证与资产加密数据由系统自动生成并随 `data` 目录持久化，Compose 和 `.env` 均不需要填写授权码或密钥。
 
-生产环境使用固定版本标签 `v1.0.0`，不要改成移动的 `latest` 或 `pre-release`，避免不可控升级。
+生产环境使用固定版本标签 `v1.0.1`，不要改成移动的 `latest` 或 `pre-release`，避免不可控升级。
 
 ## 4. 持久化目录
 
@@ -177,7 +177,7 @@ PUBLIC_APP_URL=https://proxy.yehaonc.com
 
 正式版本镜像更新流程：
 
-1. GitHub Actions 通过代码检查后构建 `ghcr.io/yehao9589/yehaoproxy:v1.0.0`。
+1. GitHub Actions 通过代码检查后构建 `ghcr.io/yehao9589/yehaoproxy:v1.0.1`。
 2. 先备份宝塔 MySQL 和三个持久化目录。
 3. 在宝塔容器编排点击“更新镜像”。
 4. 确认容器重新创建后检查日志和 `/api/health`。
@@ -214,7 +214,7 @@ PUBLIC_APP_URL=https://proxy.yehaonc.com
 点击“更新镜像”后保存并重建编排。若仍未更新，在宝塔终端执行拉取并强制重建：
 
 ```bash
-docker pull ghcr.io/yehao9589/yehaoproxy:v1.0.0
+docker pull ghcr.io/yehao9589/yehaoproxy:v1.0.1
 docker compose up -d --force-recreate
 ```
 
