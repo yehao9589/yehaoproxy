@@ -177,6 +177,8 @@ test("v1.0.1 release metadata and workflow are pinned behind a quality gate", as
   assert.match(workflow, /quality:/);
   assert.match(workflow, /needs: quality/);
   assert.match(workflow, /type=raw,value=stable/);
+  assert.match(workflow, /steps\.app\.outputs\.version/);
+  assert.doesNotMatch(workflow, /APP_VERSION=.*'stable'/);
   assert.match(updateCenter, /branch: "main"/);
   assert.doesNotMatch(updateCenter, /codex\/pre-release-hardening/);
 });
