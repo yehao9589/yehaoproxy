@@ -171,11 +171,12 @@ test("v1.0.1 release metadata and workflow are pinned behind a quality gate", as
   ]);
   assert.match(pkg, /"version": "1\.0\.1"/);
   assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
-  assert.match(compose, /yehaoproxy:v1\.0\.1/);
+  assert.match(compose, /yehaoproxy:stable/);
   assert.match(compose, /UPDATE_CHANNEL: stable/);
   assert.match(manifest, /"version": "v1\.0\.1"/);
   assert.match(workflow, /quality:/);
   assert.match(workflow, /needs: quality/);
+  assert.match(workflow, /type=raw,value=stable/);
   assert.match(updateCenter, /branch: "main"/);
   assert.doesNotMatch(updateCenter, /codex\/pre-release-hardening/);
 });

@@ -17,7 +17,7 @@ export const defaultUpdateSettings: UpdateSettings = {
   deploymentMode: "docker",
   repository: "https://github.com/yehao9589/yehaoproxy",
   branch: "main",
-  image: "ghcr.io/yehao9589/yehaoproxy:v1.0.0",
+  image: "ghcr.io/yehao9589/yehaoproxy:stable",
   channel: "stable",
   manifestUrl: "https://raw.githubusercontent.com/yehao9589/yehaoproxy/main/public/releases.json",
   autoCheck: true,
