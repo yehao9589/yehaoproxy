@@ -314,6 +314,11 @@ test("audit logs use one Chinese display layer for admin and customer records", 
   assert.match(display, /"pre-release":"预发布通道"/);
   assert.match(display, /"node\.renewal\.create":"创建节点续费订单"/);
   assert.match(display, /"proxy\.renewal_orders\.create":"创建代理续费订单"/);
+  assert.match(display, /nodeTrafficResetPrice:"节点流量重置价格"/);
+  assert.match(display, /ipReplacementFreeCount:"免费更换 IP 次数"/);
+  assert.match(display, /"calendar-month":"自然月计费"/);
+  assert.match(display, /GLOBAL:"全局节点"/);
+  assert.match(display, /countryName\(text\)/);
   assert.match(display, /ACTIVATED_AT/);
   assert.match(display, /历史记录内容无法识别/);
   assert.match(display, /hiddenKeys/);

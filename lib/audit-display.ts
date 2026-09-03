@@ -1,4 +1,5 @@
 import { databaseText } from "./database-text";
+import { countryName } from "./countries";
 
 export type AuditDisplayLog = {
   action: string;
@@ -38,7 +39,7 @@ const keys: Record<string, string> = {
   sourceOrderId:"原服务订单",targetOrderId:"目标订单",orderId:"订单号",orderIds:"订单列表",bundleOrderId:"合并账单号",txId:"交易流水号",transactionId:"支付流水号",tradeNo:"支付平台流水号",destination:"退款去向",
   durationDays:"服务时长",renewalDays:"续费周期",expiresAt:"到期时间",previousExpiresAt:"原到期时间",restoredExpiry:"恢复到期时间",eligibleUntil:"免费更换有效期",
   host:"代理地址",port:"端口",country:"国家或地区",city:"城市",protocol:"代理协议",previousAddress:"原代理地址",address:"新代理地址",previousCountry:"原国家或地区",previousCity:"原城市",
-  payable:"支付金额",originalAmount:"原价",payAmount:"渠道支付金额",paymentCurrency:"渠道币种",couponCode:"优惠券",discount:"优惠金额",balanceAfter:"操作后余额",creditUsed:"使用信用额度",availableCredit:"可用信用额度",creditLimit:"信用额度",total:"合计金额",product:"商品",productType:"商品类型",region:"地区",quantity:"数量",count:"数量",
+  payable:"支付金额",originalAmount:"原价",payAmount:"渠道支付金额",paymentCurrency:"渠道币种",couponCode:"优惠券",discount:"优惠金额",balanceAfter:"操作后余额",creditUsed:"使用信用额度",availableCredit:"可用信用额度",creditLimit:"信用额度",total:"合计金额",product:"商品",productType:"商品类型",region:"地区",quantity:"数量",count:"数量",billingCycle:"计费周期",price7:"7 天价格",price30:"1 个月 / 30 天价格",price90:"3 个月 / 90 天价格",price180:"6 个月价格",saleStock:"可售数量",sold:"已售数量",sortOrder:"排序",description:"说明",
   freeDays:"免费期限",freeCount:"免费次数",remainingFreeCount:"剩余免费次数",beforeAmount:"修改前金额",afterAmount:"修改后金额",currency:"币种",fields:"修改内容",duplicate:"是否重复通知",revokedAllocations:"停用资源数量",bundleItems:"合并订单项目数",restoredItems:"恢复库存项目数",remainingResources:"剩余资源数",requiredResources:"应交付资源数",
   currentVersion:"当前版本",currentCommit:"当前版本提交",remoteCommit:"最新版本提交",channel:"更新通道",image:"镜像地址",fileName:"备份文件",type:"类型",value:"数值",code:"优惠码",enabled:"是否启用",storage:"存储位置",size:"文件大小",permissions:"权限范围",sessionsRevoked:"其他登录会话",previousStatus:"原状态",priority:"优先级",assignedAdminId:"指派管理员",relatedService:"关联服务",internal:"内部回复",usernameChanged:"是否修改账号",passwordChanged:"是否修改密码",issues:"核验问题",manual:"处理方式",linkedBillId:"关联账单",billingMode:"计费方式",refund:"退款结果",serverId:"VPS 服务器",ip:"IP 地址",buckets:"各提醒阶段",actualAdminEmail:"实际操作管理员",impersonatedCustomerId:"被操作客户",impersonatedCustomerEmail:"被操作客户邮箱",performedViaImpersonation:"模拟客户操作",allocated:"已交付数量",required:"应交付数量",completed:"是否完成交付",wifiName:"WiFi 名称",
 };
@@ -50,7 +51,16 @@ const values: Record<string, string> = {
   "pre-release":"预发布通道",stable:"稳定通道",filesystem:"服务器本地存储","image/png":"PNG 图片","image/jpeg":"JPEG 图片","image/webp":"WEBP 图片",
   "static-isp":"静态住宅 IP",residential:"动态住宅代理",datacenter:"数据中心代理","computer-node":"电脑节点","soft-router":"软路由中转",
   proxy:"代理 IP",node:"节点服务",open:"处理中",waiting_customer:"等待客户回复",waiting_staff:"等待客服处理",resolved:"已解决",closed:"已关闭",
+  "calendar-month":"自然月计费","fixed-days":"固定天数计费",GLOBAL:"全局节点",MULTI:"多个地区",
   true:"是",false:"否",
+};
+
+const configurationNames:Record<string,string>={
+  nodeTrafficResetPrice:"节点流量重置价格",
+  ipReplacementPrice:"付费更换 IP 价格",
+  ipReplacementFreeDays:"免费更换 IP 有效天数",
+  ipReplacementFreeCount:"免费更换 IP 次数",
+  customer_node_credential_editing:"客户修改代理账号密码权限",
 };
 
 const permissionNames: Record<string, string> = {overview:"运营概览",orders:"订单管理",products:"商品管理",customers:"客户管理",finance:"财务运营",sales:"销售业绩",tickets:"工单管理",coupons:"优惠券",requests:"售后申请",automation:"定时任务",settings:"系统设置",admins:"管理员账户",audit:"审计日志"};
@@ -89,7 +99,10 @@ function displayValue(key:string,value:unknown):string {
   if(typeof value==="object")return"配置内容已更新";
   let text=String(value).trim();
   if(key==="note")return noteText(text);
+  if(configurationNames[text]!==undefined)return configurationNames[text];
   if(values[text]!==undefined)return values[text];
+  if(["region","previousRegion","country","previousCountry"].includes(key))return countryName(text);
+  if(["price7","price30","price90","price180"].includes(key)&&text==="-1")return"不出售";
   if(key==="enabled")return text==="1"?"是":text==="0"?"否":text;
   if(key==="size"&&/^\d+$/.test(text)){const bytes=Number(text);return bytes>=1024*1024?`${(bytes/1024/1024).toFixed(2)} MB`:bytes>=1024?`${(bytes/1024).toFixed(1)} KB`:`${bytes} 字节`}
   if(["durationDays","renewalDays","freeDays"].includes(key)&&/^\d+(?:\.\d+)?$/.test(text))return`${text} 天`;
