@@ -56,6 +56,86 @@ APP_VERSION=v1.0.0
 CRON_INTERVAL_MS=60000
 ```
 
+Alternatively, create a Baota Compose stack and paste this fully annotated example:
+
+```yaml
+services:
+  yehaoproxy:
+    # Stable image from GitHub Container Registry; pin a version in production.
+    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.0}
+    container_name: yehaoproxy
+
+    # Runs the web app, database bridge, X-Panel bridge, and scheduled jobs together.
+    command: ["node", "scripts/single-container.mjs"]
+
+    # Required for reaching Baota MySQL through 127.0.0.1 without exposing port 3306.
+    network_mode: host
+
+    environment:
+      NODE_ENV: production
+      CONTAINER: "true"
+      DATABASE_DRIVER: mysql
+
+      # Internal endpoints used by the bundled services; normally leave unchanged.
+      MYSQL_BRIDGE_URL: http://127.0.0.1:8789
+      XPANEL_BRIDGE_URL: http://127.0.0.1:8787
+      UPDATE_WEBHOOK_URL: http://127.0.0.1:8788
+
+      # Leave empty. Strong internal secrets are generated and persisted on first boot.
+      MYSQL_BRIDGE_SECRET: ${MYSQL_BRIDGE_SECRET:-}
+      INVENTORY_ENCRYPTION_KEY: ${INVENTORY_ENCRYPTION_KEY:-}
+      CRON_SECRET: ${CRON_SECRET:-}
+      XPANEL_BRIDGE_SECRET: ${XPANEL_BRIDGE_SECRET:-}
+      UPDATE_WEBHOOK_TOKEN: ${UPDATE_WEBHOOK_TOKEN:-}
+
+      # Set this to the real public URL; prefer an HTTPS domain in production.
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?PUBLIC_APP_URL is required}
+      APP_VERSION: ${APP_VERSION:-v1.0.0}
+      IMAGE_REPOSITORY: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.0}
+      UPDATE_CHANNEL: stable
+      UPDATE_MANIFEST_URL: https://raw.githubusercontent.com/yehao9589/yehaoproxy/main/public/releases.json
+
+      # Scheduled-job interval in milliseconds; 60000 means one minute.
+      CRON_INTERVAL_MS: ${CRON_INTERVAL_MS:-60000}
+      RUNTIME_ENV_FILE: /app/data/runtime.env
+
+    volumes:
+      # Runtime configuration, generated secrets, and other persistent data.
+      - /www/wwwroot/yehaoproxy/data:/app/data
+      # Uploaded logos, images, and other files.
+      - /www/wwwroot/yehaoproxy/uploads:/app/public/uploads
+      # System backup archives.
+      - /www/wwwroot/yehaoproxy/backups:/app/backups
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 45s
+
+    # Automatically recover after Docker or host restarts.
+    restart: unless-stopped
+```
+
+Matching `.env` example:
+
+```dotenv
+# Stable application image. Change only this version when upgrading.
+YEHAOPROXY_IMAGE=ghcr.io/yehao9589/yehaoproxy:v1.0.0
+
+# Use http://SERVER_IP:3000 until a domain and TLS certificate are configured.
+PUBLIC_APP_URL=http://SERVER_IP:3000
+
+# Version displayed by the administration interface.
+APP_VERSION=v1.0.0
+
+# Scheduled-job interval in milliseconds.
+CRON_INTERVAL_MS=60000
+```
+
+You do not need to set `INSTALL_TOKEN`, `MYSQL_BRIDGE_SECRET`, `INVENTORY_ENCRYPTION_KEY`, `CRON_SECRET`, `XPANEL_BRIDGE_SECRET`, or `UPDATE_WEBHOOK_TOKEN` manually. Generated values are persisted at `data/system-secrets.json` on the host. If GHCR responds with `denied` or `unauthorized`, run `docker login ghcr.io` using your GitHub username and a token with `read:packages` permission.
+
 Then open:
 
 ```text
