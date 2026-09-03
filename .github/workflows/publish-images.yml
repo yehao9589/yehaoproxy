@@ -28,7 +28,8 @@ jobs:
       - name: 读取应用版本
         id: app
         shell: bash
-        run: echo "version=v$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+        run: |
+          node -p "'version=v' + require('./package.json').version" >> "$GITHUB_OUTPUT"
 
       - name: 安装 pnpm
         uses: pnpm/action-setup@v4
