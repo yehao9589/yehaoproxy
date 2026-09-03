@@ -39,17 +39,83 @@
 进入“Docker → 容器编排 → 添加容器编排”：
 
 1. 编排名称填写 `yehaoproxy`。
-2. Compose 内容粘贴仓库中的 `docker-compose.single.yml`。
-3. `.env` 内容按下面模板填写。
+2. Compose 内容完整粘贴下面的示例。
+3. `.env` 内容完整粘贴后面的模板，并修改服务器地址。
+
+### Compose 内容
+
+```yaml
+services:
+  yehaoproxy:
+    # GitHub Container Registry 正式版镜像；生产环境固定版本号。
+    image: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.0}
+    container_name: yehaoproxy
+
+    # 统一启动网站、数据库桥接、X-Panel 桥接和定时任务。
+    command: ["node", "scripts/single-container.mjs"]
+
+    # 使用宿主机网络，通过 127.0.0.1 访问宝塔 MySQL。
+    network_mode: host
+
+    environment:
+      NODE_ENV: production
+      CONTAINER: "true"
+      DATABASE_DRIVER: mysql
+
+      # 单容器内置服务地址，保持默认即可。
+      MYSQL_BRIDGE_URL: http://127.0.0.1:8789
+      XPANEL_BRIDGE_URL: http://127.0.0.1:8787
+      UPDATE_WEBHOOK_URL: http://127.0.0.1:8788
+
+      # 网站实际访问地址，在下方 .env 中填写。
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?请配置 PUBLIC_APP_URL}
+
+      # 固定版本与稳定更新通道。
+      APP_VERSION: ${APP_VERSION:-v1.0.0}
+      IMAGE_REPOSITORY: ${YEHAOPROXY_IMAGE:-ghcr.io/yehao9589/yehaoproxy:v1.0.0}
+      UPDATE_CHANNEL: stable
+      UPDATE_MANIFEST_URL: https://raw.githubusercontent.com/yehao9589/yehaoproxy/main/public/releases.json
+
+      # 定时任务检查间隔，单位为毫秒；60000 表示 1 分钟。
+      CRON_INTERVAL_MS: ${CRON_INTERVAL_MS:-60000}
+      RUNTIME_ENV_FILE: /app/data/runtime.env
+
+    volumes:
+      # 安装配置及运行数据。
+      - /www/wwwroot/yehaoproxy/data:/app/data
+      # 后台上传的 Logo、图片和其他文件。
+      - /www/wwwroot/yehaoproxy/uploads:/app/public/uploads
+      # 系统备份文件。
+      - /www/wwwroot/yehaoproxy/backups:/app/backups
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 45s
+
+    # Docker 或服务器重启后自动恢复服务。
+    restart: unless-stopped
+```
+
+### .env 内容
 
 ```dotenv
+# GitHub 正式版镜像；升级时修改版本号。
 YEHAOPROXY_IMAGE=ghcr.io/yehao9589/yehaoproxy:v1.0.0
+
+# 没有域名时使用 http://服务器IP:3000，配置证书后改成 HTTPS 域名。
 PUBLIC_APP_URL=http://服务器IP:3000
+
+# 后台显示的版本号。
 APP_VERSION=v1.0.0
+
+# 定时任务检查间隔，单位为毫秒。
 CRON_INTERVAL_MS=60000
 ```
 
-单容器会在首次启动时自动生成内部服务认证与代理资产加密密钥，并持久化到 `data/system-secrets.json`。部署者不需要手工填写，也不存在软件授权码。已有部署在 `.env` 中配置的密钥会继续沿用并自动写入持久化文件，避免旧数据无法解密。
+“同时存为模板”无需勾选，备注可填写 `YehaoProxy v1.0.0 宝塔单容器部署`。内部认证与资产加密数据由系统自动生成并随 `data` 目录持久化，Compose 和 `.env` 均不需要填写授权码或密钥。
 
 生产环境使用固定版本标签 `v1.0.0`，不要改成移动的 `latest` 或 `pre-release`，避免不可控升级。
 
@@ -118,7 +184,6 @@ http://127.0.0.1:3000
 - `/www/wwwroot/yehaoproxy/data`
 - `/www/wwwroot/yehaoproxy/uploads`
 - `/www/wwwroot/yehaoproxy/backups`
-- `/www/wwwroot/yehaoproxy/data/system-secrets.json`（内部服务认证与资产解密所需，必须和数据目录一起保护）
 
 数据库与文件备份应定期复制到服务器外，并在隔离环境进行恢复演练。
 
@@ -149,7 +214,7 @@ docker compose up -d --force-recreate
 
 - 不在聊天、仓库、截图或日志中公开数据库密码和内部密钥文件。
 - 密码意外暴露后立即在宝塔改密，并同步更新安装配置。
-- `INVENTORY_ENCRYPTION_KEY` 在产生加密业务数据后不能随意更换。
+- 不要单独删除、覆盖或从其他部署复制 `data` 目录中的系统文件。
 
 ## 10. 上线验收
 
