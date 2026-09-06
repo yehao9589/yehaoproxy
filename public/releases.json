@@ -1,9 +1,14 @@
 {
-  "version": "v1.0.2",
-  "publishedAt": "2026-09-03",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.2",
-  "releaseNotes": "YehaoProxy v1.0.2 补丁版：修复 stable 通道版本显示，完善审计日志中文展示，并增加超级管理员账户资料修改入口与会话安全控制。",
+  "version": "v1.0.3",
+  "publishedAt": "2026-09-06",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.3",
+  "releaseNotes": "YehaoProxy v1.0.3 功能更新：完善节点服务交付策略、软路由 VPS 绑定、订单资源展示、地区搜索与后台数据展示。",
   "releases": [{
+    "version": "v1.0.3",
+    "publishedAt": "2026-09-06",
+    "title": "YehaoProxy v1.0.3 功能更新",
+    "notes": ["节点商品新增是否必须填写订阅链接的交付开关，并同步到产品订单交付校验", "软路由中转支持绑定 VPS 并完成节点服务交付", "后台国家代码统一转换为中文名称展示", "订单中的大量代理资源改为摘要与可搜索详情弹窗，避免列表被撑长", "国家和城市选择器支持拼音、首字母搜索，并修复下拉滚动及已选值闪烁", "表格排序统一为倒序、正序、取消排序三态切换", "优化审计日志字段中文名称及多处订单、服务页面显示"]
+  }, {
     "version": "v1.0.2",
     "publishedAt": "2026-09-03",
     "title": "YehaoProxy v1.0.2 补丁版",
