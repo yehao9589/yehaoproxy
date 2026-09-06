@@ -1,4 +1,5 @@
 "use client";
+import {countryName} from "../../../lib/countries";
 import { useEffect, useState } from "react";
 import OrderDetailWorkspace from "../OrderDetailWorkspace";
 import { displayCustomerId } from "../../../lib/customer-id";
@@ -1231,7 +1232,7 @@ function CustomerOrderDetail({
                       {x.host}:{x.port}
                     </span>
                     <span className="resource-region">
-                      <b>{x.country || o.region}</b>
+                      <b>{countryName(x.country || o.region)}</b>
                       <small>{x.city || "未设置城市"}</small>
                     </span>
                     <span>{x.protocol}</span>
@@ -1287,7 +1288,7 @@ function AssetRow({
       ? x.region === "GLOBAL"
         ? "全局节点"
         : x.region
-      : `${x.country || x.region}/${city}`,
+      : `${countryName(x.country || x.region)}/${city}`,
     expired = Boolean(x.expiresAt) && new Date(x.expiresAt).getTime() <= now,
     displayStatus = expired ? "expired" : x.status;
   function open(

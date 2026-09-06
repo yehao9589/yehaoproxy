@@ -5,7 +5,7 @@ import {requireAdminApi} from "../../../../lib/admin-auth";
 import {setSystemOption} from "../../../../lib/db-upsert";
 import {audit} from "../../../../lib/audit";
 
-const allowed=new Set(["nodeTrafficResetPrice","ipReplacementPrice","ipReplacementFreeDays","ipReplacementFreeCount"]);
+const allowed=new Set(["subscriptionRequired","nodeTrafficResetPrice","ipReplacementPrice","ipReplacementFreeDays","ipReplacementFreeCount"]);
 
 export async function POST(request:Request){
   const admin=await requireAdminApi("products");if(!admin)return NextResponse.json({error:"无商品管理权限"},{status:403});
@@ -14,6 +14,7 @@ export async function POST(request:Request){
   const name=String(body?.name||"");
   const value=String(body?.value??"").trim();
   if(!/^offer-[a-zA-Z0-9-]+$/.test(offerId)||!allowed.has(name))return NextResponse.json({error:"商品服务配置参数无效"},{status:400});
+  if(name==="subscriptionRequired"&&!["0","1"].includes(value))return NextResponse.json({error:"订阅开关参数无效"},{status:400});
   if(value!==""){
     const number=Number(value);
     const integer=["ipReplacementFreeDays","ipReplacementFreeCount"].includes(name);

@@ -1,0 +1,13 @@
+.order-resource-summary{display:grid;gap:5px;min-width:0}
+.order-resource-summary small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.order-resource-summary button{justify-self:start;padding:0;border:0;background:transparent;color:#1266e3;font:inherit;cursor:pointer}
+.order-resource-summary button:hover{color:#084fae}
+.order-resource-mask{position:fixed;inset:0;z-index:13000;display:grid;place-items:center;padding:20px;background:#0b20376e}
+.order-resource-dialog{display:flex;flex-direction:column;width:min(880px,100%);max-height:85dvh;min-height:0;overflow:hidden;background:#fff;border:1px solid #dfe7ee;border-radius:14px;box-shadow:0 20px 60px #071b3240;color:#24384d;font-size:13px}
+.order-resource-dialog header{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid #e4eaf0}
+.order-resource-dialog h2{margin:0;font-size:19px}.order-resource-dialog header p{margin:7px 0 0;color:#74869a;overflow-wrap:anywhere}
+.order-resource-dialog button{cursor:pointer}.order-resource-dialog header button{border:0;background:#f3f6fa;border-radius:8px;width:34px;height:34px;font-size:22px;color:#657a90}
+.order-resource-search{display:flex;align-items:center;gap:16px;padding:16px 24px}.order-resource-search input{flex:1;min-width:0;padding:10px 12px;border:1px solid #d7e1ed;border-radius:8px;font:inherit}.order-resource-search small{white-space:nowrap;color:#74869a}
+.order-resource-scroll{overflow:auto;overscroll-behavior:contain;min-height:0;flex:1}.order-resource-scroll table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap}.order-resource-scroll th{position:sticky;top:0;background:#f5f8fc;color:#74869a;font-weight:600}.order-resource-scroll th,.order-resource-scroll td{padding:13px 18px;border-bottom:1px solid #edf1f5}.order-resource-scroll tr:hover td{background:#f8fbff}
+.order-resource-dialog footer{display:flex;justify-content:flex-end;padding:14px 24px;border-top:1px solid #e4eaf0}.order-resource-dialog footer button{padding:8px 20px;border:1px solid #d7e1ed;border-radius:8px;background:#fff;color:#435a70}.order-resource-empty{padding:24px;text-align:center;color:#74869a}
+@media(max-width:560px){.order-resource-mask{padding:10px}.order-resource-search{padding:12px;gap:8px}.order-resource-dialog header{padding:16px}.order-resource-search small{font-size:11px}}

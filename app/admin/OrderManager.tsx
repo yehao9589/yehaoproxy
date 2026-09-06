@@ -1,4 +1,5 @@
 "use client";
+import {countries} from "../../lib/countries";
 
 import { useEffect, useState } from "react";
 import OrderDetailWorkspace, { type AdminOrderDetail } from "./OrderDetailWorkspace";
@@ -17,7 +18,7 @@ type Order = AdminOrderDetail["order"] & {
 const statusNames: Record<string, string> = { pending: "待付款", paid: "等待受理", provisioning: "开通处理中", active: "已激活", refunded: "已退款", failed: "已取消" };
 const methods: Record<string, string> = { balance: "余额支付", credit:"信用额支付", balance_credit:"余额 + 信用额支付", manual: "人工确认", alipay: "支付宝", wechat: "微信支付", paypal: "PayPal", usdt: "USDT", bank: "银行转账" };
 const productNames: Record<string, string> = { "cart-bundle": "合并订单", "static-isp": "静态住宅 IP", "static-residential": "静态住宅 IP", "dynamic-residential": "动态住宅代理", datacenter: "数据中心代理", "soft-router": "软路由中转", "computer-node": "电脑节点", "node-traffic-reset": "节点流量重置", "ip-replacement": "更换 IP 服务", "wallet-topup": "余额充值" };
-const regionNames: Record<string, string> = { US: "美国", JP: "日本", BR: "巴西", GB: "英国", DE: "德国", FR: "法国", CA: "加拿大", AU: "澳大利亚", SG: "新加坡", KR: "韩国", IN: "印度", GLOBAL: "全局服务", MULTI: "多个地区" };
+const regionNames: Record<string, string> = {...Object.fromEntries(countries.map(country=>[country.code,country.name])),  US: "美国", JP: "日本", BR: "巴西", GB: "英国", DE: "德国", FR: "法国", CA: "加拿大", AU: "澳大利亚", SG: "新加坡", KR: "韩国", IN: "印度", GLOBAL: "全局服务", MULTI: "多个地区" };
 const productName = (value: string) => productNames[value] || value;
 const regionName = (value: string) => regionNames[value] || value;
 const isRenewalOrder = (order: Order) => billKind(order) === "renewal";
@@ -85,7 +86,7 @@ export default function OrderManager({ search = "", kind = "all" }: { search?: s
   visible.splice(0,(currentPage-1)*pageSize);visible.splice(pageSize);
   useEffect(()=>{if(effectiveKind!=="bills")return;document.querySelectorAll<HTMLElement>(".bill-ledger .arow.order:not(.ahead)").forEach((row,index)=>{const order=visible[index],cell=row.children[4] as HTMLElement|undefined;if(!order||!cell)return;const amount=document.createElement("b"),method=document.createElement("small");amount.textContent=order.couponCode?`实付 ¥${Number(order.paidAmount??order.amount).toFixed(2)}`:`¥${order.amount.toFixed(2)}`;method.textContent=order.paymentSource?methods[order.paymentSource]||order.paymentSource:order.paymentMethod?methods[order.paymentMethod]||order.paymentMethod:"未选择付款方式";if(!order.couponCode){cell.replaceChildren(amount,method);return}const discount=document.createElement("small");discount.textContent=`原价 ¥${Number(order.originalAmount).toFixed(2)} · 优惠券 ${order.couponCode} -¥${Number(order.discountAmount).toFixed(2)}`;cell.replaceChildren(amount,discount,method)})},[effectiveKind,visible]);
   useEffect(()=>setPage(1),[keyword,statusFilter,effectiveKind,pageSize]);
-  const sortButton = <button type="button" className="table-time-sort-arrow" title={sortDir === null ? "默认按下单时间最新在前，点击启用排序" : sortDir === "desc" ? "当前最新在前，点击切换最早在前" : "当前最早在前，点击切换最新在前"} onClick={() => setSortDir((value) => value === "asc" ? "desc" : "asc")}><i className={sortDir === "asc" ? "active" : ""}>▲</i><i className={sortDir === "desc" ? "active" : ""}>▼</i></button>;
+  const sortButton = <button type="button" className="table-time-sort-arrow" title={sortDir === null ? "默认顺序，点击倒序排列" : sortDir === "desc" ? "当前最新在前，点击切换最早在前" : "当前最早在前，点击取消排序"} onClick={() => setSortDir((value) => value === null ? "desc" : value === "desc" ? "asc" : null)}><i className={sortDir === "asc" ? "active" : ""}>▲</i><i className={sortDir === "desc" ? "active" : ""}>▼</i></button>;
   const detailView = <><Pagination total={totalVisible} page={currentPage} pageSize={pageSize} onPage={setPage} onPageSize={size=>{setPageSize(size);setPage(1)}}/>{detail&&<OrderDetailWorkspace detail={detail} context={effectiveKind==="bills"?"bill":"product"} onClose={() => setDetail(null)} onChanged={async (next) => { setDetail(next); await load(); }} />}</>;
 
   const statusTabs: Array<[string, string, number]> = [["all", "全部账单", scoped.length], ["unpaid", "待付款", scoped.filter((item) => workflowGroup(item) === "unpaid").length], ["delivery", "待交付", scoped.filter((item) => workflowGroup(item) === "delivery").length], ["verification", "续费待核验", scoped.filter((item) => workflowGroup(item) === "verification").length], ["processing", "售后处理中", scoped.filter((item) => workflowGroup(item) === "processing").length], ["completed", "已完成", scoped.filter((item) => workflowGroup(item) === "completed").length], ["refunded", "已退款", scoped.filter((item) => workflowGroup(item) === "refunded").length], ["cancelled", "已关闭", scoped.filter((item) => workflowGroup(item) === "cancelled").length]];

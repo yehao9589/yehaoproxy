@@ -46,7 +46,7 @@ async function repairCompletedBundleBills(db: ReturnType<typeof getDb>) {
     if (!["paid", "provisioning"].includes(order.status)) continue;
     const note = databaseText(order.adminNote),
       nodeDelivered =
-        order.product === "computer-node" &&
+        ["computer-node","soft-router"].includes(order.product) &&
         Boolean(note.match(/\[SUBSCRIPTION_URL\]https?:\/\/\S+/)),
       proxyResources = activeAllocations.get(order.id) || [],
       proxyDelivered =

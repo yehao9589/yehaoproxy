@@ -57,6 +57,7 @@ const values: Record<string, string> = {
 
 const configurationNames:Record<string,string>={
   nodeTrafficResetPrice:"节点流量重置价格",
+  subscriptionRequired:"交付时必须填写订阅链接",
   ipReplacementPrice:"付费更换 IP 价格",
   ipReplacementFreeDays:"免费更换 IP 有效天数",
   ipReplacementFreeCount:"免费更换 IP 次数",

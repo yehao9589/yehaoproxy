@@ -1,0 +1,13 @@
+"use client";
+import {useEffect,useRef,useState} from "react";
+import {createPortal} from "react-dom";
+import {countryName} from "../../../lib/countries";
+import "./order-resources.css";
+type Resource={id:string;ip:string;wifiName:string|null;country:string;city:string|null;protocol:string};
+export default function OrderResources({orderId,resources}:{orderId:string;resources:Resource[]}){
+ const [open,setOpen]=useState(false),[query,setQuery]=useState("");
+ const closeButton=useRef<HTMLButtonElement>(null),trigger=useRef<HTMLButtonElement>(null);
+ useEffect(()=>{if(!open)return;closeButton.current?.focus();const key=(event:KeyboardEvent)=>{if(event.key==="Escape")setOpen(false)};document.addEventListener("keydown",key);return()=>{document.removeEventListener("keydown",key);trigger.current?.focus()}},[open]);
+ const keyword=query.trim().toLowerCase(),filtered=resources.filter(resource=>[resource.ip,resource.wifiName,resource.country,countryName(resource.country),resource.city,resource.protocol].some(value=>String(value||"").toLowerCase().includes(keyword)));
+ return <><span className="order-resource-summary"><b>{resources.length} 个代理资源</b><small className="mono">{resources[0].ip}{resources.length>1?" 等":""}</small><button ref={trigger} type="button" onClick={()=>{setQuery("");setOpen(true)}}>查看资源明细</button></span>{open&&createPortal(<div className="order-resource-mask" onMouseDown={event=>{if(event.target===event.currentTarget)setOpen(false)}}><section className="order-resource-dialog" role="dialog" aria-modal="true" aria-label="订单资源明细"><header><div><h2>订单资源明细</h2><p>{orderId} · 共 {resources.length} 个资源</p></div><button ref={closeButton} type="button" aria-label="关闭资源明细" onClick={()=>setOpen(false)}>×</button></header><div className="order-resource-search"><input aria-label="搜索订单资源" placeholder="搜索 IP、WiFi 名称、国家或城市" value={query} onChange={event=>setQuery(event.target.value)}/><small>显示 {filtered.length} / {resources.length} 个</small></div><div className="order-resource-scroll"><table><thead><tr><th>序号</th><th>代理地址</th><th>WiFi 名称</th><th>国家 / 城市</th><th>协议</th></tr></thead><tbody>{filtered.map((resource,index)=><tr key={resource.id}><td>{index+1}</td><td className="mono">{resource.ip}</td><td>{resource.wifiName||"未设置"}</td><td>{[countryName(resource.country),resource.city].filter(Boolean).join(" / ")||"未设置"}</td><td>{resource.protocol||"—"}</td></tr>)}</tbody></table>{!filtered.length&&<p className="order-resource-empty">没有匹配的资源</p>}</div><footer><button type="button" onClick={()=>setOpen(false)}>关闭</button></footer></section></div>,document.body)}</>;
+}

@@ -68,7 +68,8 @@ export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){
   const subscriptionUrl=order.adminNote?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1]||null;
   const itemAmount=order.adminNote?.match(/\[BUNDLE_ITEM_AMOUNT\]([^\n]+)/)?.[1],billingOrderId=order.adminNote?.match(/\[BUNDLE_PARENT\]([^\n]+)/)?.[1];
   const redemptionOrderIds=new Set([id,...relatedOrders.map(item=>item.id)]),redemption=(await db.select().from(couponRedemptions)).find(item=>redemptionOrderIds.has(item.orderId)),[coupon]=redemption?await db.select().from(coupons).where(eq(coupons.id,redemption.couponId)).limit(1):[null],discountAmount=Number(redemption?.discount||0),orderText=orderNote(order.adminNote),renewalVerified=orderText.includes("[RENEWAL_VERIFIED_AT]")||(orderText.includes("[BUNDLE_RENEWAL]true")&&relatedOrders.length>0&&relatedOrders.every(item=>orderNote(item.adminNote).includes("[RENEWAL_VERIFIED_AT]")));
-  const visibleOrder={...order,amount:itemAmount==null?order.amount:Number(itemAmount),adminNote:visibleNote(order.adminNote),billType:billKind({...order,adminNote:orderText}),renewalVerified,subscriptionUrl,billingOrderId:billingOrderId||null,billingCycle:billingCycleFromNote(order.adminNote),couponCode:coupon?.code||null,discountAmount,originalAmount:Number((order.amount+discountAmount).toFixed(2)),paidAmount:order.amount,paymentSource};
+  const deliveryPolicy=await nodeDeliveryPolicy(order);
+  const visibleOrder={...order,...deliveryPolicy,amount:itemAmount==null?order.amount:Number(itemAmount),adminNote:visibleNote(order.adminNote),billType:billKind({...order,adminNote:orderText}),renewalVerified,subscriptionUrl,billingOrderId:billingOrderId||null,billingCycle:billingCycleFromNote(order.adminNote),couponCode:coupon?.code||null,discountAmount,originalAmount:Number((order.amount+discountAmount).toFixed(2)),paidAmount:order.amount,paymentSource};
   const[offer]=await db.select().from(productOffers).where(and(eq(productOffers.product,order.product),eq(productOffers.region,order.region))).limit(1);
   const availableRenewalPeriods=visibleOrder.billingCycle==="calendar-month"
     ?[(offer?.price30??-1)>=0?30:null,(offer?.price90??-1)>=0?90:null,(offer?.price180??-1)>=0?180:null].filter((value):value is number=>value!==null)
@@ -111,12 +112,14 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   if(!order)return NextResponse.json({error:"订单不存在"},{status:404});
   const now=new Date();
   if(action==="deliver-subscription"){
-    if(order.product!=="computer-node")return NextResponse.json({error:"只有电脑节点订单可以发放订阅地址"},{status:400});
+    const policy=await nodeDeliveryPolicy(order);
+    if(!policy.node)return NextResponse.json({error:"只有节点订单可以交付订阅"},{status:400});
     if(!["paid","provisioning","active"].includes(order.status))return NextResponse.json({error:"当前订单状态不能发放订阅地址"},{status:409});
     const subscriptionUrl=String(b?.subscriptionUrl||"").trim();
-    try{const parsed=new URL(subscriptionUrl);if(!["http:","https:"].includes(parsed.protocol))throw new Error()}catch{return NextResponse.json({error:"请输入有效的 HTTP 或 HTTPS 订阅地址"},{status:400})}
+    if(policy.subscriptionRequired&&!subscriptionUrl)return NextResponse.json({error:"此商品交付时必须填写订阅链接"},{status:400});
+    if(subscriptionUrl)try{const parsed=new URL(subscriptionUrl);if(!["http:","https:"].includes(parsed.protocol))throw new Error()}catch{return NextResponse.json({error:"请输入有效的 HTTP 或 HTTPS 订阅地址"},{status:400})}
     const cleanNote=String(order.adminNote||"").replace(/\n?\[SUBSCRIPTION_URL\][^\n]*/g,"").trim();
-    const adminNote=`${cleanNote}${cleanNote?"\n":""}[SUBSCRIPTION_URL]${subscriptionUrl}`;
+    const adminNote=subscriptionUrl?`${cleanNote}${cleanNote?"\n":""}[SUBSCRIPTION_URL]${subscriptionUrl}`:cleanNote;
     const expiresAt=order.expiresAt||addBillingPeriod(now,order.durationDays,billingCycleFromNote(order.adminNote));
     await db.update(orders).set({adminNote,status:"active",expiresAt,updatedAt:now}).where(eq(orders.id,id));
     await syncBundleParent(db,order,now,expiresAt);
@@ -131,7 +134,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
       :Number.isInteger(durationDays)&&durationDays>0&&durationDays<=3650&&(cycle!=="calendar-month"||durationDays%30===0);
     if(!["fixed-days","calendar-month"].includes(cycle)||!["balance","manual","alipay","wechat","paypal","usdt","bank"].includes(paymentMethod)||expiresAt&&Number.isNaN(expiresAt.getTime())||renewalAmount!==null&&(!Number.isFinite(renewalAmount)||renewalAmount<0)||!Number.isFinite(amount)||amount<0||amount>10000000||!validDuration||!["pending","paid","provisioning","active"].includes(nextStatus))return NextResponse.json({error:"续费周期或订单参数无效"},{status:400});
     if(order.status!=="pending"&&Math.abs(amount-order.amount)>0.001)return NextResponse.json({error:"只有待付款订单可以修改付款金额"},{status:409});
-    if(order.product==="computer-node"&&nextStatus==="active"&&!order.adminNote?.includes("[SUBSCRIPTION_URL]"))return NextResponse.json({error:"电脑节点必须先发放有效订阅链接，不能直接修改为已激活"},{status:409});
+    if((await nodeDeliveryPolicy(order)).subscriptionRequired&&nextStatus==="active"&&!order.adminNote?.includes("[SUBSCRIPTION_URL]"))return NextResponse.json({error:"此商品必须先发放有效订阅链接，不能直接修改为已激活"},{status:409});
     if(["refunded","failed"].includes(order.status))return NextResponse.json({error:"已退款或已取消订单不可重新激活"},{status:409});
     await db.update(orders).set({paymentMethod,expiresAt,renewalAmount,durationDays,autoRenew,adminNote,status:nextStatus as typeof order.status,amount:Number(amount.toFixed(2)),updatedAt:now}).where(eq(orders.id,id));
     if(expiresAt)await db.update(proxyAllocations).set({expiresAt,autoRenew}).where(eq(proxyAllocations.orderId,id));
@@ -200,3 +203,4 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   }
   return NextResponse.json({error:"不支持的操作"},{status:400});
 }
+import {nodeDeliveryPolicy} from "../../../../../lib/node-delivery";

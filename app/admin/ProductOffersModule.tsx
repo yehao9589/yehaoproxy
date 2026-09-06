@@ -85,6 +85,7 @@ export default function ProductOffersModule() {
   const [saving, setSaving] = useState(false);
   const [servicePolicy,setServicePolicy]=useState({resetPrice:"5",replacePrice:"5",freeDays:"3",freeCount:"1",credentialEditing:false});
   const [policyOptions,setPolicyOptions]=useState<Record<string,string>>({});
+  const [subscriptionRequired,setSubscriptionRequired]=useState(true);
   const [offerPolicy,setOfferPolicy]=useState({resetPrice:"",replacePrice:"",freeDays:"",freeCount:""});
 
   async function load() {
@@ -116,14 +117,15 @@ export default function ProductOffersModule() {
   function openOfferEditor(item:Offer){
     const key=(name:string)=>policyOptions[`productPolicy:${item.id}:${name}`]||"";
     setOfferPolicy({resetPrice:key("nodeTrafficResetPrice"),replacePrice:key("ipReplacementPrice"),freeDays:key("ipReplacementFreeDays"),freeCount:key("ipReplacementFreeCount")});
+    setSubscriptionRequired(key("subscriptionRequired")?key("subscriptionRequired")==="1":item.product==="computer-node");
     setFormProduct(item.product);setFormBillingCycle(item.billingCycle||"fixed-days");setEditing(item);
   }
 
-  function openOfferCreator(){setOfferPolicy({resetPrice:"",replacePrice:"",freeDays:"",freeCount:""});setFormProduct(productTypes.find(x=>x.enabled)?.id||"");setFormBillingCycle("fixed-days");setCreating(true)}
+  function openOfferCreator(){setSubscriptionRequired(true);setOfferPolicy({resetPrice:"",replacePrice:"",freeDays:"",freeCount:""});setFormProduct(productTypes.find(x=>x.enabled)?.id||"");setFormBillingCycle("fixed-days");setCreating(true)}
 
   async function saveServicePolicy(product:string,offerId:string){
     const values=typeCategory(product)==="node"
-      ? [["nodeTrafficResetPrice",offerPolicy.resetPrice]]
+      ? [["nodeTrafficResetPrice",offerPolicy.resetPrice],["subscriptionRequired",subscriptionRequired?"1":"0"]]
       : [["ipReplacementPrice",offerPolicy.replacePrice],["ipReplacementFreeDays",offerPolicy.freeDays],["ipReplacementFreeCount",offerPolicy.freeCount]];
     for(const[key,value]of values){
       const response=await fetch("/api/admin/product-policy",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({offerId,name:key,value})});
@@ -261,7 +263,7 @@ export default function ProductOffersModule() {
               <div className="offer-service-policy-title"><b>{typeCategory(formProduct)==="node"?"节点服务功能":"代理 IP 服务功能"}</b><small>保存商品时同步更新该类商品的客户功能规则</small></div>
               {typeCategory(formProduct)==="node"?<>
                 <div className="form-grid">
-                  <label>流量重置费用<input type="number" min="0" step="0.01" placeholder={`留空使用默认 ¥${servicePolicy.resetPrice}`} value={offerPolicy.resetPrice} onChange={event=>setOfferPolicy(value=>({...value,resetPrice:event.target.value}))}/><small>留空时使用上方默认金额</small></label>
+                  <label><span>交付时必须填写订阅链接</span><input type="checkbox" checked={subscriptionRequired} onChange={event=>setSubscriptionRequired(event.target.checked)}/><small>关闭后可不填订阅链接，直接完成节点交付。</small></label><label>流量重置费用<input type="number" min="0" step="0.01" placeholder={`留空使用默认 ¥${servicePolicy.resetPrice}`} value={offerPolicy.resetPrice} onChange={event=>setOfferPolicy(value=>({...value,resetPrice:event.target.value}))}/><small>留空时使用上方默认金额</small></label>
                 </div>
               </>:<>
                 <div className="form-grid">
