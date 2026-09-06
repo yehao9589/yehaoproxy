@@ -115,20 +115,28 @@ export default function LiveDashboard({ name }: { name: string }) {
       </aside>
       <section className="console-body">
         <header className="console-top">
-          <div className="search">客户资产与订单实时工作台</div>
-          <div className="top-actions">
-            <span className="avatar">Y</span>
+          <div className="dashboard-context">
+            <span className="dashboard-context-icon">⌁</span>
             <div>
+              <small>客户工作台</small>
+              <b>资产、订单与服务管理</b>
+            </div>
+          </div>
+          <div className="top-actions">
+            <span className="avatar">{name.trim().slice(0, 1).toUpperCase() || "Y"}</span>
+            <div className="dashboard-account">
               <b>{name}</b>
-              <small>客户账户</small>
+              <small><i /> 客户账户</small>
             </div>
             <button
+              className="dashboard-logout"
+              title="退出当前账户"
               onClick={async () => {
                 await fetch("/api/auth/logout", { method: "POST" });
                 location.href = "/login";
               }}
             >
-              退出
+              <span>↪</span>退出
             </button>
           </div>
         </header>

@@ -5,6 +5,21 @@
 .unified-console .console-menu button i{width:18px;font-size:14px}
 .unified-console .console-content{max-width:none;padding:20px}
 .unified-console .console-top{padding:0 20px}
+.unified-console .console-top{height:72px;align-items:center;border-bottom-color:#dce6f0;background:linear-gradient(105deg,#ffffff 0%,#f8fbff 58%,#f2f7fd 100%);box-shadow:0 1px 0 rgba(19,51,85,.025)}
+.unified-console .dashboard-context{display:flex;align-items:center;gap:12px;min-width:0}
+.unified-console .dashboard-context-icon{display:grid;flex:0 0 36px;width:36px;height:36px;place-items:center;border:1px solid #cfe0f4;border-radius:11px;background:linear-gradient(145deg,#eef6ff,#fff);color:#176dd1;font-size:17px;box-shadow:0 5px 14px rgba(24,105,199,.08)}
+.unified-console .dashboard-context>div{display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+.unified-console .dashboard-context small{color:#8495a8;font-size:11px;font-weight:650;letter-spacing:.08em}
+.unified-console .dashboard-context b{color:#1a3550;font-size:14px;font-weight:750}
+.unified-console .top-actions{gap:11px;padding:7px 8px 7px 10px;border:1px solid #dce6f0;border-radius:14px;background:rgba(255,255,255,.86);box-shadow:0 6px 18px rgba(24,54,86,.06)}
+.unified-console .top-actions .avatar{width:38px;height:38px;border-radius:11px;box-shadow:0 5px 13px rgba(22,102,227,.2)}
+.unified-console .top-actions .dashboard-account{min-width:82px;padding-right:4px}
+.unified-console .dashboard-account b{max-width:150px;overflow:hidden;color:#203850;font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+.unified-console .dashboard-account small{display:flex;align-items:center;gap:5px;color:#7c8fa2;font-size:10px}
+.unified-console .dashboard-account small i{width:6px;height:6px;border-radius:50%;background:#20ad79;box-shadow:0 0 0 3px #e5f8f0}
+.unified-console .top-actions .dashboard-logout{display:flex;align-items:center;gap:5px;width:auto;height:36px;padding:0 11px;border:1px solid #dce5ee;border-radius:9px;background:#f7f9fc;color:#536a80;font-size:11px;font-weight:650;transition:.16s ease}
+.unified-console .top-actions .dashboard-logout:hover{border-color:#bed5ef;background:#edf5ff;color:#176acb}
+.unified-console .dashboard-logout span{font-size:14px}
 
 .managed-proxy-table .orow{grid-template-columns:28px 30px minmax(125px,1.12fr) minmax(70px,.64fr) minmax(74px,.68fr) minmax(76px,.7fr) minmax(84px,.76fr) minmax(82px,.74fr) minmax(84px,.76fr) minmax(98px,.86fr) minmax(82px,.74fr);column-gap:5px;min-width:900px;padding:9px 10px;font-size:10.5px}
 .managed-proxy-table .proxy-copy-value{display:block!important;width:100%!important;min-width:0!important;min-height:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#334155!important;font:inherit!important;line-height:1.35!important;text-align:left!important;cursor:pointer!important;overflow:hidden;box-shadow:none!important}.managed-proxy-table .proxy-copy-value>span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.managed-proxy-table .proxy-copy-value:hover{background:transparent!important;color:#2563eb!important}.managed-proxy-table .proxy-copy-value.copied{background:transparent!important;color:#059669!important}
@@ -23,6 +38,7 @@
 .managed-proxy-table .proxy-row-actions>button{min-width:0!important;min-height:20px!important;height:20px!important;padding:0 2px!important;border-radius:4px!important;font-size:9px!important;line-height:20px!important}
 
 @media(max-width:1100px) and (min-width:761px){.unified-console{grid-template-columns:150px minmax(0,1fr)}.unified-console .console-content{padding:10px}.unified-console .console-top{padding:0 12px}.unified-console .console-menu button{padding:8px 6px}.managed-proxy-table .orow{min-width:880px}}
+@media(max-width:760px){.unified-console .dashboard-context b{font-size:12px}.unified-console .dashboard-context small,.unified-console .dashboard-account{display:none!important}.unified-console .top-actions{gap:7px;padding:5px}.unified-console .top-actions .dashboard-logout{padding:0 9px}}
 .managed-proxy-table .proxy-auto-renew-cell{display:grid!important;grid-template-columns:56px 32px;align-items:center;justify-content:start;gap:8px!important}.managed-proxy-table .proxy-auto-renew-cell>select{width:56px!important;height:27px!important;padding:3px 5px!important;font-size:9px!important}.managed-proxy-table .proxy-auto-renew-cell .auto-renew-switch{display:grid!important;place-items:center;width:32px!important;min-width:32px!important;height:18px!important;padding:0!important;gap:0!important}.managed-proxy-table .proxy-auto-renew-cell .auto-renew-switch>i{width:32px!important;height:18px!important}.managed-proxy-table .proxy-auto-renew-cell .auto-renew-switch>i>b{width:14px!important;height:14px!important}.managed-proxy-table .proxy-auto-renew-cell .auto-renew-switch.on>i>b{transform:translateX(14px)!important}
 .managed-proxy-table .orow{grid-template-columns:28px 30px minmax(118px,1.08fr) minmax(66px,.6fr) minmax(70px,.64fr) minmax(70px,.64fr) minmax(72px,.68fr) minmax(76px,.7fr) minmax(76px,.68fr) 100px 62px 92px!important;column-gap:4px!important;min-width:940px!important}.managed-proxy-table .proxy-region-cell{max-width:72px}.managed-proxy-table .proxy-expiry{max-width:76px}.managed-proxy-table .service-proxy-status{display:inline-flex;align-items:center;justify-content:center;justify-self:start;padding:4px 7px;border-radius:10px;background:#eaf8f2;color:#168b5f;font-size:9px;font-weight:700;white-space:nowrap}.managed-proxy-table .service-proxy-status.pending{background:#fff2e7;color:#c96e28}
 .managed-proxy-table .service-proxy-status.expiring{background:#fff0d6;color:#b85e08;box-shadow:inset 0 0 0 1px #ffd7a3}

@@ -1,9 +1,14 @@
 {
-  "version": "v1.0.3",
+  "version": "v1.0.4",
   "publishedAt": "2026-09-06",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.3",
-  "releaseNotes": "YehaoProxy v1.0.3 功能更新：完善节点服务交付策略、软路由 VPS 绑定、订单资源展示、地区搜索与后台数据展示。",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.4",
+  "releaseNotes": "YehaoProxy v1.0.4 体验更新：补齐软路由实时流量展示，修复代理列表默认分页，并重新设计客户工作台顶部区域。",
   "releases": [{
+    "version": "v1.0.4",
+    "publishedAt": "2026-09-06",
+    "title": "YehaoProxy v1.0.4 体验更新",
+    "notes": ["软路由中转与电脑节点统一支持前台 VPS 实时流量展示", "修复代理 IP 默认每页 20 条被服务状态筛选覆盖的问题", "分页总数与当前服务分类保持一致", "重新设计客户工作台顶部区域，清晰展示当前工作区、账户身份与退出操作"]
+  }, {
     "version": "v1.0.3",
     "publishedAt": "2026-09-06",
     "title": "YehaoProxy v1.0.3 功能更新",
