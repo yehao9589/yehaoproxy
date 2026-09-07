@@ -13,14 +13,19 @@
 .unified-console .proxy-management-page .service-category-tabs button:after{display:none!important}
 .unified-console .proxy-management-page .service-category-tabs button:hover{color:#1764bf!important}
 @media(max-width:700px){.unified-console .proxy-management-page>header{padding:18px 16px!important;flex-wrap:wrap}.unified-console .proxy-management-page .service-category-tabs{padding:0 16px 16px!important;gap:4px;flex-wrap:wrap}.unified-console .proxy-management-page .service-category-tabs button{padding:8px 10px!important}.unified-console .proxy-management-page .proxy-page-actions{margin-left:0}}
-.unified-console .node-customer-note{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;color:#7b8ca2;font-size:12px;overflow-wrap:anywhere}
-.unified-console .node-customer-note button{border:0;background:transparent;color:#1764bf;padding:2px 0;font-size:12px}
-.unified-console .node-customer-note input{width:180px;max-width:100%;padding:6px 8px;border:1px solid #dce5ef;border-radius:6px}
-.unified-console .node-sequence{color:#8495aa;font-variant-numeric:tabular-nums}
+.unified-console .node-customer-note{display:flex;align-items:center;flex-wrap:wrap;gap:7px;color:#7b8ca2;font-size:10px;overflow-wrap:anywhere}
+.unified-console .node-customer-note button{display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;color:#8799ab;padding:0;font-size:12px;font-weight:400;line-height:1}
+.unified-console .node-customer-note button:hover{color:#1764bf}
+.unified-console .node-customer-note input{width:140px;max-width:calc(100% - 26px);height:28px;padding:0 8px;border:1px solid #cfdce9;border-radius:6px;background:#fff;color:#334e68;font-size:10px;outline:0}
+.unified-console .node-customer-note input:focus{border-color:#79acec;box-shadow:0 0 0 2px #e8f2ff}
+.unified-console .node-sequence{display:inline-grid;place-items:center;flex:0 0 auto;width:27px;height:27px;border-radius:8px;background:#e9f2ff;color:#1764bf;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
 .unified-console .managed-node-table .orow:not(.head){grid-template-columns:minmax(180px,.9fr) minmax(150px,.8fr) minmax(240px,1.5fr) minmax(130px,.7fr)!important;grid-template-areas:"product info traffic expiry" "renew status actions actions"!important;column-gap:24px!important;row-gap:16px!important;align-items:center!important;min-height:142px!important;padding:22px!important}
 .unified-console .managed-node-table .node-product-cell{min-width:0!important}
-.unified-console .managed-node-table .node-product-cell>b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.unified-console .managed-node-table .node-customer-note{margin-top:8px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.unified-console .managed-node-table .node-product-cell>b{display:flex;align-items:center;gap:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px!important}
+.unified-console .managed-node-table .node-customer-note{display:flex!important;width:100%;max-width:100%;margin:0!important;padding:0;background:transparent;color:#657a90!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.unified-console .managed-node-table .node-customer-note:has(input){display:grid!important;grid-template-columns:minmax(0,1fr) 22px;align-items:center;gap:6px;overflow:visible}
+.unified-console .managed-node-table .node-customer-note:has(input) input{width:100%;max-width:none}
+.unified-console .managed-node-table .node-product-cell>small{display:none!important}
 .unified-console .managed-node-table .node-info-cell,.unified-console .managed-node-table .node-traffic-card,.unified-console .managed-node-table .node-expiry-column{min-width:0!important}
 .unified-console .managed-node-table .node-service-actions{display:grid!important;grid-template-columns:repeat(4,64px)!important;align-items:center!important;justify-content:flex-end!important;justify-self:end!important;grid-column:3/5!important;grid-row:2!important;width:277px!important;min-width:277px!important;gap:7px!important;white-space:nowrap!important;border-top:1px solid #edf1f5!important;padding:12px 0 0!important}
 .unified-console .managed-node-table .node-service-actions button,.unified-console .managed-node-table .node-service-actions a{width:auto!important;min-width:64px!important;flex:0 0 auto!important}

@@ -1,9 +1,20 @@
 {
-  "version": "v1.0.5",
+  "version": "v1.0.6",
   "publishedAt": "2026-09-08",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.5",
-  "releaseNotes": "YehaoProxy v1.0.5：完善节点备注、批量续费与充值退款。",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.6",
+  "releaseNotes": "YehaoProxy v1.0.6：优化节点服务卡片与备注交互，修复实时流量展示。",
   "releases": [
+    {
+      "version": "v1.0.6",
+      "publishedAt": "2026-09-08",
+      "title": "YehaoProxy v1.0.6 节点服务体验优化",
+      "notes": [
+        "重新设计客户节点服务卡片，突出序号、流量、到期和操作信息",
+        "隐藏节点卡片中的订单编号、周期数量及冗余订阅状态文字",
+        "修复隐藏订单编号后节点实时流量无法加载的问题",
+        "节点备注展示及编辑交互统一为代理 IP 同款样式"
+      ]
+    },
     {
       "version": "v1.0.5",
       "publishedAt": "2026-09-08",

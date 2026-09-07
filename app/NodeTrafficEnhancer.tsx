@@ -43,7 +43,7 @@ export default function NodeTrafficEnhancer() {
       table?.querySelectorAll<HTMLElement>(".orow:not(.head)").forEach(row => {
         if (row.dataset.trafficEnhanced) return;
         const text = row.querySelector(".node-product-cell small")?.textContent || "";
-        const orderId = text.match(/订单\s+([^\s·]+)/)?.[1];
+        const orderId = row.dataset.orderId || text.match(/订单\s+([^\s·]+)/)?.[1];
         const expiryCell = row.querySelector<HTMLElement>(".node-expiry-column");
         if (!orderId || !expiryCell) return;
         row.dataset.trafficEnhanced = "1";
