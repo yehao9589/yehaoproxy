@@ -11,7 +11,7 @@ export type AuditDisplayLog = {
 };
 
 const actions: Record<string, string> = {
-  "credit.risk_status.update":"信用风险状态自动更新","ticket.automation.close":"系统自动关闭超时工单","node.auto_renew.update":"修改节点自动续费",
+  "credit.risk_status.update":"信用风险状态自动更新","ticket.automation.close":"系统自动关闭超时工单","node.note.update":"修改节点备注","node.auto_renew.update":"修改节点自动续费",
   "auth.login.success":"登录成功","auth.login.failed":"登录失败","auth.logout":"退出登录",
   "email.sent":"邮件发送成功","email.failed":"邮件发送失败","email.settings.update":"修改邮件发送配置","scheduled.reminders.run":"服务提醒任务执行","scheduled.reminders.activity":"定时任务产生业务处理","scheduled.reminders.daily":"定时任务每日健康摘要","scheduled.reminders.failed":"定时任务执行失败","scheduled.reminders.manual_run":"管理员手动执行提醒任务","scheduled.runner_mode.update":"修改定时任务执行方式","scheduled.settings.update":"修改定时任务配置",
   "admin.create":"创建管理员","admin.profile.update":"修改管理员账户","admin.password.update":"修改管理员密码","admin.permissions.update":"修改管理员权限",

@@ -1,4 +1,5 @@
-import { and, desc, eq } from "drizzle-orm";
+import {systemOptions} from "../../../db/schema";
+import { and, desc, eq, like } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb, getRawDatabase } from "../../../db";
 import { couponRedemptions, coupons, currencies, orders, productOffers, proxyAllocations, serviceRequests } from "../../../db/schema";
@@ -84,6 +85,8 @@ export async function GET() {
   const user = await getCurrentCustomer();
   if (!user) return NextResponse.json({ error: "请先登录" }, { status: 401 });
   const db = getDb();
+  const customerNotes = await db.select().from(systemOptions).where(like(systemOptions.key,"node_customer_note:%"));
+  const noteMap = new Map(customerNotes.filter(x=>x.key.startsWith("node_customer_note:")).map(x=>[x.key.slice(19),x.value]));
   const [rows, requestRows, redemptionRows, couponRows] = await Promise.all([
     db.select().from(orders).where(eq(orders.customerEmail, user.email)).orderBy(desc(orders.createdAt)).limit(100),
     db.select().from(serviceRequests).where(eq(serviceRequests.customerId, user.id)).orderBy(desc(serviceRequests.createdAt)).limit(200),
@@ -136,6 +139,7 @@ export async function GET() {
     const nodeSource=renewalOf?orderById.get(renewalOf):null,nodeSubscriptionUrl=(nodeSource?.adminNote||adminNote)?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1]||null;
     return {
       ...order,
+      customerNote: noteMap.get(order.id)||"",
       couponCode:coupon?.code||null,
       discountAmount,
       originalAmount:Number((order.amount+discountAmount).toFixed(2)),

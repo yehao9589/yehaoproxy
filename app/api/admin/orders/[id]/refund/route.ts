@@ -24,26 +24,39 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!order || !["paid", "provisioning", "active"].includes(order.status)) return NextResponse.json({ error: "订单当前状态不可退款" }, { status: 409 });
     const [customer] = await db.select().from(customers).where(eq(customers.email, order.customerEmail)).limit(1);
     if (!customer) return NextResponse.json({ error: "客户不存在" }, { status: 404 });
+    if (order.product === "wallet-topup" && destination !== "original") return NextResponse.json({error:"充值账单只能原路退款，退款时将扣回已充值余额"},{status:409});
     const allocations = await db.select({ id: proxyAllocations.id }).from(proxyAllocations).where(eq(proxyAllocations.orderId, id));
     const allOrders = await db.select().from(orders).where(eq(orders.customerEmail, order.customerEmail));
     const children = order.product === "cart-bundle" ? allOrders.filter((item) => item.adminNote?.includes(`[BUNDLE_PARENT]${id}`)) : [];
 
     if(destination==="original"){
+      return withRequestLock(`wallet:${customer.id}`, async () => {
       if(order.paymentMethod!=="alipay")return NextResponse.json({error:"该订单不是支付宝付款，只能退至账户余额"},{status:409});
       const[transaction]=await db.select().from(paymentTransactions).where(and(eq(paymentTransactions.orderId,id),eq(paymentTransactions.status,"succeeded"))).limit(1);
       if(!transaction)return NextResponse.json({error:"未找到成功的支付宝交易，无法原路退款"},{status:409});
       const[gateway]=await db.select().from(paymentGateways).where(eq(paymentGateways.id,transaction.gatewayId)).limit(1);
       if(!gateway?.enabled)return NextResponse.json({error:"原支付渠道当前未启用"},{status:409});
+      const [wallet] = await db.select().from(wallets).where(eq(wallets.customerId,customer.id)).limit(1);
+      const isTopup = order.product === "wallet-topup";
+      if(isTopup && (!wallet || wallet.balance < transaction.amount)) return NextResponse.json({error:"客户可用余额不足以扣回本次充值，请先核对已消费金额"},{status:409});
+      if(isTopup && wallet.currency !== transaction.currency) return NextResponse.json({error:"充值交易与钱包币种不一致，请先核对资金记录"},{status:409});
+      const refundTxId = isTopup ? await nextBusinessId("TX") : null;
       const result=await createAlipayRefund(await readAlipayConfig(gateway),{orderId:id,amount:transaction.amount,reason,requestId:`RF-${id}`});
       const now=new Date();type BatchQuery=Parameters<typeof db.batch>[0][number];const writes:BatchQuery[]=[
         db.update(paymentTransactions).set({status:"refunded",updatedAt:now}).where(eq(paymentTransactions.id,transaction.id)),
         db.update(proxyAllocations).set({status:"revoked",autoRenew:false}).where(eq(proxyAllocations.orderId,id)),
         db.update(orders).set({status:"refunded",autoRenew:false,updatedAt:now}).where(eq(orders.id,id)),
       ];
+      if(isTopup && refundTxId){
+        const balanceAfter=Number((wallet.balance-transaction.amount).toFixed(2));
+        writes.push(db.update(wallets).set({balance:balanceAfter,updatedAt:now}).where(eq(wallets.customerId,customer.id)));
+        writes.push(db.insert(walletTransactions).values({id:refundTxId,customerId:customer.id,type:"refund",amount:-transaction.amount,balanceAfter,referenceType:"order",referenceId:id,note:`充值原路退款扣回：${reason}`,operatorId:admin.id,createdAt:now}));
+      }
       for(const child of children){writes.push(db.update(proxyAllocations).set({status:"revoked",autoRenew:false}).where(eq(proxyAllocations.orderId,child.id)));writes.push(db.update(orders).set({status:"refunded",autoRenew:false,updatedAt:now}).where(eq(orders.id,child.id)))}
       await db.batch(writes as [BatchQuery,...BatchQuery[]]);
       await audit({id:admin.id,role:admin.role},"order.refund","order",id,{amount:transaction.amount,currency:transaction.currency,reason,destination:"original",tradeNo:result.tradeNo,revokedAllocations:allocations.length,bundleItems:children.length},req);
       return NextResponse.json({ok:true,status:"refunded",amount:transaction.amount,currency:transaction.currency,destination:"original",tradeNo:result.tradeNo,revokedAllocations:allocations.length});
+      });
     }
 
     return withRequestLock(`wallet:${customer.id}`, async () => {

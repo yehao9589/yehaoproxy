@@ -116,10 +116,8 @@ export default function LiveDashboard({ name }: { name: string }) {
       <section className="console-body">
         <header className="console-top">
           <div className="dashboard-context">
-            <span className="dashboard-context-icon">⌁</span>
             <div>
-              <small>客户工作台</small>
-              <b>资产、订单与服务管理</b>
+              <b>客户中心</b>
             </div>
           </div>
           <div className="top-actions">

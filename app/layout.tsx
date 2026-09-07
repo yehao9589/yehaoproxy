@@ -65,6 +65,7 @@ import "./customer-record-redesign.css";
 import "./global-toast.css";
 import "./one-time-bill.css";
 import "./interaction-system.css";
+import "./customer-service-header.css";
 import "./admin-visual-system.css";
 import "./installer.css";
 import "./admin/product-offers.css";

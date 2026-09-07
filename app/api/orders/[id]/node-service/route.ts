@@ -28,6 +28,13 @@ export async function PATCH(
   if (!order || !nodeProducts.has(order.product)) {
     return NextResponse.json({ error: "节点服务不存在" }, { status: 404 });
   }
+  if (action === "note") {
+    if (typeof body.note !== "string" || body.note.length > 200) return NextResponse.json({error:"备注不能超过 200 个字符"},{status:400});
+    const note = body.note.trim(), key = "node_customer_note:" + id;
+    await db.insert(systemOptions).values({key,value:note,updatedAt:new Date()}).onConflictDoUpdate({target:systemOptions.key,set:{value:note,updatedAt:new Date()}});
+    await audit({id:user.id,role:user.role},"node.note.update","order",id,{note},req);
+    return NextResponse.json({ok:true,note});
+  }
   const billingCycle = billingCycleFromNote(order.adminNote);
   const expired = Boolean(order.expiresAt && order.expiresAt.getTime() <= Date.now());
   if (!["paid", "provisioning", "active"].includes(order.status)) {
