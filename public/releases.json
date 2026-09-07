@@ -1,9 +1,20 @@
 {
-  "version": "v1.0.6",
+  "version": "v1.0.7",
   "publishedAt": "2026-09-08",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.6",
-  "releaseNotes": "YehaoProxy v1.0.6：优化节点服务卡片与备注交互，修复实时流量展示。",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.7",
+  "releaseNotes": "YehaoProxy v1.0.7：修复发布质量门禁，并保持节点服务交互稳定。",
   "releases": [
+    {
+      "version": "v1.0.7",
+      "publishedAt": "2026-09-08",
+      "title": "YehaoProxy v1.0.7 发布流程修复",
+      "notes": [
+        "修复节点服务页面触发的 React 编译质量门禁错误",
+        "内部页面跳转统一使用客户端路由，避免修改只读导航状态",
+        "调整数据加载与派生状态声明顺序，确保生产构建规则通过",
+        "以完整 lint、类型检查、生产构建及回归测试验证发布"
+      ]
+    },
     {
       "version": "v1.0.6",
       "publishedAt": "2026-09-08",
