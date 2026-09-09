@@ -1,5 +1,6 @@
 "use client";
-import {useEffect,useState} from "react";
+import {useEffect,useState,useRef} from "react";
+import {useRouter,useSearchParams} from "next/navigation";
 import {countryName} from "../../../lib/countries";
 import OrderResources from "./OrderResources";
 import Pagination from "../../Pagination";
@@ -29,6 +30,8 @@ const statusLabel=(order:O)=>order.serviceRequestStatus==="rejected"?"售后已�
 const statusClass=(order:O)=>order.serviceRequestStatus==="rejected"?"rejected":order.serviceRequestStatus==="cancelled"?"failed":order.status;
 
 export default function OrderClient(){
+  const router=useRouter(),searchParams=useSearchParams(),requestedOrder=searchParams.get("order");
+  const loadSequence=useRef(0);
   const[allItems,setItems]=useState<O[]>([]);
   const[message,setMessage]=useState("");
   const[paidOrder,setPaidOrder]=useState<O|null>(null);
@@ -48,15 +51,17 @@ export default function OrderClient(){
   const orderStats={total:allItems.length,pending:allItems.filter(item=>item.status==="pending").length,opening:allItems.filter(item=>["paid","provisioning"].includes(item.status)).length,active:allItems.filter(item=>item.status==="active").length};
   useEffect(()=>setPage(1),[pageSize]);
   async function load(force=false){
+    const sequence=++loadSequence.current;
     setMessage("");
     const ordersTask=dashboardJson<any>("/api/orders",{force});
     const ordersResult=await ordersTask;
+    if(sequence!==loadSequence.current)return;
     if(!ordersResult.ok)return setMessage(ordersResult.data.error||"订单加载失败");
     setItems(ordersResult.data.items||[]);
-    const requested=new URLSearchParams(location.search).get("order");
-    if(requested)setDetail((ordersResult.data.items||[]).find((item:O)=>item.id===requested)||null);
+    const params=new URLSearchParams(location.search),requested=params.get("order");
+    if(requested){const order=(ordersResult.data.items||[]).find((item:O)=>item.id===requested);if(order&&params.get("pay")==="1"&&order.status==="pending"){setDetail(null);openCheckout(order);const url=new URL(location.href);url.searchParams.delete("pay");router.replace(`${url.pathname}${url.search}`)}else setDetail(order||null);}
   }
-  useEffect(()=>{void load()},[]);
+  useEffect(()=>{void load(true).catch(()=>setMessage("订单加载失败，请重试"));return()=>{++loadSequence.current}},[requestedOrder]);
   useEffect(()=>{void fetch("/api/wallet",{cache:"no-store"}).then(response=>response.json()).then(data=>{if(data.wallet)setWalletInfo({balance:Number(data.wallet.balance||0),creditLimit:Number(data.wallet.creditLimit||0),availableCredit:Number(data.wallet.availableCredit||0),currency:String(data.wallet.currency||"CNY"),symbol:String(data.wallet.currencySymbol||"¥")})}).catch(()=>undefined)},[]);
   useEffect(()=>{[...document.querySelectorAll<HTMLElement>(".order-customer-table small")].filter(item=>item.textContent?.trim().startsWith("到期")).forEach(item=>item.setAttribute("hidden",""));const expiry=[...document.querySelectorAll<HTMLElement>(".customer-order-detail dt")].find(item=>item.textContent?.trim()==="到期时间");expiry?.parentElement?.setAttribute("hidden","")},[detail,items]);
   useEffect(()=>{const rows=[...document.querySelectorAll<HTMLElement>(".order-customer-table .orow:not(.head)")];rows.forEach((row,index)=>{const order=items[index],cell=row.children[1] as HTMLElement|undefined;if(!order||!cell)return;const grouped=new Map<string,number>();(order.bundleItems?.length?order.bundleItems:[order]).forEach(item=>grouped.set(item.product,(grouped.get(item.product)||0)+item.quantity));const title=[...grouped].map(([product,quantity])=>`${productNames[product]||product} × ${quantity}`).join("、");cell.replaceChildren();const label=document.createElement("b");label.textContent=title;cell.append(label);if(order.renewalOf){const source=document.createElement("small");source.textContent=`续费原服务 ${order.renewalOf}`;cell.append(source)}})},[items]);

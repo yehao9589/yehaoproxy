@@ -6,6 +6,40 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(resolve(root, path), "utf8");
 
+test("dashboard navigation uses URL state and refreshes orders on entry", async () => {
+  const services=await read("app/dashboard/proxies/ProxiesClient.tsx");
+  assert.equal((services.match(/invalidateDashboardData\(\);router.push\(`\/dashboard\?tab=orders&order=/g)||[]).length,4);
+  const orders=await read("app/dashboard/orders/OrderClient.tsx");
+  assert.match(orders,/load\(true\)/);
+  assert.match(orders,/sequence!==loadSequence.current/);
+  assert.match(orders,/params.get\("pay"\)==="1"&&order.status==="pending"/);
+  assert.match(orders,/openCheckout\(order\)/);
+  const dashboard=await read("app/dashboard/LiveDashboard.tsx");
+  assert.match(dashboard,/params.get\("tab"\)/);
+  assert.doesNotMatch(dashboard,/setVisited|setTab\(id\)/);
+  assert.doesNotMatch(await read("app/dashboard/DashboardTabSync.tsx"),/MutationObserver|pushState|popstate|buttons\[index\]/);
+});
+
+test("traffic reset resolves both binding providers and preserves Komari history",async()=>{
+ const route=await read("app/api/admin/service-requests/[id]/route.ts");
+ assert.match(route,/resetOrderVpsTraffic\(request.allocationId,id\)/);
+ assert.doesNotMatch(route,/getXPanelBinding/);
+ const traffic=await read("lib/vps-traffic.ts");
+ assert.match(traffic,/orderVpsTargets\(orderId\)/);
+ assert.match(traffic,/target.provider==="komari"/);
+ const komari=await read("lib/komari.ts");
+ assert.match(komari,/state.resetRequests\?\.\[requestId\]/);
+ assert.match(komari,/baselineUp:meter.up,baselineDown:meter.down,adjustment:0/);
+});
+
+test("node add-on status uses the row order id after order numbers are hidden",async()=>{
+ const enhancer=await read("app/AddonServiceStatusEnhancer.tsx");
+ assert.match(enhancer,/const orderId = row.dataset.orderId/);
+ assert.doesNotMatch(enhancer,/text.match\(\/订单/);
+ assert.match(enhancer,/等待流量重置中/);
+ assert.match(enhancer,/setInterval\(\(\) => void sync\(\), 15000\)/);
+});
+
 async function filesUnder(path) {
   const entries = await readdir(resolve(root, path), { withFileTypes: true });
   const output = [];
@@ -161,7 +195,7 @@ test("production deployment has health checks, backups, and rollback safety", as
   assert.match(health, /encryptionConfigured/);
 });
 
-test("v1.0.7 release metadata and workflow are pinned behind a quality gate", async () => {
+test("v1.0.8 release metadata and workflow are pinned behind a quality gate", async () => {
   const [pkg, compose, manifest, workflow, updateCenter] = await Promise.all([
     read("package.json"),
     read("docker-compose.single.yml"),
@@ -169,11 +203,11 @@ test("v1.0.7 release metadata and workflow are pinned behind a quality gate", as
     read(".github/workflows/publish-images.yml"),
     read("lib/update-center.ts"),
   ]);
-  assert.match(pkg, /"version": "1\.0\.7"/);
+  assert.match(pkg, /"version": "1\.0\.8"/);
   assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
   assert.match(compose, /yehaoproxy:stable/);
   assert.match(compose, /UPDATE_CHANNEL: stable/);
-  assert.match(manifest, /"version": "v1\.0\.7"/);
+  assert.match(manifest, /"version": "v1\.0\.8"/);
   assert.match(workflow, /quality:/);
   assert.match(workflow, /needs: quality/);
   assert.match(workflow, /type=raw,value=stable/);

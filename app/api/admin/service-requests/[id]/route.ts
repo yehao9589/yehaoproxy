@@ -4,7 +4,7 @@ import { getDb } from "../../../../../db";
 import { customers, orders, proxyAllocations, serviceRequests, wallets, walletTransactions } from "../../../../../db/schema";
 import { requireAdminApi } from "../../../../../lib/admin-auth";
 import { audit } from "../../../../../lib/audit";
-import { fetchXPanelTraffic, getXPanelBinding, resetXPanelCycle } from "../../../../../lib/xpanel";
+import { resetOrderVpsTraffic } from "../../../../../lib/vps-traffic";
 import { encryptCredential } from "../../../../../lib/inventory-crypto";
 import { normalizeCityName } from "../../../../../lib/cities";
 import {nextBusinessId} from "../../../../../lib/business-id";
@@ -93,18 +93,11 @@ export async function PATCH(
   }
 
   if (request.type === "reset_traffic") {
-    const binding = await getXPanelBinding(request.allocationId);
-    if (!binding) {
-      await audit(admin,"service.traffic_reset.failed","order",request.allocationId,{requestId:id,resetOrderId:linkedBillId,error:"节点服务尚未绑定 VPS"},req);
-      return NextResponse.json({ error: "该节点服务尚未绑定 VPS，无法执行流量重置" }, { status: 409 });
-    }
     try {
-      await fetchXPanelTraffic(binding);
-      await resetXPanelCycle(binding.serverId);
-      await fetchXPanelTraffic(binding);
+      await resetOrderVpsTraffic(request.allocationId,id);
     } catch (error) {
       const errorMessage=error instanceof Error?error.message:"未知错误";
-      await audit(admin,"service.traffic_reset.failed","order",request.allocationId,{requestId:id,resetOrderId:linkedBillId,serverId:binding.serverId,error:errorMessage},req);
+      await audit(admin,"service.traffic_reset.failed","order",request.allocationId,{requestId:id,resetOrderId:linkedBillId,error:errorMessage},req);
       return NextResponse.json({
         error: `流量重置失败：${errorMessage}`,
       }, { status: 409 });

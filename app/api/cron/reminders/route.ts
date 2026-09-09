@@ -3,6 +3,7 @@ import{NextResponse}from"next/server";
 import{runScheduledReminders}from"../../../../lib/scheduled-reminders";
 import{systemAudit}from"../../../../lib/audit";
 import{syncDueXPanelServers}from"../../../../lib/xpanel";
+import{syncKomari}from"../../../../lib/komari";
 import{setSystemOption}from"../../../../lib/db-upsert";
 import{getDb}from"../../../../db";
 import{systemOptions}from"../../../../db/schema";
@@ -20,7 +21,8 @@ export async function POST(req:Request){
   const now=new Date();
   try{
     const[reminders,vpsSync,creditRisk]=await Promise.all([runScheduledReminders(new URL(req.url).origin),syncDueXPanelServers(),runCreditRiskChecks()]);
-    const result={...reminders,vpsSync,creditRisk,source};
+    const komariSync=await syncKomari().catch(()=>({synced:0,error:"Komari 同步失败，请在 VPS 运营中心检查连接"}));
+    const result={...reminders,vpsSync,creditRisk,komariSync,source};
     await setSystemOption("scheduled_reminder_runner",JSON.stringify({source,ranAt:now.toISOString(),selectedMode}),now);
     const ticket=reminders.ticketAutomation;
     const hasActivity=reminders.created>0||reminders.emailed>0||reminders.emailFailed>0||ticket.reminded>0||ticket.closed>0||ticket.emailed>0||ticket.emailFailed>0||vpsSync.failed>0||creditRisk.notificationsCreated>0;

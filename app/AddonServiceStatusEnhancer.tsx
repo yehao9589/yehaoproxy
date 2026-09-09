@@ -25,6 +25,16 @@ const statusNames: Record<RequestItem["status"], string> = {
   cancelled: "已取消",
 };
 
+function badgeText(item:RequestItem){
+  if(item.type==="reset_traffic"){
+    if(item.status==="pending")return "等待流量重置中";
+    if(item.status==="approved")return "正在重置流量";
+    if(item.status==="rejected")return "流量重置已拒绝";
+    if(item.status==="cancelled")return "流量重置已取消";
+  }
+  return `${typeNames[item.type]} · ${statusNames[item.status]}`;
+}
+
 export default function AddonServiceStatusEnhancer() {
   useEffect(() => {
     let stopped = false;
@@ -60,8 +70,7 @@ export default function AddonServiceStatusEnhancer() {
       });
 
       document.querySelectorAll<HTMLElement>(".managed-node-table .orow:not(.head)").forEach(row => {
-        const text = row.querySelector(".node-product-cell small")?.textContent || "";
-        const orderId = text.match(/订单\s+([^\s·]+)/)?.[1];
+        const orderId = row.dataset.orderId;
         const request = orderId ? latest.get(orderId) : undefined;
         const statusCell = row.querySelector<HTMLElement>(".node-service-actions")?.previousElementSibling as HTMLElement | undefined;
         if (request && request.status !== "completed" && statusCell) statusCell.appendChild(createBadge(request));
@@ -71,7 +80,7 @@ export default function AddonServiceStatusEnhancer() {
     function createBadge(item: RequestItem) {
       const badge = document.createElement("small");
       badge.className = `addon-service-state ${item.status}`;
-      badge.textContent = `${typeNames[item.type]} · ${statusNames[item.status]}`;
+      badge.textContent = badgeText(item);
       badge.title = `售后单 ${item.id}`;
       return badge;
     }

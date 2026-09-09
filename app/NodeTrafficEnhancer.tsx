@@ -27,7 +27,10 @@ export default function NodeTrafficEnhancer() {
       const limited = traffic.total > 0;
       const percent = limited ? Math.min(100, traffic.used / traffic.total * 100) : 0;
       host.className = "node-traffic-card";
-      host.innerHTML = `<div><span>VPS 实时总流量</span><button type="button">刷新</button></div><b>${gb(traffic.used)} GB <small>${limited ? `/ ${gb(traffic.total)} GB` : "/ 不限量"}</small></b>${limited ? `<i><em style="width:${percent}%"></em></i><p>剩余 ${gb(traffic.remaining)} GB · 已用 ${percent.toFixed(1)}%</p>` : ""}`;
+      const size=(n:number)=>traffic.source==="komari"?(Number(n||0)/1e9).toFixed(2):gb(n);
+      const unit=traffic.source==="komari"?"GB":"GiB";
+      host.innerHTML = `<div><span>${traffic.source==="komari"?"VPS 本期流量":"代理入站流量"}</span><button type="button">刷新</button></div><b>${size(traffic.used)} ${unit} <small>${limited ? `/ ${size(traffic.total)} ${unit}` : "/ 不限量"}</small></b>${limited ? `<i><em style="width:${percent}%"></em></i><p>剩余 ${size(traffic.remaining)} ${unit} · 已用 ${percent.toFixed(1)}%</p>` : ""}`;
+      if(traffic.source==="komari"){const status=document.createElement("p");status.textContent=`${traffic.refreshFailed?"刷新暂未成功，显示上次记录":traffic.stale?"探针数据暂未更新":traffic.online?"在线":"离线"} · ${traffic.syncedAt?`更新于 ${new Date(traffic.syncedAt).toLocaleString("zh-CN")}`:"暂无采样"}`;host.appendChild(status);}
       host.querySelector("button")?.addEventListener("click", () => void load(host, orderId, true), { once: true });
     }
 

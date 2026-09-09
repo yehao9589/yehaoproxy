@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import KomariSettings from "./KomariSettings";
 import "./vps-management.css";
 import "./vps-inbounds.css";
 import "./vps-editor-modal.css";
@@ -44,6 +45,7 @@ const size = (n = 0) =>
 const time = (v?: string) =>
   v ? new Date(v).toLocaleString("zh-CN", { hour12: false }) : "尚未同步";
 export default function XPanelSettings() {
+  const [monitorTab,setMonitorTab]=useState<"komari"|"xpanel">("komari");
   const [servers, setServers] = useState<Server[]>([]),
     [editing, setEditing] = useState<Server | null | undefined>(undefined),
     [calibrating, setCalibrating] = useState<Server | null>(null),
@@ -110,6 +112,31 @@ export default function XPanelSettings() {
   }
   return (
     <div className="vps-page business-page">
+      <section className="vps-toolbar business-hero">
+        <div>
+          <small>INFRASTRUCTURE OPERATIONS</small>
+          <h2>VPS 运营中心</h2>
+          <p>统一管理服务器监控、代理面板与流量使用情况。</p>
+        </div>
+        <div>
+          {monitorTab==="xpanel"?<>
+          <button
+            disabled={!!busy || !servers.length}
+            onClick={() =>
+              void post({ action: "sync-all" }, "全部 VPS 同步完成")
+            }
+          >
+            ↻ 同步全部
+          </button>
+          <button className="primary" onClick={() => setEditing(null)}>
+            ＋ 添加 VPS
+          </button>
+          </>:<button className="primary" onClick={()=>window.dispatchEvent(new Event("komari:sync"))}>↻ 同步节点</button>}
+        </div>
+      </section>
+      <div className="vps-monitor-tabs" role="tablist" aria-label="VPS 管理分区"><button role="tab" aria-selected={monitorTab==="komari"} onClick={()=>setMonitorTab("komari")}>服务器监控 <small>Komari</small></button><button role="tab" aria-selected={monitorTab==="xpanel"} onClick={()=>setMonitorTab("xpanel")}>代理面板 <small>X-Panel</small></button></div>
+      <div hidden={monitorTab!=="komari"}><KomariSettings/></div>
+      <div hidden={monitorTab!=="xpanel"}>
       {message && (
         <div
           className="vps-toast"
@@ -124,26 +151,6 @@ export default function XPanelSettings() {
           <button onClick={() => setError("")}>×</button>
         </div>
       )}
-      <section className="vps-toolbar business-hero">
-        <div>
-          <small>INFRASTRUCTURE OPERATIONS</small>
-          <h2>VPS 运营中心</h2>
-          <p>统一管理 X-Panel 服务器、入站节点、同步周期与流量统计，快速掌握全部节点运行状态。</p>
-        </div>
-        <div>
-          <button
-            disabled={!!busy || !servers.length}
-            onClick={() =>
-              void post({ action: "sync-all" }, "全部 VPS 同步完成")
-            }
-          >
-            ↻ 同步全部
-          </button>
-          <button className="primary" onClick={() => setEditing(null)}>
-            ＋ 添加 VPS
-          </button>
-        </div>
-      </section>
       <div className="vps-summary business-metrics">
         <article><i>机</i><span>
           <small>服务器</small>
@@ -416,6 +423,7 @@ export default function XPanelSettings() {
           </form>
         </div>
       )}
+      </div>
     </div>
   );
 }

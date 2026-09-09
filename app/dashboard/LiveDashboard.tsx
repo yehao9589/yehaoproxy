@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import {useRouter,useSearchParams} from "next/navigation";
 import "../console.css";
 import ProxiesClient from "./proxies/ProxiesClient";
 import OrderClient from "./orders/OrderClient";
@@ -39,9 +40,10 @@ type Order = {
   status: string;
 };
 export default function LiveDashboard({ name }: { name: string }) {
-  const [tab, setTab] = useState<Tab>("overview"),
-    [visited, setVisited] = useState<Set<Tab>>(() => new Set(["overview"])),
-    [loading, setLoading] = useState(true),
+  const router=useRouter(),params=useSearchParams();
+  const requested=params.get("tab")||"overview";
+  const tab:Tab=(["overview","proxies","orders","requests","wallet","credit-bills","whitelist","support","notifications"] as string[]).includes(requested)?requested as Tab:"overview";
+  const [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [wallet, setWallet] = useState({
       balance: 0,
@@ -84,10 +86,7 @@ export default function LiveDashboard({ name }: { name: string }) {
     void load();
   }, []);
   function choose(id: Tab) {
-    setVisited((current) =>
-      current.has(id) ? current : new Set([...current, id]),
-    );
-    setTab(id);
+    router.push(id==="overview"?"/dashboard":`/dashboard?tab=${id}`);
   }
   const nav = (id: Tab, label: string, icon: string) => (
     <button className={tab === id ? "on" : ""} onClick={() => choose(id)}>
@@ -139,13 +138,11 @@ export default function LiveDashboard({ name }: { name: string }) {
           </div>
         </header>
         <div className="console-content">
-          {[...visited].map((item) => (
             <section
               className="dashboard-tab-panel"
-              hidden={item !== tab}
-              key={item}
+              key={tab}
             >
-              {item === "overview" ? (
+              {tab === "overview" ? (
                 <Overview
                   loading={loading}
                   error={error}
@@ -157,10 +154,9 @@ export default function LiveDashboard({ name }: { name: string }) {
                   setTab={choose}
                 />
               ) : (
-                <Module tab={item} />
+                <Module tab={tab} />
               )}
             </section>
-          ))}
         </div>
       </section>
     </main>

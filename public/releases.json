@@ -1,9 +1,22 @@
 {
-  "version": "v1.0.7",
-  "publishedAt": "2026-09-08",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.7",
-  "releaseNotes": "YehaoProxy v1.0.7：修复发布质量门禁，并保持节点服务交互稳定。",
+  "version": "v1.0.8",
+  "publishedAt": "2026-09-10",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.8",
+  "releaseNotes": "YehaoProxy v1.0.8：接入 Komari VPS 监控，统一 VPS 绑定、流量统计及节点售后流程。",
   "releases": [
+    {
+      "version": "v1.0.8",
+      "publishedAt": "2026-09-10",
+      "title": "YehaoProxy v1.0.8 VPS 监控与节点服务更新",
+      "notes": [
+        "新增 Komari 1.4.3 服务器同步、分组搜索、状态监控和持久化流量账本",
+        "订单统一支持 Komari 或 X-Panel 二选一绑定，更换 VPS 时明确确认并防止重复占用",
+        "客户可查看并手动刷新 VPS 流量，探针重启或计数清零不会丢失本站累计记录",
+        "节点流量重置同时支持 Komari 与 X-Panel，并增加等待重置、处理中等售后状态",
+        "修复节点续费、流量重置、付费更换及批量续费下单后的订单跳转和缓存更新",
+        "客户面板路由改由 URL 状态统一驱动，进入订单管理时自动读取最新订单"
+      ]
+    },
     {
       "version": "v1.0.7",
       "publishedAt": "2026-09-08",

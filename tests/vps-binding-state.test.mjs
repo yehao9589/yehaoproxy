@@ -1,0 +1,11 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {replaceOrderBinding,BindingSwitchRequired} from "../lib/vps-binding-state.ts";
+const target=(provider,id)=>({provider,serverId:id,name:id,updatedAt:"2026-09-10T00:00:00Z"});
+const fresh=()=>({orders:{},komari:{}});
+test("首次绑定与同一绑定重复保存",()=>{const s=fresh(),a=target("komari","a");replaceOrderBinding(s,"order",a);replaceOrderBinding(s,"order",a);assert.deepEqual(s.orders.order,[a]);});
+for(const [from,to] of [["komari","xpanel"],["xpanel","komari"],["komari","komari"],["xpanel","xpanel"]])test(`${from} -> ${to} 必须确认且仅保留新绑定`,()=>{const s=fresh(),a=target(from,"a"),b=target(to,"b");s.orders.order=[a];assert.throws(()=>replaceOrderBinding(s,"order",b),BindingSwitchRequired);assert.deepEqual(s.orders.order,[a]);replaceOrderBinding(s,"order",b,JSON.stringify([a]));assert.deepEqual(s.orders.order,[b]);});
+test("旧版双绑定需要确认并合并为一个",()=>{const s=fresh(),a=target("komari","a"),b=target("xpanel","b");s.orders.order=[a,b];assert.throws(()=>replaceOrderBinding(s,"order",a),BindingSwitchRequired);replaceOrderBinding(s,"order",a,JSON.stringify([a,b]));assert.deepEqual(s.orders.order,[a]);});
+test("不能抢占其他订单 VPS",()=>{const s=fresh(),a=target("komari","a");s.orders.other=[a];assert.throws(()=>replaceOrderBinding(s,"order",a),/其他订单/);assert.equal(s.orders.order,undefined);});
+test("过期确认不能覆盖后续切换或解除",()=>{const s=fresh(),a=target("komari","a"),b=target("xpanel","b"),c=target("komari","c");s.orders.order=[b];assert.throws(()=>replaceOrderBinding(s,"order",c,JSON.stringify([a])),BindingSwitchRequired);assert.deepEqual(s.orders.order,[b]);s.orders.order=[];assert.throws(()=>replaceOrderBinding(s,"order",c,JSON.stringify([a])),BindingSwitchRequired);});
+test("解除绑定需要确认，历史配置保持",()=>{const s=fresh(),a=target("komari","a");s.orders.order=[a];s.komari.a={total:100,baselineUp:9};assert.throws(()=>replaceOrderBinding(s,"order",null),BindingSwitchRequired);replaceOrderBinding(s,"order",null,JSON.stringify([a]));assert.deepEqual(s.orders.order,[]);assert.equal(s.komari.a.baselineUp,9);});

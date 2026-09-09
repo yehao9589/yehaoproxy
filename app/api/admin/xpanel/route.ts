@@ -1,6 +1,7 @@
 import {NextResponse} from "next/server";
 import {requireAdminApi} from "../../../../lib/admin-auth";
 import {audit} from "../../../../lib/audit";
+import {BindingSwitchRequired} from "../../../../lib/vps-bindings";
 import {calibrateXPanelTraffic,deleteXPanelServer,fetchXPanelTraffic,getCachedXPanelTraffic,getXPanelBinding,getXPanelServers,resetXPanelCycle,saveXPanelBinding,saveXPanelServer,syncXPanelServer} from "../../../../lib/xpanel";
 
 function publicServers(rows:Awaited<ReturnType<typeof getXPanelServers>>){return rows.map(({encryptedPassword,...x})=>({...x,totalGb:x.totalBytes/1073741824,passwordConfigured:Boolean(encryptedPassword)}))}
@@ -16,8 +17,8 @@ export async function POST(req:Request){
   if(action==="sync-all"){const rows=(await getXPanelServers()).filter(x=>x.enabled),results=[];for(const x of rows)try{results.push({id:x.id,ok:true,metrics:await syncXPanelServer(x.id)})}catch(e){results.push({id:x.id,ok:false,error:e instanceof Error?e.message:"同步失败"})}await audit(admin,"xpanel.sync_all","vps",null,{count:rows.length,succeeded:results.filter(x=>x.ok).length,failed:results.filter(x=>!x.ok).length},req);return NextResponse.json({ok:results.some(x=>x.ok),results})}
   if(action==="reset-cycle"){const serverId=String(b.serverId||"");await resetXPanelCycle(serverId);await audit(admin,"xpanel.cycle.reset","vps",serverId,{},req);return NextResponse.json({ok:true})}
   if(action==="calibrate"){const serverId=String(b.serverId||""),targetGb=Number(b.targetGb);if(!Number.isFinite(targetGb)||targetGb<0)return NextResponse.json({error:"请输入有效的已用流量"},{status:400});const metrics=await calibrateXPanelTraffic(serverId,targetGb);await audit(admin,"xpanel.traffic.calibrate","vps",serverId,{targetGb},req);return NextResponse.json({ok:true,metrics})}
-  if(action==="bind"){const orderId=String(b.orderId),serverId=String(b.serverId),binding=await saveXPanelBinding({orderId,serverId,updatedAt:new Date().toISOString()}),metrics=await syncXPanelServer(binding.serverId);await audit(admin,"xpanel.order.bind","order",orderId,{serverId},req);return NextResponse.json({ok:true,binding,metrics})}
+  if(action==="bind"){const orderId=String(b.orderId),serverId=String(b.serverId),binding=await saveXPanelBinding({orderId,serverId,updatedAt:new Date().toISOString()},b.confirmation);await audit(admin,"xpanel.order.bind","order",orderId,{serverId},req);return NextResponse.json({ok:true,binding})}
   if(action==="sync"){const binding=await getXPanelBinding(String(b.orderId||""));if(!binding)return NextResponse.json({error:"该订单尚未绑定 VPS"},{status:404});return NextResponse.json({ok:true,traffic:await fetchXPanelTraffic(binding)})}
   return NextResponse.json({error:"不支持的操作"},{status:400})
- }catch(e){return NextResponse.json({error:e instanceof Error?e.message:"X-Panel 操作失败"},{status:400})}
+ }catch(e){return NextResponse.json({error:e instanceof Error?e.message:"X-Panel 操作失败",...(e instanceof BindingSwitchRequired?{confirmation:e.confirmation}:{})},{status:e instanceof BindingSwitchRequired?409:400})}
 }
