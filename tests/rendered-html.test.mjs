@@ -204,7 +204,7 @@ test("production deployment has health checks, backups, and rollback safety", as
   assert.match(health, /encryptionConfigured/);
 });
 
-test("v1.0.10 release metadata and workflow are pinned behind a quality gate", async () => {
+test("v1.0.11 release metadata and workflow are pinned behind a quality gate", async () => {
   const [pkg, compose, manifest, workflow, updateCenter] = await Promise.all([
     read("package.json"),
     read("docker-compose.single.yml"),
@@ -212,11 +212,11 @@ test("v1.0.10 release metadata and workflow are pinned behind a quality gate", a
     read(".github/workflows/publish-images.yml"),
     read("lib/update-center.ts"),
   ]);
-  assert.match(pkg, /"version": "1\.0\.10"/);
+  assert.match(pkg, /"version": "1\.0\.11"/);
   assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
   assert.match(compose, /yehaoproxy:stable/);
   assert.match(compose, /UPDATE_CHANNEL: stable/);
-  assert.match(manifest, /"version": "v1\.0\.10"/);
+  assert.match(manifest, /"version": "v1\.0\.11"/);
   assert.match(workflow, /quality:/);
   assert.match(workflow, /needs: quality/);
   assert.match(workflow, /type=raw,value=stable/);
@@ -425,8 +425,28 @@ test("customer proxy list supports search and highlights saved notes", async () 
   assert.match(client, /aria-label="搜索代理"/);
   assert.match(client, /item\.host,item\.port,item\.username,item\.wifiName/);
   assert.match(client, /item\.protocol,item\.note/);
-  assert.match(client, /classList\.toggle\("has-note",Boolean\(item\?\.note\?\.trim\(\)\)\)/);
+  assert.match(client, /classList\.toggle\("has-note",Boolean\(note\)\)/);
+  assert.match(client, /text\.setAttribute\("title",note\)/);
   assert.match(styles, /\.proxy-note-cell\.has-note>span/);
   assert.match(styles, /\.proxy-region-cell b\{font-weight:400!important\}/);
   assert.match(styles, /background:transparent;color:#475569;font-weight:700/);
+});
+
+test("passwordless admin-created customers must verify email before first access", async () => {
+  const [createApi, createUi, loginApi, loginUi, resetApi, setupUi] = await Promise.all([
+    read("app/api/admin/customers/route.ts"),
+    read("app/admin/customers/CustomerCreateTool.tsx"),
+    read("app/api/auth/login/route.ts"),
+    read("app/login/page.tsx"),
+    read("app/api/auth/reset-password/route.ts"),
+    read("app/forgot-password/page.tsx"),
+  ]);
+  assert.match(createApi, /password \? await hashPassword\(password\) : null/);
+  assert.match(createUi, /初始密码（选填）/);
+  assert.doesNotMatch(createUi, /minLength=\{8\} required/);
+  assert.match(loginApi, /passwordSetupRequired: true/);
+  assert.match(loginApi, /!customer\.passwordHash[\s\S]*return NextResponse\.json\(\{ error:[\s\S]*passwordSetupRequired: true/);
+  assert.match(loginUi, /forgot-password\?setup=1/);
+  assert.match(resetApi, /passwordHash, emailVerified:true/);
+  assert.match(setupUi, /首次登录设置密码/);
 });

@@ -9,6 +9,7 @@ export default function Login(){
     e.preventDefault();setLoading(true);setError("");
     try{
       const r=await fetch("/api/auth/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email:account,password})}),d=await r.json();
+      if(d.passwordSetupRequired){location.href=`/forgot-password?setup=1&email=${encodeURIComponent(d.email||account)}`;return}
       if(!r.ok)throw new Error(d.error||"登录失败");
       const requested=new URLSearchParams(location.search).get("next")||"",safe=requested.startsWith("/")&&!requested.startsWith("//")?requested:"";
       location.href=d.role==="admin"?(safe.startsWith("/admin")?safe:"/admin"):(safe.startsWith("/dashboard")||safe.startsWith("/buy")?safe:"/dashboard");

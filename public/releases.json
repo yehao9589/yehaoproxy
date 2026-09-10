@@ -1,9 +1,21 @@
 {
-  "version": "v1.0.10",
+  "version": "v1.0.11",
   "publishedAt": "2026-09-10",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.10",
-  "releaseNotes": "YehaoProxy v1.0.10：客户代理列表新增即时搜索，并优化备注与表格布局。",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.11",
+  "releaseNotes": "YehaoProxy v1.0.11：新增迁移客户首次登录设密流程，并完善代理备注查看体验。",
   "releases": [
+    {
+      "version": "v1.0.11",
+      "publishedAt": "2026-09-11",
+      "title": "YehaoProxy v1.0.11 客户首次登录设密",
+      "notes": [
+        "后台手动新增客户时允许不设置初始密码，便于迁移旧系统用户",
+        "无密码客户使用账户和任意非空密码提交登录后，自动进入首次登录验证流程",
+        "首次登录必须通过账户邮箱验证码设置正式密码，完成前不会创建登录会话",
+        "已有密码账户继续沿用原密码验证流程，停用账户不会进入首次设置流程",
+        "代理备注超出显示区域时支持鼠标悬浮查看完整内容"
+      ]
+    },
     {
       "version": "v1.0.10",
       "publishedAt": "2026-09-10",

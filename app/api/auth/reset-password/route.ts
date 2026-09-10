@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   const [verification] = await db.select().from(emailVerifications).where(and(eq(emailVerifications.email, email), eq(emailVerifications.purpose, "reset"))).orderBy(desc(emailVerifications.createdAt)).limit(1);
   if (!verification || verification.verified || verification.expiresAt < new Date() || verification.attempts >= 5) return NextResponse.json({ error: "验证码已失效，请重新获取" }, { status: 400 });
   const valid = verification.codeHash === await sha256(`${email}:${code}`);
-  const [user] = await db.select({ id: customers.id }).from(customers).where(eq(customers.email, email)).limit(1);
+  const [user] = await db.select({ id: customers.id, passwordHash:customers.passwordHash }).from(customers).where(eq(customers.email, email)).limit(1);
   if (!valid || !user) {
     await db.update(emailVerifications).set({ attempts: verification.attempts + 1, verified: false }).where(eq(emailVerifications.id, verification.id));
     return NextResponse.json({ error: "验证码不正确" }, { status: 400 });
@@ -27,9 +27,9 @@ export async function POST(req: Request) {
   type BatchQuery = Parameters<typeof db.batch>[0][number];
   await db.batch([
     db.update(emailVerifications).set({ attempts: verification.attempts + 1, verified: true }).where(eq(emailVerifications.id, verification.id)),
-    db.update(customers).set({ passwordHash }).where(eq(customers.id, user.id)),
+    db.update(customers).set({ passwordHash, emailVerified:true }).where(eq(customers.id, user.id)),
     db.delete(authSessions).where(eq(authSessions.customerId, user.id)),
   ] as [BatchQuery, ...BatchQuery[]]);
   await audit({id:user.id,role:"customer"},"auth.password.reset","auth",user.id,{email,sessionsRevoked:true},req);
-  return NextResponse.json({ ok: true, message: "密码已重置，请重新登录" });
+  return NextResponse.json({ ok: true, message: user.passwordHash ? "密码已重置，请重新登录" : "密码设置成功，请返回登录" });
 }

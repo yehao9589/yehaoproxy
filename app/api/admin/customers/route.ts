@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   const emailVerified = Boolean(body?.emailVerified);
   const status = body?.status === "suspended" ? "suspended" : "active";
   if (!/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({ error: "请输入有效的邮箱地址" }, { status: 400 });
-  if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) return NextResponse.json({ error: "密码至少 8 位，并且需要同时包含字母和数字" }, { status: 400 });
+  if (password && (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password))) return NextResponse.json({ error: "密码至少 8 位，并且需要同时包含字母和数字" }, { status: 400 });
   return withRequestLock("admin-customer-create", async () => {
     const db = getDb();
     const [existing] = await db.select({ id: customers.id }).from(customers).where(eq(customers.email, email)).limit(1);
@@ -40,11 +40,11 @@ export async function POST(req: Request) {
     type BatchQuery = Parameters<typeof db.batch>[0][number];
     try {
       await db.batch([
-        db.insert(customers).values({ id, email, name, passwordHash: await hashPassword(password), emailVerified, role: "customer", status, createdAt: now }),
+        db.insert(customers).values({ id, email, name, passwordHash: password ? await hashPassword(password) : null, emailVerified, role: "customer", status, createdAt: now }),
         db.insert(wallets).values({ customerId: id, balance: 0, frozen: 0, creditLimit: 0, currency: "CNY", updatedAt: now }),
       ] as [BatchQuery, ...BatchQuery[]]);
     } catch { return NextResponse.json({ error: "客户创建失败，请检查邮箱是否重复后重试" }, { status: 409 }); }
-    await audit({ id: admin.id, role: admin.role }, "customer.create", "customer", id, { email, name, emailVerified, status }, req);
-    return NextResponse.json({ ok: true, customer: { id, email, name, emailVerified, status } }, { status: 201 });
+    await audit({ id: admin.id, role: admin.role }, "customer.create", "customer", id, { email, name, emailVerified, status, passwordConfigured:Boolean(password) }, req);
+    return NextResponse.json({ ok: true, customer: { id, email, name, emailVerified, status, passwordConfigured:Boolean(password) } }, { status: 201 });
   });
 }

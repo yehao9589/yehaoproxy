@@ -14,13 +14,17 @@ export async function POST(req: Request) {
   const rate = consumeRateLimit(rateKey, 8, 15 * 60_000);
   if (!rate.allowed) return NextResponse.json({ error: "登录尝试过于频繁，请稍后再试" }, { status: 429, headers: { "retry-after": String(rate.retryAfter) } });
   const [customer] = await getDb().select().from(customers).where(eq(customers.email, email)).limit(1);
-  if (!customer?.passwordHash || !await verifyPassword(password, customer.passwordHash)) {
-    await audit({ id: email || "unknown", role: "customer" }, "auth.login.failed", "auth", null, { email }, req);
-    return NextResponse.json({ error: "邮箱或密码错误" }, { status: 401 });
-  }
-  if (customer.status !== "active") {
+  if (customer && customer.status !== "active") {
     await audit({ id: customer.id, role: customer.role }, "auth.login.failed", "auth", customer.id, { reason: "账户已停用" }, req);
     return NextResponse.json({ error: "账户已被停用" }, { status: 403 });
+  }
+  if (customer && !customer.passwordHash) {
+    clearRateLimit(rateKey);
+    return NextResponse.json({ error: "该账户尚未设置密码，请先验证邮箱并设置密码", passwordSetupRequired: true, email: customer.email }, { status: 409 });
+  }
+  if (!customer || !await verifyPassword(password, customer.passwordHash!)) {
+    await audit({ id: email || "unknown", role: "customer" }, "auth.login.failed", "auth", null, { email }, req);
+    return NextResponse.json({ error: "邮箱或密码错误" }, { status: 401 });
   }
   clearRateLimit(rateKey);
   const session = await createSession(customer.id, req);
