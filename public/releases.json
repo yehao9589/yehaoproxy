@@ -1,9 +1,20 @@
 {
-  "version": "v1.0.9",
+  "version": "v1.0.10",
   "publishedAt": "2026-09-10",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.9",
-  "releaseNotes": "YehaoProxy v1.0.9：修复节点绑定列表与备注保存，并在服务管理中显示绑定的 VPS 名称。",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.10",
+  "releaseNotes": "YehaoProxy v1.0.10：客户代理列表新增即时搜索，并优化备注与表格布局。",
   "releases": [
+    {
+      "version": "v1.0.10",
+      "publishedAt": "2026-09-10",
+      "title": "YehaoProxy v1.0.10 客户代理列表优化",
+      "notes": [
+        "客户面板我的代理新增即时搜索，支持 IP、账号、WiFi、地区、协议和备注",
+        "搜索结果与分页联动，并支持快速清空搜索条件",
+        "已填写备注保持原有简洁样式并使用加粗突出，未填写备注不高亮",
+        "取消国家和城市文字加粗，压缩代理地址列及列间距并扩大备注栏"
+      ]
+    },
     {
       "version": "v1.0.9",
       "publishedAt": "2026-09-10",

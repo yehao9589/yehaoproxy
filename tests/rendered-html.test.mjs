@@ -204,7 +204,7 @@ test("production deployment has health checks, backups, and rollback safety", as
   assert.match(health, /encryptionConfigured/);
 });
 
-test("v1.0.9 release metadata and workflow are pinned behind a quality gate", async () => {
+test("v1.0.10 release metadata and workflow are pinned behind a quality gate", async () => {
   const [pkg, compose, manifest, workflow, updateCenter] = await Promise.all([
     read("package.json"),
     read("docker-compose.single.yml"),
@@ -212,11 +212,11 @@ test("v1.0.9 release metadata and workflow are pinned behind a quality gate", as
     read(".github/workflows/publish-images.yml"),
     read("lib/update-center.ts"),
   ]);
-  assert.match(pkg, /"version": "1\.0\.9"/);
+  assert.match(pkg, /"version": "1\.0\.10"/);
   assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
   assert.match(compose, /yehaoproxy:stable/);
   assert.match(compose, /UPDATE_CHANNEL: stable/);
-  assert.match(manifest, /"version": "v1\.0\.9"/);
+  assert.match(manifest, /"version": "v1\.0\.10"/);
   assert.match(workflow, /quality:/);
   assert.match(workflow, /needs: quality/);
   assert.match(workflow, /type=raw,value=stable/);
@@ -417,4 +417,16 @@ test("admin service list shows the VPS name for node services", async () => {
   assert.match(api, /bindingState\.orders\[row\.orderId\]/);
   assert.match(api, /wifiName:/);
   assert.match(client, /item\.wifiName\|\|\(item\.kind==="proxy"\?"未设置":"—"\)/);
+});
+
+test("customer proxy list supports search and highlights saved notes", async () => {
+  const client = await read("app/dashboard/proxies/ProxiesClient.tsx");
+  const styles = await read("app/proxy-search.css");
+  assert.match(client, /aria-label="搜索代理"/);
+  assert.match(client, /item\.host,item\.port,item\.username,item\.wifiName/);
+  assert.match(client, /item\.protocol,item\.note/);
+  assert.match(client, /classList\.toggle\("has-note",Boolean\(item\?\.note\?\.trim\(\)\)\)/);
+  assert.match(styles, /\.proxy-note-cell\.has-note>span/);
+  assert.match(styles, /\.proxy-region-cell b\{font-weight:400!important\}/);
+  assert.match(styles, /background:transparent;color:#475569;font-weight:700/);
 });

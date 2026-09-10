@@ -1,0 +1,11 @@
+.proxy-list-tools{display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0}
+.proxy-search{display:flex;align-items:center;width:min(330px,36vw);height:36px;padding:0 9px;border:1px solid #d9e3ee;border-radius:8px;background:#fff;color:#8293a6;transition:border-color .15s,box-shadow .15s}
+.proxy-search:focus-within{border-color:#87b7f7;box-shadow:0 0 0 3px #dbeafe}
+.proxy-search>span{margin-right:7px;font-size:15px}
+.proxy-search input{min-width:0;flex:1;border:0!important;outline:0!important;background:transparent!important;color:#30475f;font-size:10px;box-shadow:none!important}
+.proxy-search button{display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:5px;background:#eef3f8;color:#718297}
+.managed-proxy-table .orow{grid-template-columns:28px 30px minmax(104px,.86fr) minmax(66px,.6fr) minmax(70px,.64fr) minmax(70px,.64fr) minmax(72px,.68fr) minmax(76px,.7fr) minmax(124px,1.08fr) 100px 62px 92px!important;column-gap:3px!important}
+.managed-proxy-table .proxy-region-cell b{font-weight:400!important}
+.managed-proxy-table .proxy-note-cell.has-note>span{max-width:100%;padding:0;background:transparent;color:#475569;font-weight:700;box-shadow:none}
+.managed-proxy-table .proxy-note-cell.has-note>button{color:#94a3b8!important}
+@media(max-width:760px){.proxy-list-tools{width:100%;align-items:stretch;flex-direction:column}.proxy-search{width:100%;box-sizing:border-box}}
