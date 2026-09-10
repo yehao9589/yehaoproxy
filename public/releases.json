@@ -1,9 +1,20 @@
 {
-  "version": "v1.0.8",
+  "version": "v1.0.9",
   "publishedAt": "2026-09-10",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.8",
-  "releaseNotes": "YehaoProxy v1.0.8：接入 Komari VPS 监控，统一 VPS 绑定、流量统计及节点售后流程。",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.9",
+  "releaseNotes": "YehaoProxy v1.0.9：修复节点绑定列表与备注保存，并在服务管理中显示绑定的 VPS 名称。",
   "releases": [
+    {
+      "version": "v1.0.9",
+      "publishedAt": "2026-09-10",
+      "title": "YehaoProxy v1.0.9 节点服务管理修复",
+      "notes": [
+        "VPS 绑定列表仅展示可绑定的实际节点服务订单，不再混入续费或合并账单",
+        "修复节点服务备注在不同数据库环境下保存失败的问题，保存后立即刷新最新内容",
+        "后台服务管理的 WiFi 名称列改为显示节点绑定的 Komari 或 X-Panel VPS 名称",
+        "服务管理搜索支持按节点绑定的 VPS 名称检索"
+      ]
+    },
     {
       "version": "v1.0.8",
       "publishedAt": "2026-09-10",

@@ -7,6 +7,7 @@ import {notifyAdmins} from "../../../../../lib/admin-event-notifications";
 import { getCurrentCustomer } from "../../../../../lib/auth";
 import { billingCycleFromNote,periodLabel } from "../../../../../lib/billing-period";
 import {nextBusinessId} from "../../../../../lib/business-id";
+import {setSystemOption} from "../../../../../lib/db-upsert";
 
 const nodeProducts = new Set(["soft-router", "computer-node"]);
 
@@ -31,7 +32,7 @@ export async function PATCH(
   if (action === "note") {
     if (typeof body.note !== "string" || body.note.length > 200) return NextResponse.json({error:"备注不能超过 200 个字符"},{status:400});
     const note = body.note.trim(), key = "node_customer_note:" + id;
-    await db.insert(systemOptions).values({key,value:note,updatedAt:new Date()}).onConflictDoUpdate({target:systemOptions.key,set:{value:note,updatedAt:new Date()}});
+    await setSystemOption(key,note);
     await audit({id:user.id,role:user.role},"node.note.update","order",id,{note},req);
     return NextResponse.json({ok:true,note});
   }

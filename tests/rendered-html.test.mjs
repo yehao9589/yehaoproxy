@@ -40,6 +40,15 @@ test("node add-on status uses the row order id after order numbers are hidden",a
  assert.match(enhancer,/setInterval\(\(\) => void sync\(\), 15000\)/);
 });
 
+test("node notes use the cross-database upsert path and reload uncached data",async()=>{
+ const route=await read("app/api/orders/[id]/node-service/route.ts");
+ assert.match(route,/setSystemOption\(key,note\)/);
+ assert.doesNotMatch(route,/onConflictDoUpdate/);
+ const services=await read("app/dashboard/proxies/ProxiesClient.tsx");
+ assert.match(services,/await load\(show,true\)/);
+ assert.match(services,/备注保存失败（\$\{r.status\}）/);
+});
+
 async function filesUnder(path) {
   const entries = await readdir(resolve(root, path), { withFileTypes: true });
   const output = [];
@@ -195,7 +204,7 @@ test("production deployment has health checks, backups, and rollback safety", as
   assert.match(health, /encryptionConfigured/);
 });
 
-test("v1.0.8 release metadata and workflow are pinned behind a quality gate", async () => {
+test("v1.0.9 release metadata and workflow are pinned behind a quality gate", async () => {
   const [pkg, compose, manifest, workflow, updateCenter] = await Promise.all([
     read("package.json"),
     read("docker-compose.single.yml"),
@@ -203,11 +212,11 @@ test("v1.0.8 release metadata and workflow are pinned behind a quality gate", as
     read(".github/workflows/publish-images.yml"),
     read("lib/update-center.ts"),
   ]);
-  assert.match(pkg, /"version": "1\.0\.8"/);
+  assert.match(pkg, /"version": "1\.0\.9"/);
   assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
   assert.match(compose, /yehaoproxy:stable/);
   assert.match(compose, /UPDATE_CHANNEL: stable/);
-  assert.match(manifest, /"version": "v1\.0\.8"/);
+  assert.match(manifest, /"version": "v1\.0\.9"/);
   assert.match(workflow, /quality:/);
   assert.match(workflow, /needs: quality/);
   assert.match(workflow, /type=raw,value=stable/);
@@ -399,4 +408,13 @@ test("storefront sends an uninstalled instance to the installer before loading d
   assert.match(storefront, /fetch\("\/api\/install", \{cache:"no-store"\}\)/);
   assert.match(storefront, /window\.location\.replace\("\/install"\)/);
   assert.match(storefront, /if \(!installationChecked\) return/);
+});
+
+test("admin service list shows the VPS name for node services", async () => {
+  const api = await read("app/api/admin/services/route.ts");
+  const client = await read("app/admin/ServicesClient.tsx");
+  assert.match(api, /getVpsBindingState/);
+  assert.match(api, /bindingState\.orders\[row\.orderId\]/);
+  assert.match(api, /wifiName:/);
+  assert.match(client, /item\.wifiName\|\|\(item\.kind==="proxy"\?"未设置":"—"\)/);
 });

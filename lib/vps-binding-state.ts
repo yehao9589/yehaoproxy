@@ -1,6 +1,9 @@
 export type VpsTarget = {provider:"komari"|"xpanel";serverId:string;name:string;updatedAt:string};
 export type KomariNodeConfig = {uuid:string;orderId:string;total:number;direction:"sum"|"up"|"down";baselineUp:number;baselineDown:number;adjustment:number;startedAt:string};
 export type BindingState = {orders:Record<string,VpsTarget[]>;komari:Record<string,KomariNodeConfig>;resetRequests?:Record<string,string>};
+export function isBindableNodeOrder(order:{product:string;status:string;adminNote?:string|null}){
+ return ["soft-router","computer-node"].includes(order.product)&&["paid","provisioning","active"].includes(order.status)&&!order.adminNote?.includes("[RENEWAL_OF]")&&!order.adminNote?.includes("[BUNDLE_RENEWAL]true");
+}
 export class BindingSwitchRequired extends Error {
  confirmation:string;
  current:VpsTarget[];

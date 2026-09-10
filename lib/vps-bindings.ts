@@ -1,7 +1,7 @@
 import {eq} from "drizzle-orm";
 import {getDb,getRawDatabase} from "../db";
 import {orders,systemOptions} from "../db/schema";
-import type {BindingState,KomariNodeConfig,VpsTarget} from "./vps-binding-state";
+import {isBindableNodeOrder,type BindingState,type KomariNodeConfig,type VpsTarget} from "./vps-binding-state";
 export {BindingSwitchRequired} from "./vps-binding-state";
 const KEY="vps_bindings_v1";
 export async function getVpsBindingState():Promise<BindingState>{
@@ -29,6 +29,6 @@ export async function updateVpsBindings(change:(state:BindingState)=>void|Promis
 }
 export async function validateVpsOrder(orderId:string){
  const [order]=await getDb().select().from(orders).where(eq(orders.id,orderId)).limit(1);
- if(!order||!["soft-router","computer-node"].includes(order.product)||!["paid","provisioning","active"].includes(order.status))throw new Error("请选择已付款的有效节点服务订单");
+ if(!order||!isBindableNodeOrder(order))throw new Error("请选择已付款的实际节点服务订单，续费或合并账单不能绑定 VPS");
 }
 export async function orderVpsTargets(orderId:string):Promise<VpsTarget[]>{return (await getVpsBindingState()).orders[orderId]||[];}
