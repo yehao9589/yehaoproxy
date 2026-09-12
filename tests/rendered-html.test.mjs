@@ -204,7 +204,7 @@ test("production deployment has health checks, backups, and rollback safety", as
   assert.match(health, /encryptionConfigured/);
 });
 
-test("v1.0.11 release metadata and workflow are pinned behind a quality gate", async () => {
+test("release metadata and workflow are pinned behind a quality gate", async () => {
   const [pkg, compose, manifest, workflow, updateCenter] = await Promise.all([
     read("package.json"),
     read("docker-compose.single.yml"),
@@ -212,11 +212,11 @@ test("v1.0.11 release metadata and workflow are pinned behind a quality gate", a
     read(".github/workflows/publish-images.yml"),
     read("lib/update-center.ts"),
   ]);
-  assert.match(pkg, /"version": "1\.0\.11"/);
+  assert.equal(JSON.parse(pkg).version, "1.0.12");
   assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
   assert.match(compose, /yehaoproxy:stable/);
   assert.match(compose, /UPDATE_CHANNEL: stable/);
-  assert.match(manifest, /"version": "v1\.0\.11"/);
+  assert.equal(JSON.parse(manifest).version, "v"+JSON.parse(pkg).version);
   assert.match(workflow, /quality:/);
   assert.match(workflow, /needs: quality/);
   assert.match(workflow, /type=raw,value=stable/);
@@ -419,6 +419,13 @@ test("admin service list shows the VPS name for node services", async () => {
   assert.match(client, /item\.wifiName\|\|\(item\.kind==="proxy"\?"未设置":"—"\)/);
 });
 
+test("admin service resource editor carries authoritative optional fields", async () => {
+  const client = await read("app/admin/ServicesClient.tsx");
+  assert.match(client, /expiresAt:d\.expiresAt\|\|item\.expiresAt\|\|""/);
+  assert.match(client, /transitUrl:d\.transitUrl\|\|""/);
+  assert.match(client, /wifiName:d\.wifiName\|\|item\.wifiName\|\|""/);
+});
+
 test("customer proxy list supports search and highlights saved notes", async () => {
   const client = await read("app/dashboard/proxies/ProxiesClient.tsx");
   const styles = await read("app/proxy-search.css");
@@ -433,13 +440,14 @@ test("customer proxy list supports search and highlights saved notes", async () 
 });
 
 test("passwordless admin-created customers must verify email before first access", async () => {
-  const [createApi, createUi, loginApi, loginUi, resetApi, setupUi] = await Promise.all([
+  const [createApi, createUi, loginApi, loginUi, resetApi, setupPage, setupUi] = await Promise.all([
     read("app/api/admin/customers/route.ts"),
     read("app/admin/customers/CustomerCreateTool.tsx"),
     read("app/api/auth/login/route.ts"),
     read("app/login/page.tsx"),
     read("app/api/auth/reset-password/route.ts"),
     read("app/forgot-password/page.tsx"),
+    read("app/forgot-password/ForgotPasswordClient.tsx"),
   ]);
   assert.match(createApi, /password \? await hashPassword\(password\) : null/);
   assert.match(createUi, /初始密码（选填）/);
@@ -449,4 +457,53 @@ test("passwordless admin-created customers must verify email before first access
   assert.match(loginUi, /forgot-password\?setup=1/);
   assert.match(resetApi, /passwordHash, emailVerified:true/);
   assert.match(setupUi, /首次登录设置密码/);
+  assert.match(setupPage, /previewSuccess=\{query\.preview==="success"\}/);
+  assert.match(setupUi, /\[done,setDone\]=useState\(previewSuccess\)/);
+  const authState = await read("app/auth-state.css");
+  assert.match(authState, /a\.primary\.auth-submit\{[^}]*color:#fff/);
+});
+
+test("login password visibility uses an accessible eye icon", async () => {
+  const login = await read("app/login/page.tsx");
+  assert.match(login, /function PasswordEye/);
+  assert.match(login, /aria-label=\{show\?"隐藏密码":"显示密码"\}/);
+  assert.match(login, /aria-pressed=\{show\}/);
+  assert.doesNotMatch(login, />\{show\?"隐藏":"显示"\}<\/button>/);
+});
+
+test("customer profile shows the latest successful customer login", async () => {
+  const detailApi = await read("app/api/admin/customers/[id]/route.ts");
+  const customerUi = await read("app/admin/customers/CustomersClient.tsx");
+  assert.match(detailApi, /eq\(auditLogs\.action,"auth\.login\.success"\)/);
+  assert.match(detailApi, /lastLoginAt:lastLoginRows\[0\]\?\.createdAt\|\|null/);
+  assert.match(customerUi, /"最后登录时间"/);
+  assert.match(customerUi, /"从未登录"/);
+});
+
+test("proxy transit subscriptions flow from delivery to the customer QR modal", async () => {
+  const [note, proxies, delivery, resource, deliveryUi, editUi, usageUi] = await Promise.all([
+    read("lib/proxy-note.ts"),
+    read("app/api/proxies/route.ts"),
+    read("app/api/admin/orders/[id]/route.ts"),
+    read("app/api/admin/orders/[id]/resources/[allocationId]/route.ts"),
+    read("app/ManualAllocationEnhancer.tsx"),
+    read("app/OrderResourceEnhancer.tsx"),
+    read("app/ProxyQrEnhancer.tsx"),
+  ]);
+  assert.match(note, /TRANSIT_URL/);
+  assert.match(proxies, /transitUrl/);
+  assert.match(delivery, /\[TRANSIT_URL\]/);
+  assert.match(resource, /composeProxyNote/);
+  assert.match(resource, /expiresAt:row\.expiresAt\|\|order\?\.expiresAt\|\|null/);
+  assert.match(deliveryUi, /直连订阅链接（可选）/);
+  assert.match(editUi, /直连订阅链接（可选）/);
+  assert.match(usageUi, /<h3>直连订阅链接<\/h3>/);
+  assert.match(usageUi, /usage-transit-qr/);
+  assert.match(usageUi, /usage-qr-name/);
+  assert.match(usageUi, /item\.wifiName\|\|"未设置"/);
+  assert.match(usageUi, /document\.body\.style\.overflow="hidden"/);
+  const usageStyles = await read("app/proxy-usage.css");
+  assert.match(usageStyles, /max-height:calc\(100dvh - 32px\)/);
+  assert.match(usageStyles, /overflow-y:auto/);
+  assert.match(usageUi, /transitQr/);
 });

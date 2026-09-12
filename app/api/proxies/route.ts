@@ -47,6 +47,7 @@ export async function GET(req: Request) {
     const replaceEligibleUntil = extractedAt ? new Date(extractedAt.getTime() + 3 * 86400000) : null;
     const rawNote = row.allocation.note || "";
     const city = proxyNoteValue(rawNote,"CITY") || null;
+    const transitUrl = proxyNoteValue(rawNote,"TRANSIT_URL") || null;
     const note = visibleProxyNote(rawNote);
     const savedBillingCycle = row.adminNote?.match(/\[BILLING_CYCLE\]([^\n]+)/)?.[1]?.trim();
     const billingCycle = savedBillingCycle === "calendar-month" || savedBillingCycle === "fixed-days"
@@ -68,6 +69,7 @@ export async function GET(req: Request) {
       region: row.region,
       countryName: row.countryName || row.region,
       city,
+      transitUrl,
       durationDays: row.durationDays,
       renewalAmount: row.renewalAmount,
       price7: row.price7,

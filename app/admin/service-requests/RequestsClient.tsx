@@ -40,6 +40,7 @@ type Detail = {
     region: string;
     country?: string | null;
     city?: string | null;
+    transitUrl?: string | null;
   } | null;
 };
 
@@ -67,7 +68,7 @@ export default function RequestsClient() {
   const [actionDialog, setActionDialog] = useState<{id:string;action:"approve"|"reject"} | null>(null);
   const [actionNote, setActionNote] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
-  const [replacementForm, setReplacementForm] = useState({ host: "", port: "", username: "", password: "", wifiName: "", protocol: "SOCKS5", country: "", city: "" });
+  const [replacementForm, setReplacementForm] = useState({ host: "", port: "", username: "", password: "", wifiName: "", transitUrl: "", protocol: "SOCKS5", country: "", city: "" });
 
   async function load() {
     setRefreshing(true);
@@ -108,7 +109,7 @@ export default function RequestsClient() {
     const asset = detail?.request.id === id ? detail.asset : null;
     const regionCode = String(asset?.region || "").trim().toUpperCase();
     setReplacementForm({
-      host: "", port: asset?.port ? String(asset.port) : "", username: asset?.username || "", password: "", wifiName: "",
+      host: "", port: asset?.port ? String(asset.port) : "", username: asset?.username || "", password: "", wifiName: "", transitUrl: asset?.transitUrl || "",
       protocol: asset?.protocol || "SOCKS5", country: /^[A-Z]{2}$/.test(regionCode) ? regionCode : "", city: asset?.city || "",
     });
     setActionDialog({id,action});
@@ -122,7 +123,7 @@ export default function RequestsClient() {
     setActionBusy(true);
     const payload = isReplacement ? {
       action: actionName, note: note.trim(), host: replacementForm.host.trim(), port: replacementForm.port ? Number(replacementForm.port) : undefined,
-      username: replacementForm.username.trim(), password: replacementForm.password, wifiName: replacementForm.wifiName.trim(),
+      username: replacementForm.username.trim(), password: replacementForm.password, wifiName: replacementForm.wifiName.trim(), transitUrl: replacementForm.transitUrl.trim(),
       protocol: replacementForm.protocol, country: replacementForm.country.trim().toUpperCase(), city: replacementForm.city.trim(),
     } : { action: actionName, note: note.trim() };
     const response = await fetch(`/api/admin/service-requests/${id}`, {
@@ -213,6 +214,7 @@ export default function RequestsClient() {
           <label>账号（可选）<input value={replacementForm.username} onChange={event=>setReplacementForm(value=>({...value,username:event.target.value}))} placeholder="留空保持原账号"/></label>
           <label>密码<input value={replacementForm.password} onChange={event=>setReplacementForm(value=>({...value,password:event.target.value}))} placeholder="留空则保留原密码"/></label>
           <label>WiFi 名称（可选）<input value={replacementForm.wifiName} onChange={event=>setReplacementForm(value=>({...value,wifiName:event.target.value}))} placeholder="留空保持原名称"/></label>
+          <label className="wide">直连订阅链接（可选）<input type="url" value={replacementForm.transitUrl} onChange={event=>setReplacementForm(value=>({...value,transitUrl:event.target.value}))} placeholder="留空保持原直连订阅链接"/></label>
           <LocationSelectFields initialCountry={replacementForm.country} initialCity={replacementForm.city} allowEmpty optional onChange={(country,city)=>setReplacementForm(value=>({...value,country,city}))}/>
         </div>
       </section>}

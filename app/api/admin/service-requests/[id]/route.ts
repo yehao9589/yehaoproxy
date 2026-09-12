@@ -8,6 +8,7 @@ import { resetOrderVpsTraffic } from "../../../../../lib/vps-traffic";
 import { encryptCredential } from "../../../../../lib/inventory-crypto";
 import { normalizeCityName } from "../../../../../lib/cities";
 import {nextBusinessId} from "../../../../../lib/business-id";
+import {composeProxyNote,proxyNoteValue} from "../../../../../lib/proxy-note";
 
 export async function PATCH(
   req: Request,
@@ -156,17 +157,17 @@ export async function PATCH(
 
   const[sourceOrder]=await db.select({region:orders.region}).from(orders).where(eq(orders.id,allocation.orderId)).limit(1);
   const originalCity=normalizeCityName(String(allocation.note||"").match(/\[CITY\]([^\n]+)/)?.[1]||""),originalCountry=String(sourceOrder?.region||"").trim();
-  const host=String(body?.host||"").trim(),requestedPort=body?.port==null||body.port===""||Number(body.port)===0?"":String(body.port).trim(),port=requestedPort?Number(requestedPort):allocation.port,username=String(body?.username||"").trim()||allocation.username,password=String(body?.password||""),wifiName=String(body?.wifiName||"").trim()||allocation.wifiName,requestedProtocol=String(body?.protocol||"").trim().toUpperCase(),protocol=requestedProtocol||allocation.protocol||"HTTPS",requestedCountry=String(body?.country||"").trim().toUpperCase(),country=requestedCountry||originalCountry,requestedCity=normalizeCityName(String(body?.city||"")),city=requestedCity||originalCity;
+  const host=String(body?.host||"").trim(),requestedPort=body?.port==null||body.port===""||Number(body.port)===0?"":String(body.port).trim(),port=requestedPort?Number(requestedPort):allocation.port,username=String(body?.username||"").trim()||allocation.username,password=String(body?.password||""),wifiName=String(body?.wifiName||"").trim()||allocation.wifiName,requestedProtocol=String(body?.protocol||"").trim().toUpperCase(),protocol=requestedProtocol||allocation.protocol||"HTTPS",requestedCountry=String(body?.country||"").trim().toUpperCase(),country=requestedCountry||originalCountry,requestedCity=normalizeCityName(String(body?.city||"")),city=requestedCity||originalCity,transitUrl=String(body?.transitUrl||"").trim()||proxyNoteValue(allocation.note,"TRANSIT_URL");
   if(!host)return NextResponse.json({error:"请填写新的 IP 地址"},{status:400});
   if(requestedPort&&(!Number.isInteger(port)||port<1||port>65535))return NextResponse.json({error:"端口必须是 1–65535 之间的整数"},{status:400});
   if(requestedProtocol&&!["HTTP","HTTPS","SOCKS5"].includes(requestedProtocol))return NextResponse.json({error:"请选择有效的代理协议"},{status:400});
   if(requestedCountry&&!/^[A-Z]{2}$/.test(requestedCountry))return NextResponse.json({error:"请选择有效的国家或地区"},{status:400});
   if(body?.city&&!requestedCity)return NextResponse.json({error:"请选择有效的城市"},{status:400});
-  const cleanNote=String(allocation.note||"").replace(/\[CITY\][^\n]*(?:\n|$)/g,"").trim();
+  if(transitUrl)try{const parsed=new URL(transitUrl);if(!["http:","https:"].includes(parsed.protocol))throw new Error()}catch{return NextResponse.json({error:"直连订阅链接必须是有效的 HTTP 或 HTTPS 地址"},{status:400})}
   await db.update(proxyAllocations).set({
     host,port,username,wifiName,protocol,
     encryptedPassword:password?await encryptCredential(password):allocation.encryptedPassword,
-    note:requestedCity?`${cleanNote}${cleanNote?"\n":""}[CITY]${requestedCity}`:allocation.note,
+    note:composeProxyNote(String(allocation.note||""),allocation.note,city,transitUrl),
   }).where(eq(proxyAllocations.id,allocation.id));
   if(requestedCountry)await db.update(orders).set({region:requestedCountry,updatedAt:now}).where(eq(orders.id,allocation.orderId));
   await db.update(serviceRequests).set({

@@ -320,6 +320,14 @@ function Panel({
                   "账户状态",
                   d.customer.status === "active" ? "正常" : "已停用",
                 ],
+                [
+                  "最后登录时间",
+                  d.customer.lastLoginAt
+                    ? new Date(d.customer.lastLoginAt).toLocaleString("zh-CN", {
+                        hour12: false,
+                      })
+                    : "从未登录",
+                ],
                 ["创建时间", new Date(d.customer.createdAt).toLocaleString()],
               ].map((x) => (
                 <div key={x[0]}>
@@ -360,6 +368,14 @@ function Panel({
             ["邮箱", d.customer.email],
             ["邮箱认证", d.customer.emailVerified ? "已认证" : "未认证"],
             ["账户状态", d.customer.status === "active" ? "正常" : "已停用"],
+            [
+              "最后登录时间",
+              d.customer.lastLoginAt
+                ? new Date(d.customer.lastLoginAt).toLocaleString("zh-CN", {
+                    hour12: false,
+                  })
+                : "从未登录",
+            ],
             ["注册时间", new Date(d.customer.createdAt).toLocaleString()],
           ].map((x) => (
             <div key={x[0]}>

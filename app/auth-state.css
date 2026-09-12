@@ -1,1 +1,3 @@
 .auth-error,.auth-success{border-radius:8px;padding:10px 12px;margin-bottom:15px;font-size:12px}.auth-error{background:#fff0f2;color:#c93f54;border:1px solid #ffd6dc}.auth-success{background:#eaf8f2;color:#138d60;border:1px solid #ccefe0}.auth-submit:disabled{opacity:.65;cursor:not-allowed}
+.auth-form a.primary.auth-submit{display:block;box-sizing:border-box;border-radius:9px;color:#fff;text-align:center;text-decoration:none}
+.auth-form .password>button{display:grid;width:40px;place-items:center;padding:0;border-radius:7px;color:#64748b;cursor:pointer}.auth-form .password>button:hover{background:#eef5fd;color:var(--blue)}

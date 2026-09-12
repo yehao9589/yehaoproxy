@@ -178,8 +178,9 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   }
   if(action==="manual-allocate"){
     if(!["paid","provisioning"].includes(order.status))return NextResponse.json({error:"只有已付款或开通中的订单可以手动交付"},{status:409});
-    const host=String(b?.host||"").trim(),port=Number(b?.port),username=String(b?.username||"").trim()||null,password=String(b?.password||""),wifiName=String(b?.wifiName||"").trim()||null,protocol=String(b?.protocol||"HTTPS").toUpperCase(),country=String(b?.country||order.region).trim().toUpperCase(),city=normalizeCityName(String(b?.city||""));
+    const host=String(b?.host||"").trim(),port=Number(b?.port),username=String(b?.username||"").trim()||null,password=String(b?.password||""),wifiName=String(b?.wifiName||"").trim()||null,protocol=String(b?.protocol||"HTTPS").toUpperCase(),country=String(b?.country||order.region).trim().toUpperCase(),city=normalizeCityName(String(b?.city||"")),transitUrl=String(b?.transitUrl||"").trim();
     if(!host||!Number.isInteger(port)||port<1||port>65535||!["HTTP","HTTPS","SOCKS5"].includes(protocol)||!/^[A-Z]{2}$/.test(country)||!city)return NextResponse.json({error:"请填写有效的连接信息、国家代码和城市"},{status:400});
+    if(transitUrl)try{const parsed=new URL(transitUrl);if(!["http:","https:"].includes(parsed.protocol))throw new Error()}catch{return NextResponse.json({error:"直连订阅链接必须是有效的 HTTP 或 HTTPS 地址"},{status:400})}
     const existing=await db.select().from(proxyAllocations).where(eq(proxyAllocations.orderId,id));
     if(existing.length>=order.quantity)return NextResponse.json({error:"该订单的 IP 已全部交付"},{status:409});
     if(existing.some(x=>x.host===host&&x.port===port))return NextResponse.json({error:"该 IP 和端口已在本订单中"},{status:409});
@@ -188,14 +189,14 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     if(requestedExpiry&&Number.isNaN(requestedExpiry.getTime()))return NextResponse.json({error:"到期时间无效"},{status:400});
     const expiry=completes?(requestedExpiry||addBillingPeriod(now,order.durationDays,billingCycleFromNote(order.adminNote))):null;
     const allocationId=crypto.randomUUID();
-    await db.insert(proxyAllocations).values({id:allocationId,orderId:id,host,port,username,encryptedPassword:password?await encryptCredential(password):null,wifiName,protocol,note:`[CITY]${city}\n[ACTIVATED_AT]${now.toISOString()}`,expiresAt:expiry,autoRenew:order.autoRenew,status:"active"});
+    await db.insert(proxyAllocations).values({id:allocationId,orderId:id,host,port,username,encryptedPassword:password?await encryptCredential(password):null,wifiName,protocol,note:`[CITY]${city}\n[ACTIVATED_AT]${now.toISOString()}${transitUrl?`\n[TRANSIT_URL]${transitUrl}`:""}`,expiresAt:expiry,autoRenew:order.autoRenew,status:"active"});
     if(completes){
       await db.update(proxyAllocations).set({expiresAt:expiry,autoRenew:order.autoRenew}).where(eq(proxyAllocations.orderId,id));
       await db.update(orders).set({status:"active",region:country,expiresAt:expiry,updatedAt:now}).where(eq(orders.id,id));
       await syncBundleParent(db,order,now,expiry);
     }else await db.update(orders).set({status:"provisioning",expiresAt:null,updatedAt:now}).where(eq(orders.id,id));
     await audit({id:admin.id,role:admin.role},"order.manual_allocate","order",id,{
-      allocationId,address:`${host}:${port}`,username,wifiName,protocol,country,city,
+      allocationId,address:`${host}:${port}`,username,wifiName,protocol,country,city,transitUrlConfigured:Boolean(transitUrl),
       allocated:existing.length+1,required:order.quantity,completed:completes,
       expiresAt:expiry?.toISOString()||null,
     },req);

@@ -1,9 +1,22 @@
 {
-  "version": "v1.0.11",
-  "publishedAt": "2026-09-10",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.11",
-  "releaseNotes": "YehaoProxy v1.0.11：新增迁移客户首次登录设密流程，并完善代理备注查看体验。",
+  "version": "v1.0.12",
+  "publishedAt": "2026-09-12",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.12",
+  "releaseNotes": "YehaoProxy v1.0.12：完善代理订阅交付、使用弹窗及信用账单还款。",
   "releases": [
+    {
+      "version": "v1.0.12",
+      "publishedAt": "2026-09-12",
+      "title": "YehaoProxy v1.0.12 代理订阅与信用还款",
+      "notes": [
+        "代理资源支持可选直连订阅链接，同步交付、编辑、售后和客户二维码展示",
+        "使用弹窗改为订阅与手动配置上下两行，统一二维码与名称展示",
+        "修复服务管理资源编辑的到期时间、WiFi 名称和订阅链接回显",
+        "客户档案展示最后登录时间，完善登录密码图标及设密成功页面",
+        "信用账单新增还款方式选择，支持余额部分还款及已启用的支付宝人民币还款",
+        "在线还款到账后自动抵扣欠款，多付部分保留余额"
+      ]
+    },
     {
       "version": "v1.0.11",
       "publishedAt": "2026-09-11",

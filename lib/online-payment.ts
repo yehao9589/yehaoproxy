@@ -1,14 +1,18 @@
 import {and,eq} from "drizzle-orm";
 import {getDb} from "../db";
-import {customers,orders,paymentTransactions,proxyAllocations,wallets,walletTransactions} from "../db/schema";
+import {creditBills,creditAccounts,customers,orders,paymentTransactions,proxyAllocations,wallets,walletTransactions} from "../db/schema";
 import {withRequestLock} from "./request-lock";
 import {addBillingPeriod,billingCycleFromNote} from "./billing-period";
+import {creditRepaymentPlan} from "./credit-repayment-plan";
+import {getCreditSummary} from "./credit";
 import {nextBusinessId} from "./business-id";
 
 export async function completeOnlinePayment(input:{orderId:string;gatewayId:string;tradeNo:string;paidAmount:number}){
   return withRequestLock(`online-payment:${input.orderId}`,async()=>{
     const db=getDb(),[order]=await db.select().from(orders).where(eq(orders.id,input.orderId)).limit(1);
     if(!order)throw new Error("订单不存在");
+    const [owner]=await db.select({id:customers.id}).from(customers).where(eq(customers.email,order.customerEmail)).limit(1);
+    return withRequestLock(`wallet:${owner?.id||order.customerEmail}`,async()=>{
     const[transaction]=await db.select().from(paymentTransactions).where(and(eq(paymentTransactions.orderId,order.id),eq(paymentTransactions.gatewayId,input.gatewayId))).limit(1);
     if(!transaction)throw new Error("支付流水不存在");
     if(transaction.status==="succeeded")return{duplicate:true,order};
@@ -22,9 +26,18 @@ export async function completeOnlinePayment(input:{orderId:string;gatewayId:stri
       if(!customer)throw new Error("充值客户不存在");
       let[wallet]=await db.select().from(wallets).where(eq(wallets.customerId,customer.id)).limit(1);
       if(!wallet){await db.insert(wallets).values({customerId:customer.id,balance:0,frozen:0,creditLimit:0,currency:order.currency,updatedAt:now});[wallet]=await db.select().from(wallets).where(eq(wallets.customerId,customer.id)).limit(1)}
-      const balance=Number((wallet.balance+order.amount).toFixed(2));
+      let repaid=0;
+      if(order.adminNote?.includes("[CREDIT_REPAYMENT]true")){
+        const summary=await getCreditSummary(customer.id);
+        const plan=creditRepaymentPlan(summary.openBills,order.amount);
+        repaid=plan.repaid;
+        for(const update of plan.updates)writes.push(db.update(creditBills).set({repaidAmount:update.repaidAmount,status:update.status,updatedAt:now}).where(eq(creditBills.id,update.id)));
+        if(summary.creditUsed<=order.amount)writes.push(db.update(creditAccounts).set({status:"active",updatedAt:now}).where(eq(creditAccounts.customerId,customer.id)));
+      }
+      const balance=Number((wallet.balance+order.amount-repaid).toFixed(2));
       writes.push(db.update(wallets).set({balance,updatedAt:now}).where(and(eq(wallets.customerId,customer.id),eq(wallets.balance,wallet.balance))));
-      writes.push(db.insert(walletTransactions).values({id:await nextBusinessId("TX",now),customerId:customer.id,type:"deposit",amount:order.amount,balanceAfter:balance,referenceType:"order",referenceId:order.id,note:`支付宝充值 ${order.id}`,createdAt:now}));
+      writes.push(db.insert(walletTransactions).values({id:await nextBusinessId("TX",now),customerId:customer.id,type:"deposit",amount:order.amount,balanceAfter:Number((wallet.balance+order.amount).toFixed(2)),referenceType:"order",referenceId:order.id,note:`支付宝充值 ${order.id}`,createdAt:now}));
+      if(repaid>0)writes.push(db.insert(walletTransactions).values({id:await nextBusinessId("TX",now),customerId:customer.id,type:"credit_repayment",amount:-repaid,balanceAfter:balance,referenceType:"order",referenceId:order.id,note:"支付宝信用账单还款",createdAt:now}));
       writes.push(db.update(orders).set({status:"active",paymentMethod:"alipay",paymentReference:input.tradeNo,updatedAt:now}).where(eq(orders.id,order.id)));
     }else{
       const directRenewalSourceId=order.adminNote?.match(/\[RENEWAL_OF\]([^\n]+)/)?.[1],directRenewalAllocationId=order.adminNote?.match(/\[RENEW_ALLOCATION\]([^\n]+)/)?.[1],bundleRenewal=order.product==="cart-bundle"&&order.adminNote?.includes("[BUNDLE_RENEWAL]true");writes.push(db.update(orders).set({status:bundleRenewal||Boolean(directRenewalSourceId)?"active":"provisioning",paymentMethod:"alipay",paymentReference:input.tradeNo,updatedAt:now}).where(eq(orders.id,order.id)));
@@ -39,6 +52,6 @@ export async function completeOnlinePayment(input:{orderId:string;gatewayId:stri
       }
     }
     await db.batch(writes as[Q,...Q[]]);
-    return{duplicate:false,order};
+    return{duplicate:false,order};    });
   });
 }
