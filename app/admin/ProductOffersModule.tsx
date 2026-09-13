@@ -214,11 +214,12 @@ export default function ProductOffersModule() {
 
         <div className="business-table product offer-table offer-readonly-table">
           <div className="brow head">
-            <span>分类 / 商品</span><span>地区</span><span>短周期</span><span>标准周期</span>
+            <span>序号</span><span>分类 / 商品</span><span>地区</span><span>短周期</span><span>标准周期</span>
             <span>长期周期</span><span>额度 / 剩余</span><span>操作</span>
           </div>
-          {visibleItems.map(item => (
+          {visibleItems.map((item, index) => (
             <div className="brow" key={item.id}>
+              <span className="table-sequence">{index + 1}</span>
               <span className="offer-identity">
                 <em>{typeCategory(item.product) === "node" ? "节点服务" : "代理 IP"}</em>
                 <b>{typeName(item.product)}</b><small>{item.billingCycle==="calendar-month"?"自然月计费":"固定天数计费"}</small>

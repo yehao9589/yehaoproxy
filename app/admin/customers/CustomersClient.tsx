@@ -150,14 +150,16 @@ export default function CustomersClient({
       {error && <div className="live-error">{error}</div>}
       <div className="customer-table">
         <div className="customer-row head">
+          <span>序号</span>
           <span>客户信息</span>
           <span>账户余额</span>
           <span>注册时间</span>
           <span>账户状态</span>
           <span>操作</span>
         </div>
-        {items.map((x) => (
+        {items.map((x, index) => (
           <div className="customer-row" key={x.id} onClick={() => open(x.id)}>
+            <span className="table-sequence">{index + 1}</span>
             <span className="customer-identity">
               <i>{(x.name || x.email)[0].toUpperCase()}</i>
               <span>

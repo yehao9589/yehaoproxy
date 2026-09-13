@@ -311,7 +311,7 @@ test("renewals complete for customers while remaining pending verification for a
   assert.match(onlinePayment, /directRenewalSourceId/);
   assert.match(renewalAdmin, /RENEWAL_VERIFIED_AT/);
   assert.match(renewalAdmin, /待核验/);
-  assert.match(renewalAdmin, /busy\?\.startsWith\(`\$\{row\.id\}:`\)/);
+  assert.match(renewalAdmin, /disabled=\{!!busy\}/);
   assert.doesNotMatch(renewalAdmin, /disabled=\{busy !== null\}/);
   assert.match(verifyApi, /RENEWAL_VERIFIED_AT/);
 });

@@ -69,6 +69,8 @@ import "./customer-service-header.css";
 import "./admin-visual-system.css";
 import "./installer.css";
 import "./admin/product-offers.css";
+import "./sequence-columns.css";
+import "./finance-refined.css";
 import CreditEnhancer from "./CreditEnhancer";
 import AdjustmentEnhancer from "./AdjustmentEnhancer";
 import CurrencyEnhancer from "./CurrencyEnhancer";
