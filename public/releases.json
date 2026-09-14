@@ -1,9 +1,21 @@
 {
-  "version": "v1.0.12",
-  "publishedAt": "2026-09-12",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.12",
-  "releaseNotes": "YehaoProxy v1.0.12：完善代理订阅交付、使用弹窗及信用账单还款。",
+  "version": "v1.0.13",
+  "publishedAt": "2026-09-14",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.13",
+  "releaseNotes": "YehaoProxy v1.0.13：统一列表序号与财务页面，并优化已到期服务管理。",
   "releases": [
+    {
+      "version": "v1.0.13",
+      "publishedAt": "2026-09-14",
+      "title": "YehaoProxy v1.0.13 服务列表与财务界面优化",
+      "notes": [
+        "后台与客户中心的必要列表补充紧凑序号列，续费订单支持多选批量核验",
+        "交易流水和收款账单统一页面布局，修复增加序号后的财务列内容错位",
+        "服务状态使用明确的独立配色，已到期服务改用醒目的红色提示",
+        "已到期节点与代理 IP 合并为紧凑列表，独立展示地区、备注、过期天数和售后进度",
+        "已到期服务保留搜索与续费入口，并按后台保留及归档规则自动分类"
+      ]
+    },
     {
       "version": "v1.0.12",
       "publishedAt": "2026-09-12",
