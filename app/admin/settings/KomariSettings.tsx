@@ -1,4 +1,6 @@
 "use client";
+import {AdminRefreshButton,useAdminRefresh} from "../AdminRefresh";
+
 import {useEffect,useState} from "react";
 import {saveWithBindingConfirmation} from "../vps-binding-request";
 import "./komari.css";
@@ -7,7 +9,8 @@ const gb=(n:number=0)=>(n/1e9).toFixed(2);
 export default function KomariSettings(){
  const[search,setSearch]=useState(""),[group,setGroup]=useState("*");
  const[data,setData]=useState<any>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
- async function load(){const r=await fetch("/api/admin/komari"),d=await r.json();if(!r.ok)throw new Error(d.error);setData(d)}
+ useAdminRefresh(load);
+  async function load(){const r=await fetch("/api/admin/komari",{cache:"no-store"}),d=await r.json();if(!r.ok)throw new Error(d.error);setData(d)}
  useEffect(()=>{void load().catch(e=>setMessage(e.message))},[]);
  async function send(body:Record<string,unknown>){setBusy(true);setMessage("");try{if(await saveWithBindingConfirmation("/api/admin/komari",body)){await load();setMessage("操作成功")}else setMessage("已取消，原绑定保持不变");}catch(e){setMessage(e instanceof Error?e.message:"操作失败")}finally{setBusy(false)}}
  useEffect(()=>{const sync=()=>{if(!busy&&data?.config.enabled)void send({action:"sync"})};window.addEventListener("komari:sync",sync);return()=>window.removeEventListener("komari:sync",sync)},[busy,data]);

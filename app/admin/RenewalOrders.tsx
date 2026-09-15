@@ -1,4 +1,6 @@
 "use client";
+import {AdminRefreshButton,useAdminRefresh} from "./AdminRefresh";
+
 
 import { useEffect, useMemo, useState } from "react";
 import Pagination from "../Pagination";
@@ -37,14 +39,15 @@ export default function RenewalOrders() {
   const [busy, setBusy] = useState<string | null>(null);
   const [pendingVerify, setPendingVerify] = useState<{ id: string; action: "approve" | "reject" } | null>(null);
 
+  useAdminRefresh(load);
   async function load() {
     setLoading(true);
-    const response = await fetch("/api/admin/orders?size=100");
+    const response = await fetch("/api/admin/orders?size=100",{cache:"no-store"});
     const data = await response.json();
     setLoading(false);
-    if (!response.ok) return setMessage(data.error || "续费订单加载失败");
+    if (!response.ok) {setMessage(data.error || "续费订单加载失败");return false;}
     const renewals=(data.items || []).filter((item: Row) => item.adminNote?.includes("[RENEWAL_OF]"));
-    const enriched=await Promise.all(renewals.map(async(item:Row)=>{try{const detailResponse=await fetch(`/api/admin/orders/${encodeURIComponent(item.id)}`),detail=await detailResponse.json(),allocation=detail.renewalContext?.allocation,source=detail.renewalContext?.sourceOrder,isNode=["computer-node","soft-router"].includes(item.product);if(!detailResponse.ok)return{...item,service:null};return{...item,service:{label:isNode?(detail.renewalContext?.vpsName||"未绑定 VPS"):allocation?`${allocation.host}:${allocation.port}`:"未找到关联代理",wifiName:isNode?null:allocation?.wifiName||null,country:source?.region||item.region,city:isNode?null:allocation?.city||null,kind:isNode?"node":"proxy"}}}catch{return{...item,service:null}}}));
+    const enriched=await Promise.all(renewals.map(async(item:Row)=>{try{const detailResponse=await fetch(`/api/admin/orders/${encodeURIComponent(item.id)}`,{cache:"no-store"}),detail=await detailResponse.json(),allocation=detail.renewalContext?.allocation,source=detail.renewalContext?.sourceOrder,isNode=["computer-node","soft-router"].includes(item.product);if(!detailResponse.ok)return{...item,service:null};return{...item,service:{label:isNode?(detail.renewalContext?.vpsName||"未绑定 VPS"):allocation?`${allocation.host}:${allocation.port}`:"未找到关联代理",wifiName:isNode?null:allocation?.wifiName||null,country:source?.region||item.region,city:isNode?null:allocation?.city||null,kind:isNode?"node":"proxy"}}}catch{return{...item,service:null}}}));
     setRows(enriched);
     setSelected(previous=>new Set([...previous].filter(id=>enriched.some((row:Row)=>row.id===id&&canVerify(row)))));
   }
@@ -112,7 +115,7 @@ export default function RenewalOrders() {
   return <div className="renewal-order-page business-page">
     <section className="product-order-hero business-hero">
       <div><small>RENEWAL OPERATIONS</small><h2>续费订单</h2><p>客户付款后立即延长服务时间；此处只负责人工核验，不通过时自动退款并回滚到期时间。</p></div>
-      <button disabled={!!busy} onClick={() => void load()}>刷新数据</button>
+      <AdminRefreshButton/>
     </section>
     <section className="business-metrics"><article><i>续</i><span><small>全部续费</small><b>{rows.length}</b><em>累计续费订单</em></span></article><article><i className="warning">核</i><span><small>等待核验</small><b>{pendingCount}</b><em>需要管理员确认</em></span></article><article><i className="success">成</i><span><small>核验完成</small><b>{verifiedCount}</b><em>续费结果已确认</em></span></article><article><i className="danger">退</i><span><small>核验退款</small><b>{refundedCount}</b><em>不通过并已回滚</em></span></article></section>
     {message && <div className="auth-success">{message}</div>}

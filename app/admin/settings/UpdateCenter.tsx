@@ -1,4 +1,6 @@
 "use client";
+import {AdminRefreshButton,useAdminRefresh} from "../AdminRefresh";
+
 
 import { useEffect, useState } from "react";
 
@@ -19,10 +21,11 @@ export default function UpdateCenter(){
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState("");
 
+  useAdminRefresh(load);
   async function load(){
     const response=await fetch("/api/admin/update-center",{cache:"no-store"});
     const value=await responseValue(response);
-    if(response.ok)setData(value);else setMessage(value.error||"更新与备份页面加载失败");
+    if(response.ok)setData(value);else {setMessage(value.error||"更新与备份页面加载失败");return false;}
   }
   useEffect(()=>{
     let active=true;

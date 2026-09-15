@@ -1,4 +1,6 @@
 "use client";
+import {AdminRefreshButton,useAdminRefresh} from "../AdminRefresh";
+
 import { useEffect, useMemo, useState } from "react";
 import KomariSettings from "./KomariSettings";
 import "./vps-management.css";
@@ -53,11 +55,12 @@ export default function XPanelSettings() {
     [message, setMessage] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState("");
+  useAdminRefresh(load);
   async function load() {
-    const r = await fetch("/api/admin/xpanel"),
+    const r = await fetch("/api/admin/xpanel",{cache:"no-store"}),
       d = await r.json();
     if (r.ok) setServers(d.servers || []);
-    else setError(d.error || "加载失败");
+    else {setError(d.error || "加载失败");return false;}
   }
   useEffect(() => {
     void load();

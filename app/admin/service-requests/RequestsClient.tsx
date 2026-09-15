@@ -1,4 +1,6 @@
 "use client";
+import {AdminRefreshButton,useAdminRefresh} from "../AdminRefresh";
+
 
 import { useEffect, useState } from "react";
 import {displayCustomerId} from "../../../lib/customer-id";
@@ -70,13 +72,14 @@ export default function RequestsClient() {
   const [actionBusy, setActionBusy] = useState(false);
   const [replacementForm, setReplacementForm] = useState({ host: "", port: "", username: "", password: "", wifiName: "", transitUrl: "", protocol: "SOCKS5", country: "", city: "" });
 
+  useAdminRefresh(load);
   async function load() {
     setRefreshing(true);
-    const response = await fetch("/api/admin/service-requests");
+    const response = await fetch("/api/admin/service-requests",{cache:"no-store"});
     const data = await response.json();
     setRefreshing(false);
     if (response.ok) setItems(data.items || []);
-    else setError(data.error || "售后申请加载失败");
+    else {setError(data.error || "售后申请加载失败");return false;}
   }
 
   useEffect(() => {
@@ -85,7 +88,7 @@ export default function RequestsClient() {
 
   async function open(item: RequestItem) {
     setLoading(true);
-    const response = await fetch(`/api/admin/customers/${encodeURIComponent(item.customerId)}`);
+    const response = await fetch(`/api/admin/customers/${encodeURIComponent(item.customerId)}`,{cache:"no-store"});
     const data = await response.json();
     setLoading(false);
     if (!response.ok) return setError(data.error || "申请详情加载失败");
@@ -153,7 +156,7 @@ export default function RequestsClient() {
   return <div className="standalone-admin aftersales-center">
     <header><a href="/admin">← 返回后台</a><h1>售后申请</h1></header>
     {error && <div className="live-error">{error}<button onClick={() => setError("")}>×</button></div>}
-    <section className="aftersales-hero"><div><small>AFTER-SALES OPERATIONS</small><h2>售后服务中心</h2><p>集中处理更换 IP、服务续费与流量重置，完整保留客户、资源和处理结果。</p></div><button type="button" disabled={refreshing} onClick={()=>void load()}>{refreshing?"正在刷新…":"刷新申请"}</button></section>
+    <section className="aftersales-hero"><div><small>AFTER-SALES OPERATIONS</small><h2>售后服务中心</h2><p>集中处理更换 IP、服务续费与流量重置，完整保留客户、资源和处理结果。</p></div><AdminRefreshButton/></section>
     <section className="aftersales-metrics"><article><i className="all">全</i><span><small>全部申请</small><b>{stats.total}</b><em>累计售后记录</em></span></article><article><i className="pending">待</i><span><small>等待处理</small><b>{stats.pending}</b><em>{stats.pending?"需要尽快处理":"当前没有积压"}</em></span></article><article><i className="completed">成</i><span><small>处理完成</small><b>{stats.completed}</b><em>已批准或已完成</em></span></article><article><i className="closed">关</i><span><small>已关闭</small><b>{stats.closed}</b><em>已拒绝或已取消</em></span></article></section>
     <section className="aftersales-workbench"><header><div><h3>申请处理队列</h3><p>共 {filteredItems.length} 条符合当前条件</p></div><div className="aftersales-filters"><label><span>⌕</span><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="搜索编号、客户、IP 或原因"/></label><select aria-label="申请类型" value={typeFilter} onChange={event=>setTypeFilter(event.target.value)}><option value="all">全部类型</option><option value="replace">更换 IP</option><option value="renew">服务续费</option><option value="reset_traffic">流量重置</option><option value="custom">一次性服务</option></select><select aria-label="处理状态" value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">全部状态</option><option value="pending">待处理</option><option value="completed">已完成</option><option value="approved">已批准</option><option value="rejected">已拒绝</option><option value="cancelled">已取消</option></select></div></header>
       <div className="aftersales-queue-head"><span>序号</span><span>申请与客户</span><span>关联服务</span><span>申请内容</span><span>处理状态</span><span>操作</span></div>

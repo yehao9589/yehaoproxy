@@ -1,4 +1,6 @@
 "use client";
+import {AdminRefreshButton,useAdminRefresh} from "../AdminRefresh";
+
 import {useEffect,useState} from "react";
 import {normalizeCouponCode} from "../../../lib/coupon-code";
 
@@ -7,7 +9,8 @@ const localMinute=(value:string|null)=>{if(!value)return"";const d=new Date(valu
 
 export default function CouponClient(){
   const[items,setItems]=useState<Coupon[]>([]),[open,setOpen]=useState(false),[edit,setEdit]=useState<Coupon|null>(null),[error,setError]=useState(""),[saving,setSaving]=useState(false);
-  async function load(){const r=await fetch("/api/admin/coupons"),d=await r.json();r.ok?setItems(d.items):setError(d.error)}
+  useAdminRefresh(load);
+  async function load(){const r=await fetch("/api/admin/coupons",{cache:"no-store"}),d=await r.json();if(r.ok)setItems(d.items);else{setError(d.error);return false;}}
   useEffect(()=>{void load()},[]);
   useEffect(()=>{if(!open)return;const input=document.querySelector<HTMLInputElement>('.coupon-editor input[name="code"]');if(input){input.pattern="[A-Za-z0-9_%\\-]+";input.placeholder="例如 80% 或 WELCOME10";input.onblur=()=>{input.value=normalizeCouponCode(input.value)}}},[open]);
   async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();setSaving(true);setError("");const body=Object.fromEntries(new FormData(e.currentTarget));body.code=normalizeCouponCode(body.code);const url=edit?`/api/admin/coupons/${edit.id}`:"/api/admin/coupons",r=await fetch(url,{method:edit?"PATCH":"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}),d=await r.json();setSaving(false);if(!r.ok)return setError(d.error||"保存失败");setOpen(false);setEdit(null);await load()}

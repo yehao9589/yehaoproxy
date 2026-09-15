@@ -1,9 +1,20 @@
 {
-  "version": "v1.0.13",
-  "publishedAt": "2026-09-14",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.13",
-  "releaseNotes": "YehaoProxy v1.0.13：统一列表序号与财务页面，并优化已到期服务管理。",
+  "version": "v1.0.14",
+  "publishedAt": "2026-09-15",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.14",
+  "releaseNotes": "YehaoProxy v1.0.14：完善多 IP 订单展示与续费定价，并统一后台数据刷新体验。",
   "releases": [
+    {
+      "version": "v1.0.14",
+      "publishedAt": "2026-09-15",
+      "title": "YehaoProxy v1.0.14 多 IP 订单与后台刷新",
+      "notes": [
+        "产品订单按实际资源展示同一订单下的多个 IP，支持展开查看各资源信息",
+        "明确多 IP 订单的单个 IP 续费金额，留空时读取商品续费价格并按数量累加",
+        "后台主要业务页面使用统一刷新入口，刷新当前页面并保留搜索、筛选、排序和分页",
+        "刷新期间统一显示加载状态，成功和失败结果使用全局悬浮提示"
+      ]
+    },
     {
       "version": "v1.0.13",
       "publishedAt": "2026-09-14",

@@ -1,4 +1,5 @@
 "use client";
+import {useAdminRefresh} from "./AdminRefresh";
 
 import { useEffect, useMemo, useState } from "react";
 import { displayCustomerId } from "../../lib/customer-id";
@@ -21,7 +22,9 @@ function Loading({error}:{error:string}){return <div className="module financial
 
 export function TransactionLedger(){
   const[rows,setRows]=useState<Transaction[]>([]),[error,setError]=useState(""),[query,setQuery]=useState(""),[filter,setFilter]=useState("all");
-  useEffect(()=>{void fetch("/api/admin/insights").then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||"交易流水加载失败");setRows(d.transactions||[])}).catch(e=>setError(e.message))},[]);
+  const load=()=>fetch("/api/admin/insights",{cache:"no-store"}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||"交易流水加载失败");setRows(d.transactions||[])}).catch(e=>{setError(e.message);return false});
+  useAdminRefresh(load);
+  useEffect(()=>{void load()},[]);
   const visible=useMemo(()=>rows.filter(x=>(filter==="all"||x.type===filter)&&(!query||[x.id,x.customerName,x.customerEmail,x.customerId,displayCustomerId(x.customerId),x.note,x.referenceType,x.referenceId,transactionTypes[x.type],x.relatedOrder?.id,x.relatedOrder?.product,x.relatedOrder?.region,productNames[x.relatedOrder?.product||""]].some(v=>String(v||"").toLowerCase().includes(query.trim().toLowerCase())))),[rows,filter,query]);
   const income=visible.filter(x=>x.amount>0).reduce((s,x)=>s+x.amount,0),expense=Math.abs(visible.filter(x=>x.amount<0).reduce((s,x)=>s+x.amount,0)),balance=income-expense;
   if(error&&!rows.length)return <Loading error={error}/>;
@@ -30,7 +33,9 @@ export function TransactionLedger(){
 
 export function BillingManagement(){
   const[rows,setRows]=useState<Order[]>([]),[error,setError]=useState(""),[query,setQuery]=useState(""),[filter,setFilter]=useState("all");
-  useEffect(()=>{void fetch("/api/admin/orders?size=100").then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||"账单加载失败");setRows((d.items||[]).filter((x:Order)=>!x.adminNote?.includes("[BUNDLE_PARENT]")))}).catch(e=>setError(e.message))},[]);
+  const load=()=>fetch("/api/admin/orders?size=100",{cache:"no-store"}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||"账单加载失败");setRows((d.items||[]).filter((x:Order)=>!x.adminNote?.includes("[BUNDLE_PARENT]")))}).catch(e=>{setError(e.message);return false});
+  useAdminRefresh(load);
+  useEffect(()=>{void load()},[]);
   const billType=(x:Order)=>x.product==="wallet-topup"?"充值":x.product==="ip-replacement"||x.product==="node-traffic-reset"?"一次性服务":x.adminNote?.includes("[RENEWAL]")?"续费":"产品";
   const visible=useMemo(()=>rows.filter(x=>(filter==="all"||filter===x.status)&&(!query||[x.id,x.customerName,x.customerEmail,x.product,productNames[x.product],x.region,x.paymentReference,x.paymentMethod,paymentMethods[x.paymentMethod||""],x.status,orderStates[x.status],billType(x)].some(v=>String(v||"").toLowerCase().includes(query.trim().toLowerCase())))),[rows,filter,query]);
   const unpaid=rows.filter(x=>x.status==="pending").reduce((s,x)=>s+x.amount,0),paid=rows.filter(x=>["paid","provisioning","active","completed"].includes(x.status)).reduce((s,x)=>s+x.amount,0);

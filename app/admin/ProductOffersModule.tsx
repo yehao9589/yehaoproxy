@@ -1,4 +1,6 @@
 "use client";
+import {AdminRefreshButton,useAdminRefresh} from "./AdminRefresh";
+
 
 import {useEffect, useMemo, useState} from "react";
 import { countries, countryFlag, countryName } from "../../lib/countries";
@@ -88,11 +90,13 @@ export default function ProductOffersModule() {
   const [subscriptionRequired,setSubscriptionRequired]=useState(true);
   const [offerPolicy,setOfferPolicy]=useState({resetPrice:"",replacePrice:"",freeDays:"",freeCount:""});
 
+  useAdminRefresh(load);
   async function load() {
-    const [response,settingsResponse] = await Promise.all([fetch("/api/admin/products"),fetch("/api/admin/settings")]);
+    const [response,settingsResponse] = await Promise.all([fetch("/api/admin/products",{cache:"no-store"}),fetch("/api/admin/settings",{cache:"no-store"})]);
     const data = await response.json();
     const settingsData = await settingsResponse.json().catch(()=>({}));
-    if (!response.ok) return setError(data.error || "商品加载失败");
+    if (!response.ok) {setError(data.error || "商品加载失败");return false;}
+    if (!settingsResponse.ok) {setError(settingsData.error || "商品配置加载失败");return false;}
     setItems(data.items);
     if(Array.isArray(data.productTypes))setProductTypes(data.productTypes);
     if(settingsResponse.ok){const options=settingsData.options||{};setPolicyOptions(options);setServicePolicy({resetPrice:String(options.nodeTrafficResetPrice??5),replacePrice:String(options.ipReplacementPrice??5),freeDays:String(options.ipReplacementFreeDays??3),freeCount:String(options.ipReplacementFreeCount??1),credentialEditing:options.customer_node_credential_editing==="true"})}

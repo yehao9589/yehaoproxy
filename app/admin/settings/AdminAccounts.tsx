@@ -1,4 +1,6 @@
 "use client";
+import {AdminRefreshButton,useAdminRefresh} from "../AdminRefresh";
+
 import { useEffect, useState } from "react";
 
 type Admin={id:string;email:string;name:string|null;status:string;createdAt:string;superAdmin:boolean;profileEditable:boolean;roleName:string;permissions:string[]};
@@ -14,7 +16,8 @@ function PermissionGrid({value,onChange}:{value:string[];onChange:(v:string[])=>
 
 export default function AdminAccounts(){
   const[items,setItems]=useState<Admin[]>([]),[message,setMessage]=useState(""),[editing,setEditing]=useState<Admin|null>(null),[profileFor,setProfileFor]=useState<Admin|null>(null),[passwordFor,setPasswordFor]=useState<Admin|null>(null),[selected,setSelected]=useState<string[]>(["overview","orders"]);
-  async function load(){const r=await fetch("/api/admin/admins"),d=await r.json();r.ok?setItems(d.items):setMessage(d.error||"管理员列表加载失败")}
+  useAdminRefresh(load);
+  async function load(){const r=await fetch("/api/admin/admins",{cache:"no-store"}),d=await r.json();if(r.ok)setItems(d.items);else{setMessage(d.error||"管理员列表加载失败");return false;}}
   useEffect(()=>{void load()},[]);
   async function create(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const form=e.currentTarget,body={...Object.fromEntries(new FormData(form)),permissions:selected},r=await fetch("/api/admin/admins",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}),d=await r.json();setMessage(r.ok?"管理员账户已创建":d.error);if(r.ok){form.reset();setSelected(["overview","orders"]);void load()}}
   async function save(item:Admin,permissionsValue:string[],status=item.status){const r=await fetch("/api/admin/admins",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({id:item.id,permissions:permissionsValue,status})}),d=await r.json();setMessage(r.ok?"管理员权限已更新":d.error);if(r.ok){setEditing(null);void load()}}

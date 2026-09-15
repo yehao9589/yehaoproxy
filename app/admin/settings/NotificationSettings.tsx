@@ -1,4 +1,6 @@
 "use client";
+import {AdminRefreshButton,useAdminRefresh} from "../AdminRefresh";
+
 
 import {useEffect, useMemo, useState} from "react";
 
@@ -64,6 +66,7 @@ export default function NotificationSettings() {
   const [brand,setBrand]=useState<Brand>({siteName:"YehaoProxy",logoText:"Y",logoUrl:""});
   const [loading, setLoading] = useState(true);
 
+  useAdminRefresh(load);
   async function load() {
     setLoading(true);
     const response = await fetch("/api/admin/notification-settings", {cache: "no-store"});

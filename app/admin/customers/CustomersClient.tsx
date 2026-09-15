@@ -1,4 +1,6 @@
 "use client";
+import {AdminRefreshButton,useAdminRefresh} from "../AdminRefresh";
+
 import {countryName} from "../../../lib/countries";
 import { useEffect, useState } from "react";
 import OrderDetailWorkspace from "../OrderDetailWorkspace";
@@ -57,12 +59,13 @@ export default function CustomersClient({
     [tab, setTab] = useState<Tab>("summary"),
     [adjusting, setAdjusting] = useState<string | null>(null),
     [adjustSaving, setAdjustSaving] = useState(false);
+  useAdminRefresh(load);
   async function load() {
     const r = await fetch(
         `/api/admin/customers?size=100&search=${encodeURIComponent(q)}`,
       ),
       d = await r.json();
-    r.ok ? setItems(d.items) : setError(d.error);
+    if(r.ok)setItems(d.items);else {setError(d.error);return false;}
   }
   useEffect(() => {
     void load();
@@ -84,7 +87,7 @@ export default function CustomersClient({
   async function open(id: string) {
     setLoading(true);
     setTab("summary");
-    const r = await fetch(`/api/admin/customers/${id}`),
+    const r = await fetch(`/api/admin/customers/${id}`,{cache:"no-store"}),
       d = await r.json();
     setLoading(false);
     r.ok ? setDetail(d) : setError(d.error);
@@ -611,8 +614,8 @@ function OrdersPanel({
   useEffect(() => {
     if (!showCreate || offers.length) return;
     void Promise.all([
-      fetch("/api/admin/products").then((r) => r.json()),
-      fetch("/api/admin/settings").then((r) => r.json()),
+      fetch("/api/admin/products",{cache:"no-store"}).then((r) => r.json()),
+      fetch("/api/admin/settings",{cache:"no-store"}).then((r) => r.json()),
     ])
       .then(([d, s]) => {
         setOffers((d.items || []).filter((x: any) => x.enabled));
@@ -640,7 +643,7 @@ function OrdersPanel({
   async function open(id: string) {
     setLoading(true);
     setError("");
-    const r = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`),
+    const r = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`,{cache:"no-store"}),
       d = await r.json();
     setLoading(false);
     if (!r.ok) return setError(d.error || "订单详情加载失败");
@@ -1209,7 +1212,7 @@ function CustomerOrderDetail({
                 />
               </label>
               <label>
-                续费金额
+                {["soft-router","computer-node"].includes(o.product)?"续费金额":"单个 IP 续费金额（30 天基准）"}
                 <input
                   value={
                     o.renewalAmount == null

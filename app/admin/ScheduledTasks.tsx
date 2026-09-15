@@ -1,11 +1,14 @@
 "use client";
+import {AdminRefreshButton,useAdminRefresh} from "./AdminRefresh";
+
 import {useEffect,useState} from "react";
 type Config={enabled:boolean;emailEnabled:boolean;siteEnabled:boolean;expiryDays:number[];newOrderEnabled:boolean;provisioningEnabled:boolean;provisioningMinutes:number};
 type Data={config:Config;runnerMode:"container"|"baota";lastRun:null|{ranAt:string;scanned:number;created:number;emailed:number;emailFailed:number};script:{path:string;status:"not_run"|"healthy"|"delayed"|"offline";ageMinutes:number|null;endpoint:string;recommendedCron:string;source:"container"|"baota"|"external"|"unknown";mode:string};summary:{active:number;expiring:number;waiting:number}};
 const initial:Config={enabled:true,emailEnabled:false,siteEnabled:true,expiryDays:[7,3,1,0],newOrderEnabled:true,provisioningEnabled:true,provisioningMinutes:30};
 export default function ScheduledTasks(){
   const[data,setData]=useState<Data|null>(null),[config,setConfig]=useState(initial),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
-  async function load(){try{const r=await fetch("/api/admin/scheduled-tasks"),d=await r.json();if(r.ok){setData(d);setConfig({...initial,...(d.config||{})})}else setMessage(d.error||"加载失败")}catch{setMessage("定时任务数据加载失败，请稍后重试")}}
+  useAdminRefresh(load);
+  async function load(){try{const r=await fetch("/api/admin/scheduled-tasks",{cache:"no-store"}),d=await r.json();if(r.ok){setData(d);setConfig({...initial,...(d.config||{})})}else setMessage(d.error||"加载失败")}catch{setMessage("定时任务数据加载失败，请稍后重试")}}
   useEffect(()=>{void load()},[]);
   async function request(body:unknown,success:string){setBusy(true);setMessage("");const r=await fetch("/api/admin/scheduled-tasks",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}),d=await r.json();setBusy(false);setMessage(r.ok?success:d.error||"操作失败");if(r.ok)void load()}
   function toggleDay(day:number){setConfig(x=>({...x,expiryDays:x.expiryDays.includes(day)?x.expiryDays.filter(v=>v!==day):[...x.expiryDays,day].sort((a,b)=>b-a)}))}
