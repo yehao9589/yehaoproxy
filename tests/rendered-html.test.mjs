@@ -212,7 +212,7 @@ test("release metadata and workflow are pinned behind a quality gate", async () 
     read(".github/workflows/publish-images.yml"),
     read("lib/update-center.ts"),
   ]);
-  assert.equal(JSON.parse(pkg).version, "1.0.13");
+  assert.equal(JSON.parse(pkg).version, "1.0.14");
   assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
   assert.match(compose, /yehaoproxy:stable/);
   assert.match(compose, /UPDATE_CHANNEL: stable/);
