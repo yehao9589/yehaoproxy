@@ -86,7 +86,7 @@ export default function OrderManager({ search = "", kind = "all" }: { search?: s
   }
 
   const scoped = rows.filter((order) => effectiveKind === "products"
-    ? order.product !== "cart-bundle" && order.durationDays > 0 && !order.adminNote?.includes("[BILLING_MODE]one-time") && !order.adminNote?.includes("[RENEWAL_OF]")
+    ? !["cart-bundle","wallet-topup"].includes(order.product) && order.durationDays > 0 && !order.adminNote?.includes("[BILLING_MODE]one-time") && !order.adminNote?.includes("[RENEWAL_OF]")
     : !order.adminNote?.includes("[BUNDLE_PARENT]"));
   const workflowGroup=(order:Order)=>order.status==="pending"?"unpaid":order.status==="refunded"?"refunded":["failed","cancelled","canceled"].includes(order.status)?"cancelled":billKind(order)==="renewal"&&!order.renewalVerified?"verification":billKind(order)==="after-sales"&&order.status!=="active"?"processing":billKind(order)==="purchase"&&["paid","provisioning"].includes(order.status)?"delivery":"completed";
   const visible = scoped.filter((order) => (statusFilter === "all" || workflowGroup(order) === statusFilter) && (!keyword || [...(order.allocatedServices||[]).flatMap(service=>[service.address,service.wifiName,service.country,service.city]), order.id, order.billingOrderId, order.customerName, order.customerEmail, order.product, productName(order.product), order.region, regionName(order.region), financialStatus(order), businessProgress(order), billKindNames[billKind(order)]].some((value) => String(value || "").toLowerCase().includes(keyword)))).sort((a, b) => {

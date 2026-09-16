@@ -162,7 +162,7 @@ export async function GET() {
   };
   return NextResponse.json({
     // 订单页保留合并订单，只展示一笔账单。
-    items: rows.filter(order=>!order.adminNote?.includes("[BUNDLE_PARENT]")).map(serialize),
+    items: rows.filter(order=>order.product!=="wallet-topup"&&!order.adminNote?.includes("[BUNDLE_PARENT]")).map(serialize),
     // 服务页使用实际权益明细，合并订单按地区拆分后显示可提取额度。
     entitlements: rows.filter(order=>!order.adminNote?.includes("[BUNDLE_ITEMS]")).map(serialize),
   });

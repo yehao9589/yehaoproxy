@@ -480,6 +480,32 @@ test("customer profile shows the latest successful customer login", async () => 
   assert.match(customerUi, /"从未登录"/);
 });
 
+test("wallet recharges stay in billing and never become product services", async () => {
+  const [customerOrders, productOrders, customerProfile, overview] = await Promise.all([
+    read("app/api/orders/route.ts"),
+    read("app/admin/OrderManager.tsx"),
+    read("app/api/admin/customers/[id]/route.ts"),
+    read("app/admin/LiveAdmin.tsx"),
+  ]);
+  assert.match(customerOrders, /order\.product!=="wallet-topup"/);
+  assert.match(productOrders, /\["cart-bundle","wallet-topup"\]\.includes\(order\.product\)/);
+  assert.match(customerProfile, /serviceOrderRows=orderRows\.filter\(x=>x\.product!=="wallet-topup"\)/);
+  assert.match(customerProfile, /orders:serviceOrderRows/);
+  assert.match(overview, /serviceOrders=orders\.filter\(x=>x\.product!=="wallet-topup"\)/);
+});
+
+test("wallet recharge payments render as one ledger entry and use financial status copy", async () => {
+  const [insights, finance] = await Promise.all([
+    read("app/api/admin/insights/route.ts"),
+    read("app/admin/FinancialOperations.tsx"),
+  ]);
+  assert.match(insights, /rechargeWalletRows/);
+  assert.match(insights, /type:transaction\.status === "refunded" \? "original_refund" : isRecharge \? "wallet_recharge" : "online_payment"/);
+  assert.match(finance, /wallet_recharge:"余额充值到账"/);
+  assert.match(finance, /order\.product==="wallet-topup".*return "已收款"/);
+  assert.match(finance, />\{billStatus\(x\)\}<\/b>/);
+});
+
 test("proxy transit subscriptions flow from delivery to the customer QR modal", async () => {
   const [note, proxies, delivery, resource, deliveryUi, editUi, usageUi] = await Promise.all([
     read("lib/proxy-note.ts"),

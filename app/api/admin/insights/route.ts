@@ -34,6 +34,14 @@ export async function GET() {
   const customersById = new Map(customerRows.map(customer => [customer.id, customer]));
   const customersByEmail = new Map(customerRows.map(customer => [customer.email, customer]));
   const ordersById = new Map(orderRows.map(order => [order.id, order]));
+  const rechargeWalletRows = new Map(
+    walletRows
+      .filter(transaction => {
+        const order = transaction.referenceId ? ordersById.get(transaction.referenceId) : null;
+        return order?.product === "wallet-topup" && ["deposit", "refund"].includes(transaction.type);
+      })
+      .map(transaction => [`${transaction.referenceId}:${transaction.type}`, transaction]),
+  );
   const redemptionsByOrder = new Map(redemptionRows.map(row => [row.orderId, row]));
   const couponsById = new Map(couponRows.map(row => [row.id, row]));
   const relatedOrder = (orderId:string|null) => {
@@ -41,13 +49,16 @@ export async function GET() {
     if(!order)return null;const redemption=redemptionsByOrder.get(order.id),coupon=redemption?couponsById.get(redemption.couponId):null,discountAmount=Number(redemption?.discount||0);
     return { id:order.id, product:order.product, region:order.region, quantity:order.quantity, status:order.status, paymentMethod:order.paymentMethod, couponCode:coupon?.code||null, discountAmount, originalAmount:Number((order.amount+discountAmount).toFixed(2)), paidAmount:order.amount };
   };
-  const walletRecords = walletRows.map(transaction => {
+  const walletRecords = walletRows.filter(transaction => {
+    const order = transaction.referenceId ? ordersById.get(transaction.referenceId) : null;
+    return order?.product !== "wallet-topup" || !["deposit", "refund"].includes(transaction.type);
+  }).map(transaction => {
     const customer = customersById.get(transaction.customerId), order = relatedOrder(transaction.referenceId);
     return { ...transaction, customerName:customer?.name || "未设置名称", customerEmail:customer?.email || null, currency:"CNY", source:"wallet", relatedOrder:order };
   });
   const onlineRecords = paymentRows.filter(transaction => ["succeeded","refunded"].includes(transaction.status)).map(transaction => {
-    const order = ordersById.get(transaction.orderId), customer = order ? customersByEmail.get(order.customerEmail) : null;
-    return { id:transaction.id, customerId:customer?.id || order?.customerEmail || "unknown", customerName:customer?.name || "未设置名称", customerEmail:customer?.email || order?.customerEmail || null, type:transaction.status === "refunded" ? "original_refund" : "online_payment", amount:transaction.status === "refunded" ? -Math.abs(transaction.amount) : Math.abs(transaction.amount), balanceAfter:null, referenceType:"order", referenceId:transaction.orderId, note:transaction.status === "refunded" ? "原支付渠道退款" : "在线支付收款", operatorId:null, createdAt:transaction.updatedAt, currency:transaction.currency, source:"payment", relatedOrder:relatedOrder(transaction.orderId) };
+    const order = ordersById.get(transaction.orderId), customer = order ? customersByEmail.get(order.customerEmail) : null, isRecharge = order?.product === "wallet-topup", walletType = transaction.status === "refunded" ? "refund" : "deposit", walletRecord = isRecharge ? rechargeWalletRows.get(`${transaction.orderId}:${walletType}`) : null;
+    return { id:transaction.id, customerId:customer?.id || order?.customerEmail || "unknown", customerName:customer?.name || "未设置名称", customerEmail:customer?.email || order?.customerEmail || null, type:transaction.status === "refunded" ? "original_refund" : isRecharge ? "wallet_recharge" : "online_payment", amount:transaction.status === "refunded" ? -Math.abs(transaction.amount) : Math.abs(transaction.amount), balanceAfter:walletRecord?.balanceAfter??null, referenceType:isRecharge?"wallet_recharge":"order", referenceId:transaction.orderId, note:transaction.status === "refunded" ? (isRecharge?"余额充值原路退款并扣回余额":"原支付渠道退款") : (isRecharge?"在线收款与余额入账已合并":"在线支付收款"), operatorId:null, createdAt:transaction.updatedAt, currency:transaction.currency, source:"payment", relatedOrder:relatedOrder(transaction.orderId) };
   });
   const transactions = [...walletRecords,...onlineRecords].sort((a,b) => new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime()).slice(0,200);
   return NextResponse.json({ summary:{ revenue:Number(revenue.toFixed(2)), refunded:Number(refunded.toFixed(2)), netRevenue:Number((revenue-refunded).toFixed(2)), orders:orderRows.length, paidOrders:orderRows.filter(order=>paid.has(order.status)).length, customers:customerRows.length }, rankings, months:[...months.values()].sort((a,b)=>a.month.localeCompare(b.month)).slice(-12), transactions });
