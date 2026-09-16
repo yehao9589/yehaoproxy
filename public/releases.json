@@ -1,9 +1,20 @@
 {
-  "version": "v1.0.14",
-  "publishedAt": "2026-09-15",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.14",
-  "releaseNotes": "YehaoProxy v1.0.14：完善多 IP 订单展示与续费定价，并统一后台数据刷新体验。",
+  "version": "v1.0.15",
+  "publishedAt": "2026-09-16",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.15",
+  "releaseNotes": "YehaoProxy v1.0.15：修正余额充值的业务分类、财务流水和收款状态展示。",
   "releases": [
+    {
+      "version": "v1.0.15",
+      "publishedAt": "2026-09-16",
+      "title": "YehaoProxy v1.0.15 余额充值与财务分类修正",
+      "notes": [
+        "余额充值不再作为产品服务展示，不计入产品订单、客户服务订单和后台服务概览",
+        "支付宝收款与钱包余额入账合并为一条余额充值到账流水，避免重复入账的视觉误解",
+        "充值流水保留支付流水、关联充值单号和变动后余额，充值退款同步合并展示",
+        "收款账单中的充值状态改为已收款，不再显示服务类的已激活状态"
+      ]
+    },
     {
       "version": "v1.0.14",
       "publishedAt": "2026-09-15",
