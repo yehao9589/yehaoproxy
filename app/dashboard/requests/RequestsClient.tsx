@@ -1,4 +1,5 @@
 "use client";
+import { usePageSize } from "../../usePageSize";
 import {useEffect,useState} from "react";
 import {countryName} from "../../../lib/countries";
 import Pagination from "../../Pagination";
@@ -11,7 +12,7 @@ const requestStatus=(status:string)=>status==="pending"?"待处理":status==="ap
 
 export default function RequestsClient(){
   const[allItems,setItems]=useState<ServiceRequest[]>([]),[detail,setDetail]=useState<ServiceRequest|null>(null),[message,setMessage]=useState(""),[loading,setLoading]=useState(true);
-  const[page,setPage]=useState(1),[pageSize,setPageSize]=useState(20);
+  const[page,setPage]=useState(1),[pageSize,setPageSize]=usePageSize();
   const currentPage=Math.min(page,Math.max(1,Math.ceil(allItems.length/pageSize))),offset=(currentPage-1)*pageSize,items=allItems.slice(offset,offset+pageSize);
   useEffect(()=>setPage(1),[pageSize]);
   useEffect(()=>{void(async()=>{setLoading(true);setMessage("");try{const response=await fetch("/api/service-requests",{cache:"no-store"}),data=await response.json();if(!response.ok)throw new Error(data.error||"售后申请加载失败");setItems(data.items||[])}catch(error){setMessage(error instanceof Error?error.message:"售后申请加载失败")}finally{setLoading(false)}})()},[]);

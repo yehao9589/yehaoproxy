@@ -137,6 +137,11 @@ export default function SiteManagement() {
     <section className="setting-card site-section">
       <header className="site-section-head"><span>03</span><div><h2>页脚信息</h2><p>配置公司、客服、版权与备案信息。</p></div></header>
       <div className="setting-grid"><label>公司 / 品牌名称<input name="companyName" defaultValue={data.companyName} /></label><label>客服邮箱<input name="supportEmail" type="email" defaultValue={data.supportEmail} /></label><label className="wide">页脚简介<input name="footerDescription" defaultValue={data.footerDescription} /></label><label className="wide">版权字段<input name="copyright" defaultValue={data.copyright} /></label><label className="wide">备案号<input name="icpNumber" defaultValue={data.icpNumber} placeholder="选填" /></label></div>
+    </section>
+
+    <section className="setting-card site-section">
+      <header className="site-section-head"><span>04</span><div><h2>全局列表显示</h2><p>统一设置客户面板与管理后台分页列表的默认显示数量。</p></div></header>
+      <div className="setting-grid"><label>每页默认显示数量<select name="defaultPageSize" value={data.defaultPageSize ?? 20} onChange={event => setData({ ...data, defaultPageSize: Number(event.target.value) })}>{[10,20,50,100].map(size => <option key={size} value={size}>{size} 条 / 页</option>)}</select><small>保存后进入列表生效；列表中手动选择的数量仅用于当前页面。</small></label></div>
       <footer><button className="primary" disabled={saving}>{saving ? "保存中…" : "保存全部站务设置"}</button></footer>
     </section>
   </form>;

@@ -1,9 +1,19 @@
 {
-  "version": "v1.0.15",
-  "publishedAt": "2026-09-16",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.15",
-  "releaseNotes": "YehaoProxy v1.0.15：修正余额充值的业务分类、财务流水和收款状态展示。",
+  "version": "v1.0.16",
+  "publishedAt": "2026-09-17",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.16",
+  "releaseNotes": "YehaoProxy v1.0.16：新增客户面板与后台分页列表的全局默认每页数量设置。",
   "releases": [
+    {
+      "version": "v1.0.16",
+      "publishedAt": "2026-09-17",
+      "title": "YehaoProxy v1.0.16 全局分页设置",
+      "notes": [
+        "站务管理新增全局列表显示设置，可选择每页默认显示 10、20、50 或 100 条",
+        "客户代理、订单、售后及后台订单、续费、服务、审计日志分页统一读取全局默认值",
+        "单个列表仍可临时调整每页数量，重新进入页面恢复全局默认设置"
+      ]
+    },
     {
       "version": "v1.0.15",
       "publishedAt": "2026-09-16",

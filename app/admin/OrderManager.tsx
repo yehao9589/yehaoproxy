@@ -1,4 +1,5 @@
 "use client";
+import { usePageSize } from "../usePageSize";
 import {AdminRefreshButton,useAdminRefresh} from "./AdminRefresh";
 
 import {countries} from "../../lib/countries";
@@ -39,7 +40,7 @@ export default function OrderManager({ search = "", kind = "all" }: { search?: s
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
   const [page,setPage]=useState(1);
-  const [pageSize,setPageSize]=useState(20);
+  const [pageSize,setPageSize]=usePageSize();
   const effectiveKind = kind === "all" ? category : kind;
   const keyword = (search || externalSearch).trim().toLowerCase();
 

@@ -1,4 +1,5 @@
 "use client";
+import { usePageSize } from "../usePageSize";
 import {AdminRefreshButton,useAdminRefresh} from "./AdminRefresh";
 
 
@@ -35,7 +36,7 @@ export default function RenewalOrders() {
   const [message, setMessage] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = usePageSize();
   const [busy, setBusy] = useState<string | null>(null);
   const [pendingVerify, setPendingVerify] = useState<{ id: string; action: "approve" | "reject" } | null>(null);
 

@@ -1,4 +1,5 @@
 "use client";
+import { usePageSize } from "../usePageSize";
 import {AdminRefreshButton,useAdminRefresh} from "./AdminRefresh";
 
 import {countryName} from "../../lib/countries";
@@ -9,7 +10,7 @@ import Pagination from "../Pagination";
 type Item={kind:"proxy"|"node";id:string;orderId:string;customerEmail:string;customerId:string|null;customerName:string|null;product:string;region:string;address:string|null;wifiName:string|null;protocol:string|null;country:string|null;city:string|null;durationDays:number;billingCycle:"fixed-days"|"calendar-month";createdAt:string;expiresAt:string|null;autoRenew:boolean;status:string};
 const productNames:Record<string,string>={"static-isp":"静态住宅 IP","static-residential":"静态住宅 IP","dynamic-residential":"动态住宅代理",datacenter:"数据中心代理","computer-node":"电脑节点","soft-router":"软路由中转"};
 export default function ServicesClient(){
- const[items,setItems]=useState<Item[]>([]),[type,setType]=useState("all"),[expiryFilter,setExpiryFilter]=useState<"all"|"expiring"|"expired">("all"),[query,setQuery]=useState(""),[loading,setLoading]=useState(true),[error,setError]=useState(""),[orderDetail,setOrderDetail]=useState<AdminOrderDetail|null>(null),[detailLoading,setDetailLoading]=useState(false),[sortDir,setSortDir]=useState<"asc"|"desc"|null>(null),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(20),[clock,setClock]=useState(Date.now);
+ const[items,setItems]=useState<Item[]>([]),[type,setType]=useState("all"),[expiryFilter,setExpiryFilter]=useState<"all"|"expiring"|"expired">("all"),[query,setQuery]=useState(""),[loading,setLoading]=useState(true),[error,setError]=useState(""),[orderDetail,setOrderDetail]=useState<AdminOrderDetail|null>(null),[detailLoading,setDetailLoading]=useState(false),[sortDir,setSortDir]=useState<"asc"|"desc"|null>(null),[page,setPage]=useState(1),[pageSize,setPageSize]=usePageSize(),[clock,setClock]=useState(Date.now);
  useAdminRefresh(load);
   async function load(){setLoading(true);setError("");try{const r=await fetch("/api/admin/services",{cache:"no-store"}),text=await r.text();let d:any={};try{d=text?JSON.parse(text):{}}catch{throw new Error(`服务接口返回异常（${r.status}）`)}if(!r.ok)throw new Error(d.error||`服务数据加载失败（${r.status}）`);setItems(d.items||[])}catch(reason){setError(reason instanceof Error?reason.message:"服务数据加载失败");return false}finally{setLoading(false)}}
  useEffect(()=>{void load()},[]);

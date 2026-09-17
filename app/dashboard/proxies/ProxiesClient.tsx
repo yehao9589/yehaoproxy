@@ -1,4 +1,5 @@
 "use client";
+import { usePageSize } from "../../usePageSize";
 import{useEffect,useMemo,useState}from"react";
 import{createRoot}from"react-dom/client";
 import {useRouter} from "next/navigation";
@@ -36,7 +37,7 @@ export default function ProxiesClient(){
   const[currentTime,setCurrentTime]=useState(0);
   const sortRows=<T extends {expiresAt?:string|null}>(rows:T[])=>expirySort===null?rows:[...rows].sort((a,b)=>{const diff=new Date(a.expiresAt||0).getTime()-new Date(b.expiresAt||0).getTime();return expirySort==="asc"?diff:-diff});
   const items=useMemo(()=>sortRows(rawItems),[rawItems,expirySort]),credits=useMemo(()=>sortRows(rawCredits),[rawCredits,expirySort]);
-  const[page,setPage]=useState(1),[pageSize,setPageSize]=useState(20);
+  const[page,setPage]=useState(1),[pageSize,setPageSize]=usePageSize();
   const[proxyQuery,setProxyQuery]=useState("");
   async function load(reveal=true,force=false){setShow(reveal);const proxyTask=dashboardJson<any>("/api/proxies?reveal=1",{force}).then(result=>{if(!result.ok)throw new Error(result.data.error||"代理资源加载失败");setItems(result.data.items||[])}),orderTask=dashboardJson<any>("/api/orders",{force}).then(result=>{if(!result.ok)throw new Error(result.data.error||"订单额度加载失败");setCredits(result.data.entitlements||result.data.items||[])});await Promise.allSettled([proxyTask,orderTask]).then(results=>{const failed=results.find(result=>result.status==="rejected") as PromiseRejectedResult|undefined;if(failed)setMessage(failed.reason instanceof Error?failed.reason.message:"数据加载失败")})}
   async function saveNodeNote(id:string){setWorking(id);try{const r=await fetch(`/api/orders/${encodeURIComponent(id)}/node-service`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({action:"note",note:nodeNoteDraft})});const text=await r.text();let d:any={};try{d=JSON.parse(text)}catch{}if(!r.ok)throw new Error(d.error||text||`备注保存失败（${r.status}）`);setNodeNoteId(null);invalidateDashboardData();await load(show,true);}catch(e){setMessage(e instanceof Error?e.message:"备注保存失败")}finally{setWorking(null)}}

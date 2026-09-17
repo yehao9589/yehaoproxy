@@ -24,8 +24,14 @@ export async function POST(request: Request) {
   if (!admin) return NextResponse.json({ error: "无站务管理权限" }, { status: 403 });
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "站务参数无效" }, { status: 400 });
+  const current = await getSiteConfig();
+  const defaultPageSize = Number(body.defaultPageSize ?? current.defaultPageSize);
+  if (![10, 20, 50, 100].includes(defaultPageSize)) {
+    return NextResponse.json({ error: "每页默认数量请选择 10、20、50 或 100 条" }, { status: 400 });
+  }
 
   const value: SiteConfig = {
+    defaultPageSize,
     siteName: text(body.siteName, 40) || defaultSiteConfig.siteName,
     logoText: text(body.logoText, 4) || "Y",
     logoUrl: text(body.logoUrl, 500),

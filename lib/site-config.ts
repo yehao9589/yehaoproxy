@@ -4,6 +4,7 @@ import { systemOptions } from "../db/schema";
 import { setSystemOption } from "./db-upsert";
 
 export type SiteConfig = {
+  defaultPageSize: number;
   siteName: string;
   logoText: string;
   logoUrl: string;
@@ -18,6 +19,7 @@ export type SiteConfig = {
 };
 
 export const defaultSiteConfig: SiteConfig = {
+  defaultPageSize: 20,
   siteName: "YehaoProxy",
   logoText: "Y",
   logoUrl: "",

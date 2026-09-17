@@ -1,4 +1,5 @@
 "use client";
+import { usePageSize } from "../../usePageSize";
 import {useEffect,useState,useRef} from "react";
 import {useRouter,useSearchParams} from "next/navigation";
 import {countryName} from "../../../lib/countries";
@@ -45,7 +46,7 @@ export default function OrderClient(){
   const[discount,setDiscount]=useState(0);
   const[validating,setValidating]=useState(false);
   const[detail,setDetail]=useState<O|null>(null);
-  const[page,setPage]=useState(1),[pageSize,setPageSize]=useState(20);
+  const[page,setPage]=useState(1),[pageSize,setPageSize]=usePageSize();
   const total=allItems.length,currentPage=Math.min(page,Math.max(1,Math.ceil(total/pageSize))),offset=(currentPage-1)*pageSize;
   const items=allItems.slice(offset,offset+pageSize);
   const orderStats={total:allItems.length,pending:allItems.filter(item=>item.status==="pending").length,opening:allItems.filter(item=>["paid","provisioning"].includes(item.status)).length,active:allItems.filter(item=>item.status==="active").length};
