@@ -20,6 +20,22 @@ test("dashboard navigation uses URL state and refreshes orders on entry", async 
   assert.doesNotMatch(await read("app/dashboard/DashboardTabSync.tsx"),/MutationObserver|pushState|popstate|buttons\[index\]/);
 });
 
+test("customer and admin shells keep navigation reachable on mobile", async () => {
+  const dashboard = await read("app/dashboard/LiveDashboard.tsx");
+  const dashboardCss = await read("app/dashboard-compact.css");
+  assert.match(dashboard, /aria-label="打开客户中心菜单"/);
+  assert.match(dashboard, /dashboard-mobile-backdrop/);
+  assert.match(dashboardCss, /\.unified-console\.mobile-nav-open \.console-side/);
+  const admin = await read("app/admin/LiveAdmin.tsx");
+  const adminCss = await read("app/admin-pro.css");
+  assert.match(admin, /aria-label="打开后台菜单"/);
+  assert.match(admin, /admin-mobile-backdrop/);
+  assert.match(adminCss, /\.admin-pro\.mobile-nav-open>aside/);
+  const sharedCss = await read("app/mobile-responsive.css");
+  assert.match(sharedCss, /max-height:calc\(100dvh - 20px\)/);
+  assert.match(sharedCss, /overflow-x:auto/);
+});
+
 test("traffic reset resolves both binding providers and preserves Komari history",async()=>{
  const route=await read("app/api/admin/service-requests/[id]/route.ts");
  assert.match(route,/resetOrderVpsTraffic\(request.allocationId,id\)/);
@@ -212,7 +228,7 @@ test("release metadata and workflow are pinned behind a quality gate", async () 
     read(".github/workflows/publish-images.yml"),
     read("lib/update-center.ts"),
   ]);
-  assert.equal(JSON.parse(pkg).version, "1.0.16");
+  assert.equal(JSON.parse(pkg).version, "1.0.17");
   assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
   assert.match(compose, /yehaoproxy:stable/);
   assert.match(compose, /UPDATE_CHANNEL: stable/);

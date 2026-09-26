@@ -1,0 +1,44 @@
+/* Shared mobile safeguards for storefront, customer center, and admin screens. */
+@media(max-width:760px){
+  html,body{max-width:100%;overflow-x:hidden}
+  body{min-width:320px}
+  main,.console-body,.admin-work,.admin-content,.console-content,.dashboard-tab-panel{min-width:0;max-width:100%}
+  .customer-page,.standalone-admin{box-sizing:border-box;width:100%;padding:16px 14px}
+  .customer-page>header,.customer-order-page-header{gap:10px;align-items:start}
+  .customer-page>header h1,.customer-order-page-header>div>h1{font-size:22px!important}
+  .standalone-tools{align-items:stretch;flex-direction:column}
+  .standalone-tools input,.standalone-tools select,.standalone-tools button{box-sizing:border-box;width:100%;min-height:42px}
+  .support-list article,.notice-list article{align-items:flex-start;flex-wrap:wrap;padding:14px}
+  .support-list article>button,.notice-list article>button{margin-left:22px}
+  .admin-head{align-items:center;gap:10px}
+  .admin-head h1{font-size:22px}
+  .system-ok{flex:0 0 auto;white-space:nowrap}
+  .admin-content{box-sizing:border-box;width:100%;padding:14px}
+  .settings-card{box-sizing:border-box;width:100%;padding:16px}
+  .settings-title{align-items:flex-start;gap:12px}
+  .filters,.module-toolbar,.financial-filters,.ticket-filters{max-width:100%}
+  .modal,.resource-modal-mask,.customer-ticket-mask,.ticket-policy-mask{box-sizing:border-box;padding:10px}
+  .modal form,.resource-modal,.customer-ticket-modal,.ticket-policy-modal{box-sizing:border-box;max-width:100%;max-height:calc(100dvh - 20px);overflow-y:auto}
+  .modal form{padding:18px}
+  .order-workspace,.customer-drawer,.ticket-drawer,.aftersales-detail{box-sizing:border-box;width:100vw!important;max-width:100vw;height:100dvh!important}
+  .order-workspace-head,.customer-drawer>header,.ticket-drawer>header{gap:12px;padding:16px}
+  .order-workspace-head>div:last-child,.profile-header-actions{flex-wrap:wrap;justify-content:flex-end}
+  .mofang-order-form>section{padding:16px}
+  .order-savebar{padding:12px;flex-wrap:wrap}
+  .order-savebar>div{flex-wrap:wrap}
+  .admin-table,.financial-table,.standalone-table,.proxy-table,.order-customer-table,.managed-proxy-table,.ticket-table{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+  .auth-form-wrap{box-sizing:border-box;padding:28px 18px}
+  .auth-form input,.auth-form select,.auth-form textarea,.customer-page input,.customer-page select,.customer-page textarea{font-size:16px}
+}
+@media(max-width:480px){
+  .customer-page>header,.customer-order-page-header{grid-template-columns:1fr}
+  .customer-page>header>a.primary,.customer-order-page-header>a.primary{grid-column:1;width:100%;margin-top:4px}
+  .proxy-page-actions{display:grid;grid-template-columns:1fr;width:100%}
+  .proxy-page-actions>a{width:100%}
+  .settings-title,.financial-head,.ticket-admin-card>header{align-items:flex-start;flex-direction:column}
+  .kpi-grid,.module-stats,.wallet-cards,.ticket-kpis{grid-template-columns:1fr!important}
+  .modal footer,.settings-card footer{align-items:stretch;flex-direction:column-reverse}
+  .modal footer button,.settings-card footer button{width:100%}
+  .payment-success-card{grid-template-columns:1fr;text-align:left}
+  .payment-success-card>div:last-child{grid-column:1;align-items:stretch;flex-direction:column}
+}

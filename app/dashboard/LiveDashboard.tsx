@@ -53,7 +53,8 @@ export default function LiveDashboard({ name }: { name: string }) {
     }),
     [proxies, setProxies] = useState<ProxyItem[]>([]),
     [orders, setOrders] = useState<Order[]>([]),
-    [reveal, setReveal] = useState(false);
+    [reveal, setReveal] = useState(false),
+    [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   async function load(show = false) {
     setLoading(true);
     setError("");
@@ -85,7 +86,20 @@ export default function LiveDashboard({ name }: { name: string }) {
   useEffect(() => {
     void load();
   }, []);
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileMenuOpen(false);
+    };
+    document.body.classList.add("dashboard-mobile-menu-active");
+    window.addEventListener("keydown", close);
+    return () => {
+      document.body.classList.remove("dashboard-mobile-menu-active");
+      window.removeEventListener("keydown", close);
+    };
+  }, [mobileMenuOpen]);
   function choose(id: Tab) {
+    setMobileMenuOpen(false);
     router.push(id==="overview"?"/dashboard":`/dashboard?tab=${id}`);
   }
   const nav = (id: Tab, label: string, icon: string) => (
@@ -95,8 +109,12 @@ export default function LiveDashboard({ name }: { name: string }) {
     </button>
   );
   return (
-    <main className="console unified-console">
-      <aside className="console-side">
+    <main className={`console unified-console${mobileMenuOpen ? " mobile-nav-open" : ""}`}>
+      <aside className="console-side" id="dashboard-mobile-navigation">
+        <div className="dashboard-mobile-nav-head">
+          <span>客户中心菜单</span>
+          <button type="button" aria-label="关闭菜单" onClick={() => setMobileMenuOpen(false)}>×</button>
+        </div>
         <a className="brand" href="/">
           <span>Y</span> YehaoProxy
         </a>
@@ -112,8 +130,19 @@ export default function LiveDashboard({ name }: { name: string }) {
           {nav("notifications", "消息通知", "◉")}
         </nav>
       </aside>
+      <button type="button" className="dashboard-mobile-backdrop" aria-label="关闭菜单" onClick={() => setMobileMenuOpen(false)} />
       <section className="console-body">
         <header className="console-top">
+          <button
+            type="button"
+            className="dashboard-mobile-menu-button"
+            aria-label="打开客户中心菜单"
+            aria-controls="dashboard-mobile-navigation"
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <span>☰</span> 菜单
+          </button>
           <div className="dashboard-context">
             <div>
               <b>客户中心</b>
