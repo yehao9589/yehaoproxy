@@ -1,0 +1,63 @@
+.vps-page{gap:20px;min-width:0}
+.vps-page .vps-toolbar.business-hero{min-height:0;padding:24px 28px;border:1px solid #dce6f1;background:#fff;box-shadow:none;color:#19334f;border-radius:16px}
+.vps-page .vps-toolbar.business-hero:before,.vps-page .vps-toolbar.business-hero:after{display:none}
+.vps-page .vps-toolbar.business-hero small{color:#6582a5;font-size:10px;letter-spacing:1.8px}
+.vps-page .vps-toolbar.business-hero h2{color:#183650;font-size:24px;margin:6px 0}
+.vps-page .vps-toolbar.business-hero p{color:#778aa0;font-size:13px}
+.vps-page .vps-monitor-tabs{gap:8px;margin:0;padding:5px;background:#eaf0f7;border:0;border-radius:12px;width:fit-content;max-width:100%}
+.vps-page .vps-monitor-tabs button{height:42px;padding:0 22px;border:0;border-radius:9px;background:transparent;font-size:14px;color:#687e95;white-space:nowrap}
+.vps-page .vps-monitor-tabs button[aria-selected=true]{background:#fff;color:#1764d9;box-shadow:0 2px 6px #29496b10}
+.vps-page .komari-panel{display:flex;flex-direction:column;gap:18px;margin:0}
+.vps-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;order:0}
+.vps-overview article{padding:20px 22px;border:1px solid #dce6f1;background:#fff;border-radius:13px}
+.vps-overview article>span{display:flex;align-items:center;gap:7px;font-size:12px;color:#72869d}
+.vps-overview strong{display:block;font-size:28px;font-weight:650;color:#213d58;margin-top:10px;font-variant-numeric:tabular-nums}
+.vps-overview strong small{margin-left:8px;font-size:12px;font-weight:400;color:#91a0b1}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#13a47e;display:inline-block}
+.vps-page .komari-panel>header{order:2;padding:6px 0 0}
+.vps-page .komari-panel>header h2{font-size:18px}
+.vps-page .komari-panel>header p{font-size:12px;margin:5px 0 0}
+.vps-page .komari-panel>header>button{height:38px;min-height:38px;padding:0 16px;flex-shrink:0}
+.vps-page .komari-panel>.komari-connection{order:1;margin:0;padding:14px 18px;border-radius:11px;background:#f8fafd}
+.vps-page .komari-connection>summary{font-size:13px}
+.vps-page .komari-panel>.komari-help{order:6;margin:0;padding:12px 2px}
+.vps-page .komari-panel>[role=status]{order:1;margin:0}
+.vps-page .komari-filters{order:3;margin:0;padding:16px 18px;background:#fff;border:1px solid #dce6f1;border-radius:12px;gap:16px;align-items:end}
+.vps-page .komari-filters label{font-size:12px;gap:7px}
+.vps-page .komari-filters>label:first-child{max-width:none}
+.vps-page .komari-filters input,.vps-page .komari-filters select{height:38px;border-radius:8px;font-size:13px}
+.vps-page .komari-filters>span{white-space:nowrap;font-size:12px}
+.vps-page .komari-filters button{height:38px;padding:0 12px;white-space:nowrap;font-size:12px}
+.vps-page .komari-grid{order:4;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:18px!important;align-items:start}
+.vps-page .komari-grid>article{padding:22px!important;border-radius:14px;box-shadow:0 3px 12px #193b5c04}
+.vps-page .komari-node-title{gap:12px}
+.vps-page .komari-node-title>i{width:40px;height:40px;border:0;border-radius:11px}
+.vps-page .komari-node-title h3{font-size:15px}
+.vps-page .komari-node-title small{font-size:11px!important;margin-top:4px}
+.vps-page .komari-grid header>span{border-radius:20px;padding:5px 10px;font-size:11px!important;flex-shrink:0}
+.vps-page .komari-stats{margin:18px 0 0!important;padding:16px 0!important;gap:16px}
+.vps-page .komari-stats span{font-size:11px!important}
+.vps-page .komari-stats b{font-size:20px!important;margin-top:5px}
+.vps-page .komari-network{padding:12px 14px;margin:0 0 18px;background:#f5f8fc;border-radius:9px}
+.vps-page .komari-network>span{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;flex-wrap:wrap}
+.vps-page .komari-network strong{margin:0;font-size:12px}
+.vps-page .komari-usage b{font-size:25px!important}
+.vps-page .komari-usage>span{font-size:12px}
+.vps-page .komari-sample{font-size:10px!important;margin:12px 0;line-height:1.8;overflow-wrap:anywhere}
+.vps-page .komari-grid details{margin:0;padding:12px 0 0}
+.vps-page .komari-grid details+details{margin-top:12px}
+.vps-page .komari-grid summary{font-size:12px!important;color:#526f8e}
+.vps-page .komari-grid details[open]{padding-bottom:4px}
+.vps-page .komari-grid details form{grid-template-columns:repeat(2,minmax(0,1fr));background:#f6f9fc;padding:14px;border-radius:9px}
+.vps-page .komari-grid details form label{font-size:12px}
+.vps-page .komari-grid details form label:first-child{grid-column:1/-1}
+.vps-page .komari-grid details form button{grid-column:1/-1;justify-self:end;padding:0 16px}
+.vps-page .komari-panel>p{order:5}
+.vps-page .vps-summary{margin:0 0 20px}
+.vps-page .vps-card{padding:22px;border-radius:14px}
+.vps-page .vps-card footer{flex-wrap:wrap;gap:8px}
+.vps-page .vps-card footer button{height:34px;font-size:12px;flex-shrink:0}
+.vps-page button:disabled{opacity:.5;cursor:not-allowed}
+@media(min-width:1800px){.vps-page .komari-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@media(max-width:1000px){.vps-overview{gap:10px}.vps-overview article{padding:16px}.vps-page .komari-grid{grid-template-columns:1fr!important}.vps-page .komari-filters{flex-wrap:wrap}.vps-page .komari-filters>label:first-child{flex-basis:55%}}
+@media(max-width:600px){.vps-page .vps-toolbar.business-hero{padding:20px;flex-wrap:wrap;gap:16px}.vps-page .vps-toolbar.business-hero h2{font-size:21px}.vps-page .vps-monitor-tabs{width:100%;box-sizing:border-box}.vps-page .vps-monitor-tabs button{flex:1;padding:0 10px;font-size:13px}.vps-page .vps-monitor-tabs small{font-size:10px;margin-left:4px}.vps-overview{grid-template-columns:repeat(2,minmax(0,1fr))}.vps-overview strong{font-size:25px}.vps-page .komari-grid>article{padding:18px!important}.vps-page .komari-filters>label:first-child{flex-basis:100%;min-width:0}.vps-page .komari-filters>label{min-width:0;flex:1}.vps-page .komari-filters>span{margin:0}.vps-page .komari-grid details form{grid-template-columns:1fr}.vps-page .komari-network{gap:12px}.vps-page .komari-network>span{display:block}.vps-page .komari-network strong{margin-top:5px}.vps-page .vps-data{grid-template-columns:repeat(2,minmax(0,1fr))}.vps-page .komari-panel>header p{max-width:210px;line-height:1.6}}

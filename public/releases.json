@@ -1,9 +1,20 @@
 {
-  "version": "v1.0.18",
-  "publishedAt": "2026-09-29",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.18",
-  "releaseNotes": "YehaoProxy v1.0.18：完善客户与审计日志，修复手工节点续费，并统一日期时间选择器。",
+  "version": "v1.0.19",
+  "publishedAt": "2026-09-30",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.19",
+  "releaseNotes": "YehaoProxy v1.0.19：重新设计 VPS 监控列表，优化筛选、服务绑定与用量管理。",
   "releases": [
+    {
+      "version": "v1.0.19",
+      "publishedAt": "2026-09-30",
+      "title": "YehaoProxy v1.0.19 VPS 管理界面重设计",
+      "notes": [
+        "服务器监控改为横向列表，统一展示在线状态、资源占用、实时网络、流量和绑定客户",
+        "新增全部、在线、离线、未绑定快捷筛选，支持按名称、分组、客户和订单搜索",
+        "管理操作展开服务绑定、流量校准和最近每日用量，减少列表信息堆叠",
+        "优化手机端布局、连接设置及代理面板操作区域"
+      ]
+    },
     {
       "version": "v1.0.18",
       "publishedAt": "2026-09-29",

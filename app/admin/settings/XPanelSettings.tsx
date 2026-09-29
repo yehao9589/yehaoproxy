@@ -7,6 +7,7 @@ import "./vps-management.css";
 import "./vps-inbounds.css";
 import "./vps-editor-modal.css";
 import "./vps-calibrate.css";
+import "./vps-workspace.css";
 type Inbound = { id:string; name:string; protocol:string; port:number; up:number; down:number; used:number; clientCount:number; enabled:boolean };
 type Metrics = {
   used: number;
@@ -134,7 +135,7 @@ export default function XPanelSettings() {
           <button className="primary" onClick={() => setEditing(null)}>
             ＋ 添加 VPS
           </button>
-          </>:<button className="primary" onClick={()=>window.dispatchEvent(new Event("komari:sync"))}>↻ 同步节点</button>}
+          </>:null}
         </div>
       </section>
       <div className="vps-monitor-tabs" role="tablist" aria-label="VPS 管理分区"><button role="tab" aria-selected={monitorTab==="komari"} onClick={()=>setMonitorTab("komari")}>服务器监控 <small>Komari</small></button><button role="tab" aria-selected={monitorTab==="xpanel"} onClick={()=>setMonitorTab("xpanel")}>代理面板 <small>X-Panel</small></button></div>
