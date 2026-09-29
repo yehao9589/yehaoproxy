@@ -72,6 +72,7 @@ import "./admin/product-offers.css";
 import "./sequence-columns.css";
 import "./finance-refined.css";
 import "./mobile-responsive.css";
+import "./date-inputs.css";
 import CreditEnhancer from "./CreditEnhancer";
 import AdjustmentEnhancer from "./AdjustmentEnhancer";
 import CurrencyEnhancer from "./CurrencyEnhancer";
@@ -97,6 +98,7 @@ import ModalCloseEnhancer from "./ModalCloseEnhancer";
 import GlobalChineseUiEnhancer from "./GlobalChineseUiEnhancer";
 import GlobalToastLayer from "./GlobalToastLayer";
 import AdminSessionGuard from "./AdminSessionGuard";
+import DatePickerLayer from "./DatePickerLayer";
 
 export const metadata: Metadata = {
   title: "YehaoProxy｜全球企业级代理 IP",
@@ -104,5 +106,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="zh-CN"><body>{children}<CreditEnhancer/><AdjustmentEnhancer/><CurrencyEnhancer/><OrderResourceEnhancer/><CustomerRecordEnhancer/><DashboardExpiryEnhancer/><ProxyQrEnhancer/><ManualAllocationEnhancer/><ProxyOverviewCopyEnhancer/><AutoRenewSwitchEnhancer/><ResourceExpiryEnhancer/><OverviewLinkEnhancer/><ProxyBatchExportEnhancer/><OverviewStatusEnhancer/><OrderCenterLinkEnhancer/><ProxyReplaceEnhancer/><DashboardRecentOrdersEnhancer/><NodeSubscriptionEnhancer/><NodeTrafficEnhancer/><AddonServiceStatusEnhancer/><PaymentReturnEnhancer/><RenewalVerificationEnhancer/><CustomerIdFormatEnhancer/><ModalCloseEnhancer/><GlobalChineseUiEnhancer/><AdminSessionGuard/><GlobalToastLayer/></body></html>;
+  return <html lang="zh-CN"><body>{children}<CreditEnhancer/><AdjustmentEnhancer/><CurrencyEnhancer/><OrderResourceEnhancer/><CustomerRecordEnhancer/><DashboardExpiryEnhancer/><ProxyQrEnhancer/><ManualAllocationEnhancer/><ProxyOverviewCopyEnhancer/><AutoRenewSwitchEnhancer/><ResourceExpiryEnhancer/><OverviewLinkEnhancer/><ProxyBatchExportEnhancer/><OverviewStatusEnhancer/><OrderCenterLinkEnhancer/><ProxyReplaceEnhancer/><DashboardRecentOrdersEnhancer/><NodeSubscriptionEnhancer/><NodeTrafficEnhancer/><AddonServiceStatusEnhancer/><PaymentReturnEnhancer/><RenewalVerificationEnhancer/><CustomerIdFormatEnhancer/><ModalCloseEnhancer/><GlobalChineseUiEnhancer/><AdminSessionGuard/><GlobalToastLayer/><DatePickerLayer/></body></html>;
 }

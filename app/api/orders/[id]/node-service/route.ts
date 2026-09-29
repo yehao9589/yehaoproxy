@@ -1,4 +1,4 @@
-import { and, eq, inArray, like } from "drizzle-orm";
+import { and, eq, inArray, like, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "../../../../../db";
 import { orders, productOffers, systemOptions } from "../../../../../db/schema";
@@ -86,7 +86,10 @@ export async function PATCH(
       .from(productOffers)
       .where(and(
         eq(productOffers.product, order.product),
-        eq(productOffers.region, order.region),
+        or(
+          eq(productOffers.region, order.region),
+          eq(productOffers.regionName, order.region),
+        ),
         eq(productOffers.enabled, true),
       ))
       .limit(1);
@@ -147,7 +150,7 @@ export async function PATCH(
         { status: 409 },
       );
     }
-    const [resetOffer] = await db.select().from(productOffers).where(and(eq(productOffers.product,order.product),eq(productOffers.region,order.region))).limit(1);
+    const [resetOffer] = await db.select().from(productOffers).where(and(eq(productOffers.product,order.product),or(eq(productOffers.region,order.region),eq(productOffers.regionName,order.region)))).limit(1);
     const optionRows=await db.select().from(systemOptions);
     const productPrice=optionRows.find(item=>item.key===`productPolicy:${resetOffer?.id}:nodeTrafficResetPrice`)?.value;
     const defaultPrice=optionRows.find(item=>item.key==="nodeTrafficResetPrice")?.value;

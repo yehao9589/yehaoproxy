@@ -1,4 +1,4 @@
-import { and, desc, getTableColumns, inArray, like, not, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, getTableColumns, gte, inArray, like, lt, not, or, sql, type SQL } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "../../../../db";
 import { auditLogs, customers, proxyAllocations } from "../../../../db/schema";
@@ -45,6 +45,9 @@ export async function GET(req: Request) {
   const page = Math.max(1, Number(url.searchParams.get("page") || 1));
   const size = Math.min(100, Math.max(10, Number(url.searchParams.get("size") || 50)));
   const search = String(url.searchParams.get("search") || "").trim().slice(0, 100);
+  const fromValue=String(url.searchParams.get("from")||"").trim(),toValue=String(url.searchParams.get("to")||"").trim();
+  const from=fromValue?new Date(fromValue):null,to=toValue?new Date(toValue):null;
+  if(from&&Number.isNaN(from.getTime())||to&&Number.isNaN(to.getTime())||from&&to&&from>=to)return NextResponse.json({error:"日志日期范围无效"},{status:400});
   const db = getDb();
   const matchedCustomers=search?await db.select({id:customers.id}).from(customers).where(or(like(customers.name,`%${search}%`),like(customers.email,`%${search}%`),like(customers.id,`%${search}%`))):[];
   const matchedCustomerIds=matchedCustomers.map(customer=>customer.id);
@@ -60,15 +63,22 @@ export async function GET(req: Request) {
         matchedCustomerIds.length?inArray(auditLogs.resourceId,matchedCustomerIds):undefined,
       )
     : undefined;
+  const dateParts:SQL[]=[];
+  if(from)dateParts.push(gte(auditLogs.createdAt,from));
+  if(to)dateParts.push(lt(auditLogs.createdAt,to));
+  const dateFilter=dateParts.length?and(...dateParts):undefined;
+  const baseParts=[searchFilter,dateFilter].filter((part):part is SQL=>Boolean(part));
+  const baseFilter=baseParts.length?and(...baseParts):undefined;
   const filter = categoryFilter(category);
-  const where = filter && searchFilter ? and(filter, searchFilter) : filter || searchFilter;
+  const where = filter&&baseFilter?and(filter,baseFilter):filter||baseFilter;
+  const scoped=(extra?:SQL)=>extra&&baseFilter?and(extra,baseFilter):extra||baseFilter;
   const [items, totalRows, allRows, loginRows, emailRows, scheduledRows, customerRows, proxyRows] = await Promise.all([
     db.select({...getTableColumns(auditLogs)}).from(auditLogs).where(where).orderBy(desc(auditLogs.createdAt)).limit(size).offset((page - 1) * size),
     db.select({ value: sql<number>`count(*)` }).from(auditLogs).where(where),
-    db.select({ value: sql<number>`count(*)` }).from(auditLogs),
-    db.select({ value: sql<number>`count(*)` }).from(auditLogs).where(loginFilter),
-    db.select({ value: sql<number>`count(*)` }).from(auditLogs).where(emailFilter),
-    db.select({ value: sql<number>`count(*)` }).from(auditLogs).where(scheduledFilter),
+    db.select({ value: sql<number>`count(*)` }).from(auditLogs).where(baseFilter),
+    db.select({ value: sql<number>`count(*)` }).from(auditLogs).where(scoped(loginFilter!)),
+    db.select({ value: sql<number>`count(*)` }).from(auditLogs).where(scoped(emailFilter!)),
+    db.select({ value: sql<number>`count(*)` }).from(auditLogs).where(scoped(scheduledFilter!)),
     db.select({id:customers.id,name:customers.name,email:customers.email}).from(customers),
     db.select({id:proxyAllocations.id,host:proxyAllocations.host,port:proxyAllocations.port}).from(proxyAllocations),
   ]);

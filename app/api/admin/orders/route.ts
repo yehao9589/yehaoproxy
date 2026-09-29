@@ -327,7 +327,9 @@ export async function POST(req: Request) {
       );
     product = offer.product;
     resolvedType = offer.product;
-    region = offer.regionName || offer.region;
+    // Orders must keep the stable region code. The display name is resolved from
+    // the offer when rendering; storing it here breaks later renewal lookups.
+    region = offer.region;
     adminNote =
       `[PRODUCT_TYPE]${resolvedType}\n[BILLING_MODE]recurring\n${adminNote}`.trim();
   } else {

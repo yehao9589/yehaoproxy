@@ -1,5 +1,5 @@
 import{NextResponse}from"next/server";
-import{and,desc,eq,sql}from"drizzle-orm";
+import{and,desc,eq,or,sql}from"drizzle-orm";
 import{requireAdminApi}from"../../../../../lib/admin-auth";
 import{getDb}from"../../../../../db";
 import{couponRedemptions,coupons,customers,orders,paymentTransactions,productOffers,proxyAllocations,serviceRequests,walletTransactions}from"../../../../../db/schema";
@@ -70,7 +70,7 @@ export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){
   const redemptionOrderIds=new Set([id,...relatedOrders.map(item=>item.id)]),redemption=(await db.select().from(couponRedemptions)).find(item=>redemptionOrderIds.has(item.orderId)),[coupon]=redemption?await db.select().from(coupons).where(eq(coupons.id,redemption.couponId)).limit(1):[null],discountAmount=Number(redemption?.discount||0),orderText=orderNote(order.adminNote),renewalVerified=orderText.includes("[RENEWAL_VERIFIED_AT]")||(orderText.includes("[BUNDLE_RENEWAL]true")&&relatedOrders.length>0&&relatedOrders.every(item=>orderNote(item.adminNote).includes("[RENEWAL_VERIFIED_AT]")));
   const deliveryPolicy=await nodeDeliveryPolicy(order);
   const visibleOrder={...order,...deliveryPolicy,amount:itemAmount==null?order.amount:Number(itemAmount),adminNote:visibleNote(order.adminNote),billType:billKind({...order,adminNote:orderText}),renewalVerified,subscriptionUrl,billingOrderId:billingOrderId||null,billingCycle:billingCycleFromNote(order.adminNote),couponCode:coupon?.code||null,discountAmount,originalAmount:Number((order.amount+discountAmount).toFixed(2)),paidAmount:order.amount,paymentSource};
-  const[offer]=await db.select().from(productOffers).where(and(eq(productOffers.product,order.product),eq(productOffers.region,order.region))).limit(1);
+  const[offer]=await db.select().from(productOffers).where(and(eq(productOffers.product,order.product),or(eq(productOffers.region,order.region),eq(productOffers.regionName,order.region)))).limit(1);
   const availableRenewalPeriods=visibleOrder.billingCycle==="calendar-month"
     ?[(offer?.price30??-1)>=0?30:null,(offer?.price90??-1)>=0?90:null,(offer?.price180??-1)>=0?180:null].filter((value):value is number=>value!==null)
     :[(offer?.price7??-1)>=0?7:null,(offer?.price30??-1)>=0?30:null,(offer?.price90??-1)>=0?90:null].filter((value):value is number=>value!==null);
