@@ -6,7 +6,7 @@ import{couponRedemptions,coupons,customers,orders,paymentTransactions,productOff
 import{encryptCredential}from"../../../../../lib/inventory-crypto";
 import{normalizeCityName}from"../../../../../lib/cities";
 import{addBillingPeriod,billingCycleFromNote}from"../../../../../lib/billing-period";
-import{getXPanelBinding,getXPanelServers}from"../../../../../lib/xpanel";
+import{orderVpsTargets}from"../../../../../lib/vps-bindings";
 import{audit}from"../../../../../lib/audit";
 import{databaseText}from"../../../../../lib/database-text";
 import{billKind}from"../../../../../lib/bill-workflow";
@@ -81,12 +81,11 @@ export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){
   })):[];
   const[renewalSourceOrder]=renewalOf?await db.select().from(orders).where(eq(orders.id,renewalOf)).limit(1):[null];
   const[renewalAllocation]=renewalAllocationId?await db.select().from(proxyAllocations).where(eq(proxyAllocations.id,renewalAllocationId)).limit(1):[null];
-  const renewalBinding=renewalOf?await getXPanelBinding(renewalOf):null;
-  const renewalVps=renewalBinding?(await getXPanelServers()).find(server=>server.id===renewalBinding.serverId):null;
+  const renewalTargets=renewalOf?await orderVpsTargets(renewalOf):[];
   const renewalContext=renewalOf?{
     sourceOrder:renewalSourceOrder||null,
     allocation:renewalAllocation?{...renewalAllocation,city:renewalAllocation.note?.match(/\[CITY\]([^\n]*)/)?.[1]||null}:null,
-    vpsName:renewalVps?.name||null,
+    vpsName:renewalTargets.map(target=>target.name||target.serverId).join(" / ")||null,
   }:null;
   const oneTimeProducts=new Set(["ip-replacement","node-traffic-reset"]);
   let serviceContext:null|{kind:string;targetOrder:any|null;targetAllocation:any|null;request:any|null}=null;

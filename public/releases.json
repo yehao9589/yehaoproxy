@@ -1,9 +1,21 @@
 {
-  "version": "v1.0.19",
-  "publishedAt": "2026-09-30",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.19",
-  "releaseNotes": "YehaoProxy v1.0.19：重新设计 VPS 监控列表，优化筛选、服务绑定与用量管理。",
+  "version": "v1.0.20",
+  "publishedAt": "2026-10-03",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.20",
+  "releaseNotes": "YehaoProxy v1.0.20：订单独立展示 WiFi 名称，完善合并支付流水明细并修复节点续费 VPS 绑定展示。",
   "releases": [
+    {
+      "version": "v1.0.20",
+      "publishedAt": "2026-10-03",
+      "title": "YehaoProxy v1.0.20 订单与流水服务明细",
+      "notes": [
+        "客户订单新增独立 WiFi 名称列，多 IP 可查看对应资源与客户备注",
+        "余额流水展示关联服务，合并支付保留一笔扣款并列出子订单金额和资源明细",
+        "续费资源精确关联实际选中的 IP，避免混入原订单其他资源",
+        "客户流水不返回后台 VPS 名称和服务器编号，节点仅展示服务类型及客户备注",
+        "修复 Komari 节点续费订单误显示未绑定 VPS 的问题"
+      ]
+    },
     {
       "version": "v1.0.19",
       "publishedAt": "2026-09-30",

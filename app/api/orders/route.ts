@@ -10,6 +10,8 @@ import {notifyAdmins} from "../../../lib/admin-event-notifications";
 import {ensureProductOfferSchema} from "../../../lib/product-offer-schema";
 import {nextBusinessId} from "../../../lib/business-id";
 import {audit} from "../../../lib/audit";
+import {resourcesForOrder} from "../../../lib/order-resource-context";
+import {visibleProxyNote} from "../../../lib/proxy-note";
 
 const durations = new Set([7, 30, 90, 180]);
 
@@ -88,7 +90,7 @@ export async function GET() {
   const customerNotes = await db.select().from(systemOptions).where(like(systemOptions.key,"node_customer_note:%"));
   const noteMap = new Map(customerNotes.filter(x=>x.key.startsWith("node_customer_note:")).map(x=>[x.key.slice(19),x.value]));
   const [rows, requestRows, redemptionRows, couponRows] = await Promise.all([
-    db.select().from(orders).where(eq(orders.customerEmail, user.email)).orderBy(desc(orders.createdAt)).limit(100),
+    db.select().from(orders).where(eq(orders.customerEmail, user.email)).orderBy(desc(orders.createdAt)),
     db.select().from(serviceRequests).where(eq(serviceRequests.customerId, user.id)).orderBy(desc(serviceRequests.createdAt)).limit(200),
     db.select().from(couponRedemptions).where(eq(couponRedemptions.customerId,user.id)),
     db.select().from(coupons),
@@ -132,9 +134,7 @@ export async function GET() {
     const bundleChildren=renewalChildrenByParent.get(order.id)||[];
     const bundleRenewalApplied=bundleRenewal&&bundleChildren.length>0&&bundleChildren.every(child=>child.adminNote?.includes("[RENEW_APPLIED_AT]"));
     const bundleItems=(()=>{const raw=adminNote?.match(/\[BUNDLE_ITEMS\]([^\n]+)/)?.[1];if(!raw)return null;try{return JSON.parse(decodeURIComponent(raw))}catch{return null}})();
-    const sourceIds=renewalOf?[renewalOf]:bundleItems?.length?bundleItems.map((item:{id:string})=>item.id):[order.id];
-    const replacementAllocationId=adminNote?.match(/\[REPLACE_ALLOCATION\]([^\n]+)/)?.[1]?.trim()||null;
-    const resourceRows=replacementAllocationId?[allocationById.get(replacementAllocationId)].filter((item):item is typeof allocationRows[number]=>Boolean(item)):sourceIds.flatMap((id:string)=>allocationsByOrder.get(id)||[]);
+    const resourceRows=resourcesForOrder({...order,adminNote},rows,allocationRows);
     const resources=resourceRows.map((resource:typeof allocationRows[number])=>({id:resource.id,orderId:resource.orderId,ip:`${resource.host}:${resource.port}`,wifiName:resource.wifiName||null,country:resource.orderRegion||orderRegionById.get(resource.orderId)||order.region,city:resource.note?.match(/\[CITY\]([^\n]*)/)?.[1]?.trim()||null,protocol:resource.protocol,status:resource.status}));
     const nodeSource=renewalOf?orderById.get(renewalOf):null,nodeSubscriptionUrl=(nodeSource?.adminNote||adminNote)?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1]||null;
     return {
@@ -156,7 +156,7 @@ export async function GET() {
         : null,
       nodeService: ["computer-node","soft-router"].includes(order.product)?{product:order.product,subscriptionUrl:nodeSubscriptionUrl,region:nodeSource?.region||order.region}:null,
       bundleItems,
-      resources,
+      resources:resources.map(resource=>({...resource,customerNote:visibleProxyNote(allocationById.get(resource.id)?.note||"")})),
       serviceRequestStatus: serviceRequestForOrder({ ...order, adminNote })?.status || null,
     };
   };
