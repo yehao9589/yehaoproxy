@@ -1,0 +1,8 @@
+.renewal-status-filters{display:flex;gap:8px;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid #e6edf5;background:#fff}
+.renewal-status-filters button{display:flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:8px;padding:9px 13px;background:transparent;color:#647b94;white-space:nowrap;font-weight:600}
+.renewal-status-filters button span{background:#edf2f7;border-radius:5px;padding:1px 6px;font-size:12px}
+.renewal-status-filters button[aria-pressed=true]{background:#edf5ff;border-color:#cfe2ff;color:#1266dc}
+.renewal-status-filters button[aria-pressed=true] span{background:#dceaff;color:#1266dc}
+.renewal-batch-summary{margin:0 20px 16px;padding:13px 16px;background:#f3f8fd;border:1px solid #dce8f5;border-radius:9px;font-size:13px;color:#526b84}
+.renewal-batch-summary>div[role=status]{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.renewal-batch-summary strong{color:#254765}.renewal-batch-summary .has-errors{color:#d64a46}.renewal-batch-summary button{margin-left:auto;background:transparent;border:0;color:#497aa7;cursor:pointer}
+.renewal-batch-summary progress{display:block;width:100%;height:6px;margin-top:12px;accent-color:#1677ef}.renewal-batch-summary details{margin-top:10px}.renewal-batch-summary summary{cursor:pointer;color:#bc4944}.renewal-failure-list{max-height:180px;overflow:auto}.renewal-failure-list p{display:flex;gap:12px;flex-wrap:wrap;border-top:1px solid #e2eaf2;padding-top:8px;overflow-wrap:anywhere}

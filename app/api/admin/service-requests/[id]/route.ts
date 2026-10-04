@@ -1,3 +1,4 @@
+import {notifyCustomerEvent} from "../../../../../lib/customer-event-notifications";
 import { and, desc, eq, like } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "../../../../../db";
@@ -87,6 +88,7 @@ export async function PATCH(
       }
     }
     await audit(admin, "service.reject", "service_request", id, { note: body?.note,refundedOrderId,refundAmount }, req);
+    await notifyCustomerEvent(request.customerId,"aftersales","售后申请进度更新",`申请 ${id} 未通过，请在售后申请中查看详情。`);
     return NextResponse.json({ ok: true, status: "rejected",refundedOrderId,refundAmount });
   }
   if (action !== "approve") {
@@ -120,6 +122,7 @@ export async function PATCH(
       { requestId: id, resetOrderId, note: body?.note },
       req,
     );
+    await notifyCustomerEvent(request.customerId,"aftersales","售后申请进度更新",`申请 ${id} 已完成，请在售后申请中查看详情。`);
     return NextResponse.json({ ok: true, status: "completed" });
   }
   if (request.type === "custom") {
@@ -131,6 +134,7 @@ export async function PATCH(
     }).where(eq(serviceRequests.id, id));
     if (paidOrderId) await db.update(orders).set({ status: "active", updatedAt: now }).where(eq(orders.id, paidOrderId));
     await audit(admin, "service.custom.complete", "order", request.allocationId, { requestId: id, paidOrderId, note: body?.note }, req);
+    await notifyCustomerEvent(request.customerId,"aftersales","售后申请进度更新",`申请 ${id} 已完成，请在售后申请中查看详情。`);
     return NextResponse.json({ ok: true, status: "completed" });
   }
 
@@ -152,6 +156,7 @@ export async function PATCH(
       updatedAt: now,
     }).where(eq(serviceRequests.id, id));
     await audit(admin, "service.renew.complete", "proxy", allocation.id, { expiresAt }, req);
+    await notifyCustomerEvent(request.customerId,"aftersales","售后申请进度更新",`申请 ${id} 已完成，请在售后申请中查看详情。`);
     return NextResponse.json({ ok: true, status: "completed", expiresAt });
   }
 
@@ -177,5 +182,6 @@ export async function PATCH(
   }).where(eq(serviceRequests.id, id));
   if(linkedBillId)await db.update(orders).set({status:"active",updatedAt:now}).where(eq(orders.id,linkedBillId));
   await audit(admin, "service.replace.complete", "proxy", allocation.id, { manual: true,host,port,country,city,linkedBillId:linkedBillId||null }, req);
+    await notifyCustomerEvent(request.customerId,"aftersales","售后申请进度更新",`申请 ${id} 已完成，请在售后申请中查看详情。`);
   return NextResponse.json({ ok: true, status: "completed",host,port });
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import {getSiteConfig} from "../lib/site-config";
 import "flag-icons/css/flag-icons.min.css";
 import "./globals.css";
 import "./portal.css";
@@ -100,10 +101,16 @@ import GlobalToastLayer from "./GlobalToastLayer";
 import AdminSessionGuard from "./AdminSessionGuard";
 import DatePickerLayer from "./DatePickerLayer";
 
-export const metadata: Metadata = {
+export async function generateMetadata():Promise<Metadata>{
+  const site=await getSiteConfig().catch(()=>null);
+  const logo=site?.logoUrl;
+  const icon=logo&&(logo.startsWith("/")&&!logo.startsWith("//")||/^https:\/\//i.test(logo)||/^data:image\//i.test(logo))?logo:"/brand/yehaoproxy-logo-icon-i.png";
+  return {
   title: "YehaoProxy｜全球企业级代理 IP",
   description: "静态住宅 ISP、动态住宅与数据中心代理 IP，一站式采购。",
-};
+  icons:{icon,shortcut:icon,apple:icon},
+  };
+}
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="zh-CN"><body>{children}<CreditEnhancer/><AdjustmentEnhancer/><CurrencyEnhancer/><OrderResourceEnhancer/><CustomerRecordEnhancer/><DashboardExpiryEnhancer/><ProxyQrEnhancer/><ManualAllocationEnhancer/><ProxyOverviewCopyEnhancer/><AutoRenewSwitchEnhancer/><ResourceExpiryEnhancer/><OverviewLinkEnhancer/><ProxyBatchExportEnhancer/><OverviewStatusEnhancer/><OrderCenterLinkEnhancer/><ProxyReplaceEnhancer/><DashboardRecentOrdersEnhancer/><NodeSubscriptionEnhancer/><NodeTrafficEnhancer/><AddonServiceStatusEnhancer/><PaymentReturnEnhancer/><RenewalVerificationEnhancer/><CustomerIdFormatEnhancer/><ModalCloseEnhancer/><GlobalChineseUiEnhancer/><AdminSessionGuard/><GlobalToastLayer/><DatePickerLayer/></body></html>;

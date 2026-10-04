@@ -1,3 +1,4 @@
+import {notifyCustomerEvent} from "../../../../../../lib/customer-event-notifications";
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "../../../../../../db";
@@ -71,6 +72,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
     }
     await audit({ id: admin.id, role: admin.role }, "renewal.verify.approve", "order", id, { sourceOrderId: sourceId, allocationId: allocationId || null }, req);
+    await notifyCustomerEvent(renewal.customerEmail,"renewal","续费核验完成",`订单 ${id} 已通过核验。`);
     return NextResponse.json({ ok: true, action, expiresAt: source.expiresAt });
   }
 
@@ -109,6 +111,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }).where(eq(orders.id, id)),
   ] as any);
   await audit({ id: admin.id, role: admin.role }, "renewal.verify.reject", "order", id, { sourceOrderId: sourceId, allocationId: allocationId || null, refund, restoredExpiry: previousSourceExpiry }, req);
+  await notifyCustomerEvent(renewal.customerEmail,"renewal","续费核验未通过",`订单 ${id} 核验未通过，款项已退回余额。`);
   return NextResponse.json({ ok: true, action, refund, expiresAt: previousSourceExpiry });
   });
 }

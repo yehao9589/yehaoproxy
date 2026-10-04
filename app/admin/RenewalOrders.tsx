@@ -5,6 +5,7 @@ import {AdminRefreshButton,useAdminRefresh} from "./AdminRefresh";
 
 import { useEffect, useMemo, useState } from "react";
 import Pagination from "../Pagination";
+import "./renewal-controls.css";
 import { countryName } from "../../lib/countries";
 import {billingCycleFromNote,periodLabel} from "../../lib/billing-period";
 
@@ -31,6 +32,8 @@ export default function RenewalOrders() {
   const [selected,setSelected]=useState<Set<string>>(new Set());
   const [batchAction,setBatchAction]=useState<"approve"|"reject"|null>(null);
   const [results,setResults]=useState<{id:string;ok:boolean;message:string}[]>([]);
+  const [batchTotal,setBatchTotal]=useState(0);
+  const [statusFilter,setStatusFilter]=useState("all");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -54,7 +57,9 @@ export default function RenewalOrders() {
   }
   useEffect(() => { void load(); }, []);
 
-  const filtered = useMemo(() => rows.filter((row) => !query || [row.id, row.customerName, row.customerEmail, row.product, row.region, row.service?.label, row.service?.wifiName, row.service?.country, row.service?.city, states[row.status]].some((value) => String(value || "").toLowerCase().includes(query.toLowerCase()))), [rows, query]);
+  const matchesStatus=(row:Row,key:string)=>key==="all"|| (key==="review"?canVerify(row):key==="verified"?row.status==="active"&&!canVerify(row):row.status===key);
+  const searched = useMemo(() => rows.filter((row) => !query || [row.id, row.customerName, row.customerEmail, row.product, row.region, row.service?.label, row.service?.wifiName, row.service?.country, row.service?.city, states[row.status]].some((value) => String(value || "").toLowerCase().includes(query.toLowerCase()))), [rows, query]);
+  const filtered = searched.filter(row=>matchesStatus(row,statusFilter));
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pages);
   const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -65,7 +70,7 @@ export default function RenewalOrders() {
   async function verifyBatch(){
     if(busy||!batchAction)return;
     const action=batchAction,ids=[...selected];
-    setBatchAction(null);setResults([]);setBusy("batch");
+    setBatchAction(null);setResults([]);setBatchTotal(ids.length);setMessage("");setBusy("batch");
     const outcomes:{id:string;ok:boolean;message:string}[]=[];
     try{
       for(const id of ids){
@@ -78,7 +83,7 @@ export default function RenewalOrders() {
         }catch(error){outcomes.push({id,ok:false,message:error instanceof Error?error.message:"请求失败，请刷新确认订单状态后重试"})}
         setResults([...outcomes]);
       }
-      setMessage(`批量处理完成：成功 ${outcomes.filter(x=>x.ok).length} 笔，失败 ${outcomes.filter(x=>!x.ok).length} 笔`);
+      window.dispatchEvent(new CustomEvent("yehao:toast",{detail:{message:`批量处理完成：成功 ${outcomes.filter(x=>x.ok).length} 笔，失败 ${outcomes.filter(x=>!x.ok).length} 笔`,kind:outcomes.some(x=>!x.ok)?"error":"success"}}));
       await load();
     }catch{setMessage("处理完成，但列表刷新失败，请刷新页面核对结果")}finally{setBusy(null)}
   }
@@ -122,8 +127,9 @@ export default function RenewalOrders() {
     {message && <div className="auth-success">{message}</div>}
     <section className="product-order-list business-workbench">
       <header><div><h3>续费核验明细</h3><p>待核验订单不会再次延长服务，避免重复续期。</p></div><div><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="搜索续费单号、客户或商品" /></div></header>
-      <div className="renewal-batch-toolbar"><span>已选 {selected.size} 笔待核验订单</span><button disabled={!!busy||loading||!selected.size} onClick={()=>setBatchAction("approve")}>批量核验通过</button><button disabled={!!busy||loading||!selected.size} onClick={()=>setBatchAction("reject")}>批量不通过</button><button disabled={!!busy||!selected.size} onClick={()=>setSelected(new Set())}>取消选择</button>{busy==="batch"&&<span>正在逐笔处理…</span>}</div>
-      {results.length>0&&<div className="renewal-batch-results" aria-live="polite">{results.map(result=><p key={result.id} className={result.ok?"success":"failure"}>{result.id} · {result.message}</p>)}</div>}
+      <nav className="renewal-status-filters" aria-label="续费订单状态筛选">{[["all","全部订单"],["review","待核验"],["verified","已核验"],["pending","待付款"],["refunded","已退款"],["failed","已取消"]].map(([key,label])=><button key={key} type="button" aria-pressed={statusFilter===key} disabled={!!busy} onClick={()=>{setStatusFilter(key);setPage(1);setSelected(new Set())}}>{label}<span>{searched.filter(row=>matchesStatus(row,key)).length}</span></button>)}</nav>
+      <div className="renewal-batch-toolbar"><span>已选 {selected.size} 笔待核验订单</span><button disabled={!!busy||loading||!selected.size} onClick={()=>setBatchAction("approve")}>批量核验通过</button><button disabled={!!busy||loading||!selected.size} onClick={()=>setBatchAction("reject")}>批量不通过</button><button disabled={!!busy||!selected.size} onClick={()=>setSelected(new Set())}>取消选择</button></div>
+      {(busy==="batch"||results.length>0)&&<div className="renewal-batch-summary"><div role="status"><strong>{busy==="batch"?`正在处理 ${results.length} / ${batchTotal}`:"批量处理完成"}</strong><span>成功 {results.filter(x=>x.ok).length} 笔</span><span className={results.some(x=>!x.ok)?"has-errors":""}>失败 {results.filter(x=>!x.ok).length} 笔</span>{busy!=="batch"&&<button type="button" onClick={()=>setResults([])}>收起结果</button>}</div>{busy==="batch"&&<progress value={results.length} max={batchTotal} aria-label="批量核验进度"/>}{busy!=="batch"&&results.some(x=>!x.ok)&&<details><summary>查看失败明细（{results.filter(x=>!x.ok).length}）</summary><div className="renewal-failure-list">{results.filter(x=>!x.ok).map(result=><p key={result.id}><b>{result.id}</b><span>{result.message}</span></p>)}</div></details>}</div>}
       <div className="renewal-business-table">
         <div className="renewal-business-row head"><span><input type="checkbox" aria-label="选择当前页待核验订单" checked={allSelected} disabled={!!busy||loading||!selectable.length} ref={element=>{if(element)element.indeterminate=!allSelected&&selectable.some(row=>selected.has(row.id))}} onChange={()=>setSelected(previous=>{const next=new Set(previous);selectable.forEach(row=>allSelected?next.delete(row.id):next.add(row.id));return next})}/></span><span>序号</span><span>续费单号</span><span>客户</span><span>服务信息</span><span>WiFi 名称</span><span>地区</span><span>续费周期</span><span>续费金额</span><span>下单时间</span><span>状态</span><span>核验操作</span></div>
         {visible.map((row,index) => <div className="renewal-business-row" key={row.id}>

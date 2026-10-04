@@ -53,7 +53,7 @@ export async function runCreditRiskChecks(now=new Date()){
     const[customer]=await db.select().from(customers).where(eq(customers.id,account.customerId)).limit(1);if(!customer)continue;
     if(status!==before&&status!=="active"){
       const type=`credit:${status}:${now.toISOString().slice(0,10)}`,[existing]=await db.select({id:notifications.id}).from(notifications).where(and(eq(notifications.customerId,customer.id),eq(notifications.type,type))).limit(1);
-      if(!existing){await db.insert(notifications).values({id:crypto.randomUUID(),customerId:customer.id,type,title:status==="frozen"?"信用功能已冻结":"信用账单已经逾期",body:status==="frozen"?"信用账单已超过宽限期，信用支付和自动续费已暂停，请还清欠款后恢复。":"信用账单已到还款日，请在宽限期内完成还款。",link:"/dashboard?tab=wallet",read:false,createdAt:now});notificationsCreated++}
+      if(!existing&&await customerNotificationAllowed(customer.id,"billing","site")){await db.insert(notifications).values({id:crypto.randomUUID(),customerId:customer.id,type,title:status==="frozen"?"信用功能已冻结":"信用账单已经逾期",body:status==="frozen"?"信用账单已超过宽限期，信用支付和自动续费已暂停，请还清欠款后恢复。":"信用账单已到还款日，请在宽限期内完成还款。",link:"/dashboard?tab=wallet",read:false,createdAt:now});notificationsCreated++}
     }
     if(status==="frozen"){
       const customerOrders=await db.select({id:orders.id}).from(orders).where(eq(orders.customerEmail,customer.email)),ids=customerOrders.map(x=>x.id);
@@ -63,3 +63,4 @@ export async function runCreditRiskChecks(now=new Date()){
   }
   return{scanned:accounts.length,overdue,frozen,notificationsCreated};
 }
+import {customerNotificationAllowed} from "./customer-notification-preferences";

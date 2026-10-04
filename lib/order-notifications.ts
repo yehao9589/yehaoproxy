@@ -24,7 +24,7 @@ export async function sendOrderCreatedEmails(order:CreatedOrder){
   const customerSubject=render(template?.emailSubject||"订单已创建",order);
   const customerBody=render(template?.emailBody||`订单 {{orderId}}（{{product}}）已创建，请及时完成支付。`,order).replace("已付款，正在等待开通","已创建，请及时完成支付");
   const details=[{label:"订单编号",value:order.id,accent:true},{label:"商品 / 服务",value:product},{label:"地区 / 数量",value:`${order.region} × ${order.quantity}`},{label:"服务周期",value:order.durationDays>0?periodLabel(order.durationDays,order.billingCycle||"fixed-days"):"多个商品周期"},{label:"订单金额",value:`${order.currency} ${order.amount.toFixed(2)}`}];
-  const jobs:Promise<void>[]=[sendTransactionalEmail(order.customerEmail,customerSubject,await brandedEmail({title:customerSubject,eyebrow:"ORDER CREATED",body:customerBody,actionLabel:"查看并支付订单",actionUrl:`${origin}/dashboard?tab=orders&order=${encodeURIComponent(order.id)}`,details,notice:"订单支付成功后将进入人工开通流程。"}))];
+  const jobs:Promise<void>[]=[sendTransactionalEmail(order.customerEmail,customerSubject,await brandedEmail({title:customerSubject,eyebrow:"ORDER CREATED",body:customerBody,actionLabel:"查看并支付订单",actionUrl:`${origin}/dashboard?tab=orders&order=${encodeURIComponent(order.id)}`,details,notice:"订单支付成功后将进入人工开通流程。"}),order.id.startsWith("RN-")?"renewal":"purchase")];
   void adminRows;
   jobs.push(notifyAdmins("admin_new_order",{orderId:order.id,customerEmail:order.customerEmail,product,region:order.region,quantity:order.quantity,amount:`${order.currency} ${order.amount.toFixed(2)}`},details));
   await Promise.allSettled(jobs);

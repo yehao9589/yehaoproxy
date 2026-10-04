@@ -1,6 +1,7 @@
 import {and,eq,notInArray} from "drizzle-orm";
 import {getDb} from "../db";
 import {customers,notifications,systemOptions,ticketMessages,tickets} from "../db/schema";
+import {customerNotificationAllowed} from "./customer-notification-preferences";
 import {sendTransactionalEmail} from "./email";
 import {brandedEmail} from "./branded-email";
 import {AFTER_SALES_TICKET_CATEGORIES} from "./ticket-categories";
@@ -80,11 +81,11 @@ export async function runTicketAutomation(origin:string){
         body:`由于客户超过 ${config.autoCloseDays} 天未回复，系统已自动关闭此工单。如问题仍未解决，请重新提交工单。`,
         internal:false,createdAt:now,
       });
-      if(config.siteNotificationEnabled&&!existing)await db.insert(notifications).values({
+      if(config.siteNotificationEnabled&&!existing&&await customerNotificationAllowed(ticket.customerId,"ticket","site"))await db.insert(notifications).values({
         id:crypto.randomUUID(),customerId:ticket.customerId,type,title:"工单已自动关闭",
         body:`工单 ${ticket.id} 因长时间未回复已自动关闭。`,link,read:false,createdAt:now,
       });
-      if(config.emailEnabled&&ticket.email)try{
+      if(config.emailEnabled&&ticket.email&&await customerNotificationAllowed(ticket.customerId,"ticket","email"))try{
         await sendTransactionalEmail(ticket.email,"工单已自动关闭",await brandedEmail({title:"工单已自动关闭",eyebrow:"SUPPORT CENTER",greeting:`尊敬的 ${ticket.name||ticket.email}：`,body:`工单因超过 ${config.autoCloseDays} 天未收到回复，系统已按照服务规则自动关闭。`,actionLabel:"查看工单记录",actionUrl:`${origin}${link}`,details:[{label:"工单编号",value:ticket.id,accent:true},{label:"工单主题",value:ticket.subject},{label:"当前状态",value:"已关闭"}],notice:"如果问题仍未解决，你可以在客户中心重新提交工单，我们会继续为你处理。"}));
         result.emailed++;
       }catch{result.emailFailed++}
@@ -98,12 +99,12 @@ export async function runTicketAutomation(origin:string){
       const[existing]=await db.select().from(systemOptions).where(eq(systemOptions.key,markerKey)).limit(1);
       if(existing){result.skipped++;continue}
       const remaining=Math.max(1,Math.ceil(config.autoCloseDays-idleHours/24));
-      if(config.siteNotificationEnabled)await db.insert(notifications).values({
+      if(config.siteNotificationEnabled&&await customerNotificationAllowed(ticket.customerId,"ticket","site"))await db.insert(notifications).values({
         id:crypto.randomUUID(),customerId:ticket.customerId,type,title:"工单等待您的回复",
         body:`工单 ${ticket.id} 正在等待回复${config.autoCloseEnabled?`，约 ${remaining} 天后将自动关闭`:""}。`,
         link,read:false,createdAt:now,
       });
-      if(config.emailEnabled&&ticket.email)try{
+      if(config.emailEnabled&&ticket.email&&await customerNotificationAllowed(ticket.customerId,"ticket","email"))try{
         await sendTransactionalEmail(ticket.email,"工单等待您的回复",await brandedEmail({title:"工单等待您的回复",eyebrow:"SUPPORT CENTER",greeting:`尊敬的 ${ticket.name||ticket.email}：`,body:`客服已回复你的工单，当前正在等待你的进一步信息${config.autoCloseEnabled?`。如继续未回复，工单将在约 ${remaining} 天后自动关闭`:""}。`,actionLabel:"立即回复工单",actionUrl:`${origin}${link}`,details:[{label:"工单编号",value:ticket.id,accent:true},{label:"工单主题",value:ticket.subject},{label:"当前状态",value:"等待客户回复"}],notice:"请直接进入客户中心回复工单，不要回复本邮件。"}));
         result.emailed++;
       }catch{result.emailFailed++}

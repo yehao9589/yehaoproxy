@@ -139,7 +139,7 @@ export async function GET() {
     const nodeSource=renewalOf?orderById.get(renewalOf):null,nodeSubscriptionUrl=(nodeSource?.adminNote||adminNote)?.match(/\[SUBSCRIPTION_URL\]([^\n]+)/)?.[1]||null;
     return {
       ...order,
-      customerNote: noteMap.get(order.id)||"",
+      customerNote: noteMap.get(nodeSource?.id||order.id)||"",
       couponCode:coupon?.code||null,
       discountAmount,
       originalAmount:Number((order.amount+discountAmount).toFixed(2)),

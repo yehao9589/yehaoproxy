@@ -1,9 +1,21 @@
 {
-  "version": "v1.0.20",
-  "publishedAt": "2026-10-03",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.20",
-  "releaseNotes": "YehaoProxy v1.0.20：订单独立展示 WiFi 名称，完善合并支付流水明细并修复节点续费 VPS 绑定展示。",
+  "version": "v1.0.21",
+  "publishedAt": "2026-10-04",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.21",
+  "releaseNotes": "YehaoProxy v1.0.21：客户通知偏好设置、续费核验筛选与批量进度优化。",
   "releases": [
+    {
+      "version": "v1.0.21",
+      "publishedAt": "2026-10-04",
+      "title": "YehaoProxy v1.0.21 通知设置与续费核验优化",
+      "notes": [
+        "客户和后台客户详情新增通知设置，邮件与站内消息支持总开关及分类滑动开关",
+        "通知发送读取客户偏好，安全验证和密码重置邮件不受普通通知开关影响，修改保留审计日志",
+        "续费订单增加状态筛选，批量核验改为进度条和结果汇总，失败明细可展开查看",
+        "节点订单服务信息补充客户备注，续费读取原服务备注",
+        "浏览器标签页图标使用网站 Logo，未配置时使用品牌图标"
+      ]
+    },
     {
       "version": "v1.0.20",
       "publishedAt": "2026-10-03",

@@ -6,11 +6,14 @@ import {emailProviders} from "../db/schema";
 import {systemAudit} from "./audit";
 import {decryptCredential} from "./inventory-crypto";
 import {brandedEmail} from "./branded-email";
+import {customerEmailAllowed} from "./customer-notification-preferences";
+import type {NotificationTopic} from "./notification-preferences";
 
 type RuntimeEnv=Record<string,string|undefined>;
 function secret(name:string){return String((env as unknown as RuntimeEnv)[name]||process.env[name]||"")}
 
-export async function sendTransactionalEmail(to:string,title:string,html:string){
+export async function sendTransactionalEmail(to:string,title:string,html:string,topic?:NotificationTopic){
+  if(topic&&!await customerEmailAllowed(to,topic))return;
   const[row]=await getDb().select().from(emailProviders).where(eq(emailProviders.id,"primary")).limit(1);
   try{
     if(!row?.enabled)throw new Error("邮件服务尚未启用");

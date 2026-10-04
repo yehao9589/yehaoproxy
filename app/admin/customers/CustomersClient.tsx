@@ -4,6 +4,7 @@ import {AdminRefreshButton,useAdminRefresh} from "../AdminRefresh";
 import {countryName} from "../../../lib/countries";
 import { useEffect, useState } from "react";
 import OrderDetailWorkspace from "../OrderDetailWorkspace";
+import NotificationPreferences from "../../NotificationPreferences";
 import { displayCustomerId } from "../../../lib/customer-id";
 type Customer = {
   id: string;
@@ -31,7 +32,8 @@ type Tab =
   | "wallet"
   | "tickets"
   | "logs"
-  | "notifications";
+  | "notifications"
+  | "preferences";
 const labels: Record<string, string> = {
   pending: "待付款",
   paid: "已付款",
@@ -246,6 +248,7 @@ export default function CustomersClient({
                   ["tickets", "工单"],
                   ["logs", "日志"],
                   ["notifications", "通知记录"],
+                  ["preferences", "通知设置"],
                 ] as [Tab, string][]
               ).map((x) => (
                 <button
@@ -391,6 +394,7 @@ function Panel({
         </dl>
       </div>
     );
+  if (tab === "preferences") return <NotificationPreferences customerId={d.customer.id}/>;
   if (tab === "assets") return <AssetsPanel rows={d.assets} />;
   if (tab === "orders")
     return <OrdersPanel rows={d.orders} customerId={d.customer.id} />;

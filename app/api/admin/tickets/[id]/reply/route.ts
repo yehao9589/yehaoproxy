@@ -1,3 +1,4 @@
+import {customerNotificationAllowed} from "../../../../../../lib/customer-notification-preferences";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "../../../../../../db";
@@ -20,7 +21,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   await db.batch([
     db.insert(ticketMessages).values({ id: crypto.randomUUID(), ticketId: id, authorId: admin.id, authorRole: "admin", body, internal, createdAt: now }),
     db.update(tickets).set({ status: internal ? ticket.status : "waiting_customer", assignedAdminId: admin.id, updatedAt: now }).where(eq(tickets.id, id)),
-    ...(internal ? [] : [db.insert(notifications).values({ id: crypto.randomUUID(), customerId: ticket.customerId, type: "ticket_reply", title: "工单有新回复", body: ticket.subject, link: "/dashboard?tab=support", read: false, createdAt: now })]),
+    ...(internal || !await customerNotificationAllowed(ticket.customerId,"ticket","site") ? [] : [db.insert(notifications).values({ id: crypto.randomUUID(), customerId: ticket.customerId, type: "ticket_reply", title: "工单有新回复", body: ticket.subject, link: "/dashboard?tab=support", read: false, createdAt: now })]),
   ]);
   await audit({ id: admin.id, role: admin.role }, "ticket.reply", "ticket", id, { internal }, req);
   return NextResponse.json({ ok: true, status: internal ? ticket.status : "waiting_customer" });
