@@ -82,12 +82,12 @@ export async function POST(req: Request) {
     }),
     ...(singleItem
       ? [d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,admin_note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,'pending',?,?,?)")
-          .bind(bundleId, user.email, singleItem.product, singleItem.region, 1, singleItem.durationDays, total, currency, `[BILLING_CYCLE]${offerByKey.get(`${singleItem.product}:${singleItem.region}`)!.billingCycle}`, now, now)]
+          .bind(bundleId, user.email, singleItem.product, singleItem.region, 1, singleItem.durationDays, total, currency, `[BILLING_CYCLE]${offerByKey.get(`${singleItem.product}:${singleItem.region}`)!.billingCycle}\n[STOCK_OFFER_ID]${offerByKey.get(`${singleItem.product}:${singleItem.region}`)!.id}`, now, now)]
       : [
           d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,admin_note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?, 'pending',?,?,?)")
             .bind(bundleId, user.email, "cart-bundle", "MULTI", created.reduce((sum,item)=>sum+item.quantity,0), 0, total, currency, `[BUNDLE_ITEMS]${bundleItems}`, now, now),
           ...created.map(item => d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,admin_note,created_at,updated_at) VALUES (?,?,?,?,?,?,0,?,'pending',?,?,?)")
-            .bind(item.id, user.email, item.product, item.region, item.quantity, item.durationDays, currency, `[BUNDLE_PARENT]${bundleId}\n[BUNDLE_ITEM_AMOUNT]${item.amount}\n[BILLING_CYCLE]${offerByKey.get(`${item.product}:${item.region}`)!.billingCycle}`, now, now)),
+            .bind(item.id, user.email, item.product, item.region, item.quantity, item.durationDays, currency, `[BUNDLE_PARENT]${bundleId}\n[BUNDLE_ITEM_AMOUNT]${item.amount}\n[STOCK_OFFER_ID]${offerByKey.get(`${item.product}:${item.region}`)!.id}\n[BILLING_CYCLE]${offerByKey.get(`${item.product}:${item.region}`)!.billingCycle}`, now, now)),
         ]),
   ];
   const results = await d1.batch(statements);

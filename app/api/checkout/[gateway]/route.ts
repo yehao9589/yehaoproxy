@@ -16,7 +16,7 @@ export async function POST(req:Request,{params}:{params:Promise<{gateway:string}
   if(!gatewayRuntimeSupported(gateway))return NextResponse.json({error:"该支付渠道尚未完成生产接入，请使用余额支付"},{status:409});
   const body=await req.json().catch(()=>null);if(!body?.orderId)return NextResponse.json({error:"缺少订单号"},{status:400});
   const requestedOrderId=String(body.orderId),requestedCouponCode=String(body?.couponCode||"").trim().toUpperCase();
-  return withRequestLock(requestedCouponCode?`coupon:${requestedCouponCode}`:`checkout:${requestedOrderId}`,async()=>{
+  return withRequestLock(`order-mutation:${requestedOrderId}`,()=>withRequestLock(requestedCouponCode?`coupon:${requestedCouponCode}`:`checkout:${requestedOrderId}`,async()=>{
   const db=getDb(),[order]=await db.select().from(orders).where(eq(orders.id,String(body.orderId))).limit(1),[config]=await db.select().from(paymentGateways).where(eq(paymentGateways.type,gateway)).limit(1);
   if(!order||order.customerEmail!==user.email)return NextResponse.json({error:"订单不存在"},{status:404});
   if(order.status!=="pending")return NextResponse.json({error:"当前订单不能重复支付"},{status:409});
@@ -32,12 +32,12 @@ export async function POST(req:Request,{params}:{params:Promise<{gateway:string}
   const key=`${order.id}:${gateway}`,[existing]=await db.select().from(paymentTransactions).where(eq(paymentTransactions.idempotencyKey,key)).limit(1);
   if(existing?.status==="succeeded")return NextResponse.json({transactionId:existing.id,status:existing.status});
   try{
-    const origin=String(process.env.PUBLIC_APP_URL||new URL(req.url).origin).replace(/\/$/,""),payAmount=await convertCurrency(payable,order.currency,"CNY"),result=await createAlipayCheckout(await readAlipayConfig(config),{orderId:order.id,amount:payAmount,subject:`YehaoProxy 订单 ${order.id}`,origin,mobile:/Mobile|Android|iPhone|iPad/i.test(req.headers.get("user-agent")||"")}),now=new Date(),id=existing?.id||await nextBusinessId("PT",now);
+    const origin=String(process.env.PUBLIC_APP_URL||new URL(req.url).origin).replace(/\/$/,""),payAmount=await convertCurrency(payable,order.currency,"CNY"),result=await createAlipayCheckout(await readAlipayConfig(config),{orderId:order.id,createdAt:order.createdAt,amount:payAmount,subject:`YehaoProxy 订单 ${order.id}`,origin,mobile:/Mobile|Android|iPhone|iPad/i.test(req.headers.get("user-agent")||"")}),now=new Date(),id=existing?.id||await nextBusinessId("PT",now);
     type Q=Parameters<typeof db.batch>[0][number];const writes:Q[]=[existing?db.update(paymentTransactions).set({externalId:result.externalId,amount:payAmount,currency:"CNY",status:"created",updatedAt:now}).where(eq(paymentTransactions.id,existing.id)):db.insert(paymentTransactions).values({id,orderId:order.id,gatewayId:config.id,externalId:result.externalId,amount:payAmount,currency:"CNY",status:"created",idempotencyKey:key,createdAt:now,updatedAt:now})];
     if(coupon&&!existingRedemption){writes.push(db.update(orders).set({amount:payable,updatedAt:now}).where(and(eq(orders.id,order.id),eq(orders.amount,order.amount))));writes.push(db.insert(couponRedemptions).values({id:crypto.randomUUID(),couponId:coupon.id,customerId:user.id,orderId:order.id,discount,createdAt:now}));writes.push(db.update(coupons).set({usedCount:coupon.usedCount+1}).where(and(eq(coupons.id,coupon.id),eq(coupons.usedCount,coupon.usedCount))))}
     await db.batch(writes as[Q,...Q[]]);
     await audit({id:user.id,role:user.role},"payment.checkout.create","order",order.id,{gateway,transactionId:id,originalAmount:order.amount,payable,currency:order.currency,payAmount,paymentCurrency:"CNY",couponCode:coupon?.code||null,discount},req);
     return NextResponse.json({transactionId:id,...result,payAmount,currency:"CNY",discount,orderAmount:payable},{status:existing?200:201});
   }catch(error){return NextResponse.json({error:error instanceof Error?error.message:"创建支付宝支付失败"},{status:502})}
-  });
+  }));
 }

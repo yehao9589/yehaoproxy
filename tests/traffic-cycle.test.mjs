@@ -1,0 +1,10 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {advanceTrafficCycle} from "../lib/traffic-cycle.ts";
+const first="2026-10-15T00:00:00Z",next="2026-11-15T00:00:00Z";
+const original={boundOrderId:"o",boundOrderExpiry:first};
+test("early renewal preserves original boundary",()=>{assert.equal(advanceTrafficCycle(original,{orderId:"o",expiresAt:next},Date.parse(first)-1).reset,false);const r=advanceTrafficCycle(original,{orderId:"o",expiresAt:next},Date.parse(first));assert.equal(r.reset,true);assert.equal(r.boundOrderExpiry,next)});
+test("same boundary is reset once",()=>{const r=advanceTrafficCycle(original,{orderId:"o",expiresAt:first},Date.parse(first));assert.equal(r.reset,true);assert.equal(advanceTrafficCycle(r,{orderId:"o",expiresAt:first},Date.parse(first)+1).reset,false)});
+test("late renewal resumes next expiry",()=>{const r=advanceTrafficCycle(original,{orderId:"o",expiresAt:first},Date.parse(first));const renewed=advanceTrafficCycle(r,{orderId:"o",expiresAt:next},Date.parse(first)+1000);assert.equal(renewed.reset,false);assert.equal(renewed.boundOrderExpiry,next);assert.equal(advanceTrafficCycle(renewed,{orderId:"o",expiresAt:next},Date.parse(next)).reset,true)});
+test("manual reset timestamp cannot shift service boundary",()=>{assert.equal(advanceTrafficCycle({...original,startedAt:"2026-10-14T00:00:00Z"},{orderId:"o",expiresAt:next},Date.parse(first)).reset,true)});
+test("changing owner discards previous owner boundary",()=>{assert.equal(advanceTrafficCycle(original,{orderId:"new",expiresAt:next},Date.parse(first)).reset,false)});

@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   const d1 = getRawDatabase();
   const result = await d1.batch([
     d1.prepare("INSERT INTO orders (id,customer_email,product,region,quantity,duration_days,amount,currency,status,admin_note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,'pending',?,?,?)")
-      .bind(id, user.email, product, region, quantity, durationDays, amount, currency, `[BILLING_CYCLE]${offer.billingCycle}`, now, now),
+      .bind(id, user.email, product, region, quantity, durationDays, amount, currency, `[BILLING_CYCLE]${offer.billingCycle}\n[STOCK_OFFER_ID]${offer.id}`, now, now),
     d1.prepare("UPDATE product_offers SET sold=sold+?,updated_at=? WHERE id=? AND enabled=1 AND (sale_stock<0 OR sale_stock-sold>=?)")
       .bind(quantity, now, offer.id, quantity),
   ]);

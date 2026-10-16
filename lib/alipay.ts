@@ -1,3 +1,5 @@
+import {getUnpaidOrderPolicy} from "./unpaid-order-settings";
+import {unpaidDeadline} from "./unpaid-order-policy";
 import {decryptCredential} from "./inventory-crypto";
 
 const gateway="https://openapi.alipay.com/gateway.do";
@@ -15,10 +17,13 @@ export async function readAlipayConfig(row:{secretRef:string|null;webhookSecretR
 }
 async function sign(params:Record<string,string>,privateKey:string){const key=await crypto.subtle.importKey("pkcs8",bytes(privateKey),{name:"RSASSA-PKCS1-v1_5",hash:"SHA-256"},false,["sign"]);return base64(await crypto.subtle.sign("RSASSA-PKCS1-v1_5",key,encoder.encode(canonical(params))))}
 export async function verifyAlipay(params:Record<string,string>,publicKey:string){const signature=params.sign;if(!signature)return false;const key=await crypto.subtle.importKey("spki",bytes(publicKey),{name:"RSASSA-PKCS1-v1_5",hash:"SHA-256"},false,["verify"]);return crypto.subtle.verify("RSASSA-PKCS1-v1_5",key,bytes(signature).buffer,encoder.encode(canonical(params,true)))}
-export async function createAlipayCheckout(config:AlipayConfig,input:{orderId:string;amount:number;subject:string;origin:string;mobile:boolean;returnPath?:string}){
+export async function createAlipayCheckout(config:AlipayConfig,input:{orderId:string;amount:number;subject:string;origin:string;mobile:boolean;returnPath?:string;createdAt?:Date}){
+  const deadline=unpaidDeadline(input.createdAt||new Date(),await getUnpaidOrderPolicy());
+  if(deadline&&deadline<=new Date())throw Error("订单已超过付款时限，请重新下单");
+  const expiresAt=new Date(Math.min(Date.now()+30*60000,deadline?.getTime()||Infinity));
   const method=input.mobile&&config.wapEnabled?"alipay.trade.wap.pay":config.pageEnabled?"alipay.trade.page.pay":config.wapEnabled?"alipay.trade.wap.pay":"";
   if(!method)throw new Error("支付宝电脑网站支付和手机网站支付均未开启");
-  const params:Record<string,string>={app_id:config.appId,method,format:"JSON",charset:"utf-8",sign_type:"RSA2",timestamp:new Date().toLocaleString("sv-SE",{timeZone:"Asia/Shanghai"}),version:"1.0",notify_url:`${input.origin}/api/payments/alipay/notify`,return_url:`${input.origin}${input.returnPath||"/dashboard?tab=orders&payment_return=alipay"}`,biz_content:JSON.stringify({out_trade_no:input.orderId,total_amount:input.amount.toFixed(2),subject:input.subject.slice(0,256),product_code:method==="alipay.trade.wap.pay"?"QUICK_WAP_WAY":"FAST_INSTANT_TRADE_PAY",timeout_express:"30m"})};
+  const params:Record<string,string>={app_id:config.appId,method,format:"JSON",charset:"utf-8",sign_type:"RSA2",timestamp:new Date().toLocaleString("sv-SE",{timeZone:"Asia/Shanghai"}),version:"1.0",notify_url:`${input.origin}/api/payments/alipay/notify`,return_url:`${input.origin}${input.returnPath||"/dashboard?tab=orders&payment_return=alipay"}`,biz_content:JSON.stringify({out_trade_no:input.orderId,total_amount:input.amount.toFixed(2),subject:input.subject.slice(0,256),product_code:method==="alipay.trade.wap.pay"?"QUICK_WAP_WAY":"FAST_INSTANT_TRADE_PAY",time_expire:expiresAt.toLocaleString("sv-SE",{timeZone:"Asia/Shanghai"})})};
   params.sign=await sign(params,config.privateKey);const query=new URLSearchParams(params);return{gateway:"alipay" as const,externalId:input.orderId,redirectUrl:`${gateway}?${query.toString()}`};
 }
 
@@ -29,4 +34,22 @@ export async function createAlipayRefund(config:AlipayConfig,input:{orderId:stri
   const data=await response.json().catch(()=>null),result=data?.alipay_trade_refund_response;
   if(!response.ok||!result||result.code!=="10000")throw new Error(result?.sub_msg||result?.msg||`支付宝退款请求失败（${response.status}）`);
   return{tradeNo:String(result.trade_no||""),refundFee:Number(result.refund_fee||input.amount),buyerLogonId:String(result.buyer_logon_id||"")};
+}
+
+async function alipayTradeOperation(config:AlipayConfig,method:"alipay.trade.query"|"alipay.trade.close",orderId:string){
+ const params:Record<string,string>={app_id:config.appId,method,format:"JSON",charset:"utf-8",sign_type:"RSA2",timestamp:new Date().toLocaleString("sv-SE",{timeZone:"Asia/Shanghai"}),version:"1.0",biz_content:JSON.stringify({out_trade_no:orderId})};params.sign=await sign(params,config.privateKey);
+ const response=await fetch(gateway,{method:"POST",signal:AbortSignal.timeout(15000),headers:{"content-type":"application/x-www-form-urlencoded;charset=utf-8"},body:new URLSearchParams(params)});
+ const data=await response.json(),result=data[method.replaceAll(".","_")+"_response"];
+ if(!response.ok||!result)throw Error("支付宝订单核对失败，请稍后重试");
+ if(result.code!=="10000"&&result.sub_code!=="ACQ.TRADE_NOT_EXIST")throw Error(result.sub_msg||result.msg||"支付宝关单失败");
+ return result as {code:string;sub_code?:string;trade_status?:string;trade_no?:string;total_amount?:string};
+}
+export async function closeUnpaidAlipayTrade(config:AlipayConfig,orderId:string){
+ const result=await alipayTradeOperation(config,"alipay.trade.query",orderId);
+ if(result.sub_code==="ACQ.TRADE_NOT_EXIST")return {closed:true as const,notCreated:true};
+ if(result.trade_status==="TRADE_CLOSED")return {closed:true as const,notCreated:false};
+ if(result.trade_status==="TRADE_SUCCESS"||result.trade_status==="TRADE_FINISHED")return {closed:false as const,tradeNo:result.trade_no!,amount:Number(result.total_amount)};
+ if(result.trade_status!=="WAIT_BUYER_PAY")throw Error("支付宝订单状态暂不能确认，保留订单等待重试");
+ await alipayTradeOperation(config,"alipay.trade.close",orderId);
+ return {closed:true as const,notCreated:false};
 }

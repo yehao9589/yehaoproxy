@@ -1,3 +1,4 @@
+import {withRequestLock} from "../../../../lib/request-lock";
 import {and,eq} from "drizzle-orm";
 import {NextResponse} from "next/server";
 import {getDb,getRawDatabase} from "../../../../db";
@@ -10,7 +11,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   if(!user)return NextResponse.json({error:"请先登录"},{status:401});
   const body=await req.json().catch(()=>null);
   if(body?.action!=="cancel")return NextResponse.json({error:"订单操作无效"},{status:400});
-  const{id}=await params,db=getDb();
+  const{id}=await params;return withRequestLock(`order-mutation:${id}`,async()=>{const db=getDb();
   const[order]=await db.select().from(orders).where(and(eq(orders.id,id),eq(orders.customerEmail,user.email))).limit(1);
   if(!order)return NextResponse.json({error:"订单不存在"},{status:404});
   if(order.status!=="pending")return NextResponse.json({error:"只有待付款订单可以关闭"},{status:409});
@@ -35,4 +36,5 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   if(!result[0]?.success||Number(result[0].meta?.changes)!==1)return NextResponse.json({error:"订单状态已变化，请刷新后重试"},{status:409});
   await audit({id:user.id,role:user.role},"order.customer_cancel","order",id,{bundleItems:children.length,restoredItems:stockItems.length},req);
   return NextResponse.json({ok:true,id,status:"failed",message:"订单已关闭，销售额度已返还"});
+  });
 }

@@ -8,7 +8,7 @@ import {getCreditSummary} from "./credit";
 import {nextBusinessId} from "./business-id";
 
 export async function completeOnlinePayment(input:{orderId:string;gatewayId:string;tradeNo:string;paidAmount:number}){
-  return withRequestLock(`online-payment:${input.orderId}`,async()=>{
+  return withRequestLock(`order-mutation:${input.orderId}`,()=>withRequestLock(`online-payment:${input.orderId}`,async()=>{
     const db=getDb(),[order]=await db.select().from(orders).where(eq(orders.id,input.orderId)).limit(1);
     if(!order)throw new Error("订单不存在");
     const [owner]=await db.select({id:customers.id}).from(customers).where(eq(customers.email,order.customerEmail)).limit(1);
@@ -53,5 +53,5 @@ export async function completeOnlinePayment(input:{orderId:string;gatewayId:stri
     }
     await db.batch(writes as[Q,...Q[]]);
     return{duplicate:false,order};    });
-  });
+  }));
 }

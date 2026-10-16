@@ -12,7 +12,7 @@ const tabs: Record<string,string> = {
   products:"商品管理",
   customers:"客户管理",
   finance:"财务中心",
-  "finance-ledger":"交易流水",
+  "finance-ledger":"财务明细",
   "finance-bills":"收款账单",
   "finance-credit":"信用账期",
   sales:"销售业绩",
@@ -44,7 +44,7 @@ export default function AdminRoutePersistence(){
   useEffect(()=>{
     function restore(){
       const requested=new URL(location.href).searchParams.get("tab")||"overview";
-      const tab=requested==="settings-service"?"products":requested==="settings"?"settings-general":requested;
+      const tab=requested==="finance-bills"?"finance-ledger":requested==="settings-service"?"products":requested==="settings"?"settings-general":requested;
       const button=buttonFor(tab);
       if(button&&!button.classList.contains("on"))button.click();
     }

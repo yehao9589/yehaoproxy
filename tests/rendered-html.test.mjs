@@ -228,7 +228,7 @@ test("release metadata and workflow are pinned behind a quality gate", async () 
     read(".github/workflows/publish-images.yml"),
     read("lib/update-center.ts"),
   ]);
-  assert.equal(JSON.parse(pkg).version, "1.0.21");
+  assert.equal(JSON.parse(pkg).version, "1.0.22");
   assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
   assert.match(compose, /yehaoproxy:stable/);
   assert.match(compose, /UPDATE_CHANNEL: stable/);
@@ -359,7 +359,8 @@ test("billing separates payment, delivery, renewal verification, and after-sales
   assert.match(detail, /data-workspace-context=\{billOnly\?"bill":"delivery"\}/);
   assert.match(detail, /不执行产品交付/);
   assert.match(detail, /不会创建新 IP、不会产生新的资源交付任务/);
-  assert.match(enhancer, /workspace\.dataset\.workspaceContext==="bill"/);
+  assert.match(detail, /!billOnly&&!renewal&&!d\.order\.node.*order-delivery-entry/);
+  assert.match(enhancer, /addEventListener\("yehao:deliver-order",launch\)/);
   assert.match(workflow, /续费已生效 · 待核验/);
   assert.match(workflow, /等待产品交付/);
 });
@@ -518,7 +519,7 @@ test("wallet recharge payments render as one ledger entry and use financial stat
   assert.match(insights, /rechargeWalletRows/);
   assert.match(insights, /type:transaction\.status === "refunded" \? "original_refund" : isRecharge \? "wallet_recharge" : "online_payment"/);
   assert.match(finance, /wallet_recharge:"余额充值到账"/);
-  assert.match(finance, /order\.product==="wallet-topup".*return "已收款"/);
+  assert.match(finance, /\["paid","provisioning","active","completed"\]\.includes\(order\.status\).*return "已收款"/);
   assert.match(finance, />\{billStatus\(x\)\}<\/b>/);
 });
 

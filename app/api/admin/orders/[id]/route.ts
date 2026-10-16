@@ -1,3 +1,4 @@
+import {withRequestLock} from "../../../../../lib/request-lock";
 import{NextResponse}from"next/server";
 import{and,desc,eq,or,sql}from"drizzle-orm";
 import{requireAdminApi}from"../../../../../lib/admin-auth";
@@ -106,7 +107,7 @@ export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){
 export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   const admin=await requireAdminApi("orders");
   if(!admin)return NextResponse.json({error:"无订单管理权限"},{status:403});
-  const{id}=await params,b=await req.json().catch(()=>null),action=String(b?.action||""),db=getDb();
+  const{id}=await params;return withRequestLock(`order-mutation:${id}`,async()=>{const b=await req.json().catch(()=>null),action=String(b?.action||""),db=getDb();
   const[order]=await db.select().from(orders).where(eq(orders.id,id)).limit(1);
   if(!order)return NextResponse.json({error:"订单不存在"},{status:404});
   const now=new Date();
@@ -202,5 +203,6 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     return NextResponse.json({ok:true,allocated:existing.length+1,remaining:Math.max(0,order.quantity-existing.length-1),status:completes?"active":"provisioning",expiresAt:expiry});
   }
   return NextResponse.json({error:"不支持的操作"},{status:400});
+  });
 }
 import {nodeDeliveryPolicy} from "../../../../../lib/node-delivery";

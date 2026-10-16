@@ -130,7 +130,7 @@ async function repairCompletedBundleBills(db: ReturnType<typeof getDb>) {
 }
 
 export async function GET(req: Request) {
-  if (!(await requireAdminApi("orders")))
+  if (!(await requireAdminApi("orders"))&&!(await requireAdminApi("finance")))
     return NextResponse.json({ error: "无订单管理权限" }, { status: 403 });
   const u = new URL(req.url),
     status = u.searchParams.get("status"),

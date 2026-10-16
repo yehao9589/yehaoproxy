@@ -1,3 +1,5 @@
+import {getUnpaidOrderPolicy} from "../../../../../lib/unpaid-order-settings";
+import {unpaidOrderExpired} from "../../../../../lib/unpaid-order-policy";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "../../../../../db";
@@ -18,12 +20,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const couponCode = String(body?.couponCode || "").trim().toUpperCase();
   const fundingSource = body?.fundingSource === "credit" ? "credit" : "balance";
 
-  return withRequestLock(couponCode?`coupon:${couponCode}`:`wallet-payment:${user.id}`, () => withRequestLock(`wallet:${user.id}`, async () => {
+  return withRequestLock(`order-mutation:${id}`,()=>withRequestLock(couponCode?`coupon:${couponCode}`:`wallet-payment:${user.id}`, () => withRequestLock(`wallet:${user.id}`, async () => {
     const db = getDb();
     const [order] = await db.select().from(orders).where(and(eq(orders.id, id), eq(orders.customerEmail, user.email))).limit(1);
     if (!order) return NextResponse.json({ error: "订单不存在" }, { status: 404 });
     if (order.status !== "pending") return NextResponse.json({ error: "当前订单状态不能支付" }, { status: 409 });
 
+    if(unpaidOrderExpired(order,await getUnpaidOrderPolicy()))return NextResponse.json({error:"订单已超过付款时限，请重新下单"},{status:409});
     let discount = 0;
     let coupon: null | typeof coupons.$inferSelect = null;
     if (couponCode) {
@@ -140,5 +143,5 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     await db.batch(writes as [BatchQuery, ...BatchQuery[]]);
     await audit({ id: user.id, role: user.role }, "order.wallet_credit_pay", "order", id, { payable, discount, fundingSource, balanceAfter: nextBalance, creditUsed: fundingSource==="credit"?credit.creditUsed+payable:credit.creditUsed, txId, status: "provisioning" }, req);
     return NextResponse.json({ ok: true, status: "provisioning", paid: payable, discount, fundingSource, balance: nextBalance, creditUsed: fundingSource==="credit"?credit.creditUsed+payable:credit.creditUsed, availableCredit: fundingSource==="credit"?Math.max(0,availableCredit-payable):availableCredit });
-  }));
+  })));
 }

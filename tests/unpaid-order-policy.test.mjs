@@ -1,0 +1,10 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {normalizeUnpaidOrderPolicy,unpaidOrderExpired,unpaidDeadline} from "../lib/unpaid-order-policy.ts";
+import {withRequestLock} from "../lib/request-lock.ts";
+const createdAt=new Date("2026-10-16T04:00:00Z"),policy=normalizeUnpaidOrderPolicy({});
+test("defaults to enabled 48 hours with an exact boundary",()=>{assert.deepEqual(policy,{enabled:true,hours:48});assert.equal(unpaidOrderExpired({status:"pending",createdAt},policy,new Date("2026-10-18T03:59:59Z")),false);assert.equal(unpaidOrderExpired({status:"pending",createdAt},policy,new Date("2026-10-18T04:00:00Z")),true)});
+test("disabled rule keeps old orders payable",()=>{const p=normalizeUnpaidOrderPolicy({enabled:false,hours:48});assert.equal(unpaidDeadline(createdAt,p),null);assert.equal(unpaidOrderExpired({status:"pending",createdAt},p,new Date("2027-01-01")),false)});
+test("only pending orders expire, configurable duration uses creation time",()=>{const p=normalizeUnpaidOrderPolicy({enabled:true,hours:2}),now=new Date(createdAt.getTime()+7200000);for(const status of ["paid","provisioning","active","refunded","failed"])assert.equal(unpaidOrderExpired({status,createdAt},p,now),false);assert.equal(unpaidOrderExpired({status:"pending",createdAt},p,now),true)});
+test("invalid durations fall back to 48 hours",()=>{for(const hours of [-1,0,1.5,"48",8761])assert.equal(normalizeUnpaidOrderPolicy({hours}).hours,48)});
+test("payment and cancellation serialize through the same order key",async()=>{let status="pending",restored=0;await Promise.all([withRequestLock("order-mutation:test",async()=>{await Promise.resolve();status="paid"}),withRequestLock("order-mutation:test",async()=>{if(status==="pending"){status="failed";restored++}})]);assert.equal(status,"paid");assert.equal(restored,0)});

@@ -5,7 +5,7 @@ import { getDb } from "../../../../db";
 import { couponRedemptions, coupons, customers, orders, paymentTransactions, walletTransactions } from "../../../../db/schema";
 
 export async function GET() {
-  if (!await requireAdminApi("overview")) return NextResponse.json({ error: "无运营概览权限" }, { status: 403 });
+  if (!await requireAdminApi("overview")&&!await requireAdminApi("finance")) return NextResponse.json({ error: "无运营概览权限" }, { status: 403 });
   const db = getDb();
   const [orderRows, walletRows, paymentRows, customerRows, redemptionRows, couponRows] = await Promise.all([
     db.select().from(orders).orderBy(desc(orders.createdAt)),

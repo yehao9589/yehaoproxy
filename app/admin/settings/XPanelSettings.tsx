@@ -1,4 +1,5 @@
 "use client";
+import OfflineResetSwitch from "./OfflineResetSwitch";
 import {AdminRefreshButton,useAdminRefresh} from "../AdminRefresh";
 
 import { useEffect, useMemo, useState } from "react";
@@ -34,6 +35,7 @@ type Server = {
   boundOrderId?: string;
   boundOrderExpiry?: string;
   resetDay: number;
+  deferOfflineReset?:boolean;
   lastSyncAt?: string;
   lastSyncStatus?: string;
   lastSyncError?: string;
@@ -395,6 +397,7 @@ export default function XPanelSettings() {
               />
             </label>
           </div>
+          <OfflineResetSwitch key={editing?.id||"new"} value={editing?.deferOfflineReset!==false}/>
           <label className="vps-enable">
             <input
               name="enabled"

@@ -1,4 +1,5 @@
 import{env}from"cloudflare:workers";
+import {expireUnpaidOrders} from "../../../../lib/expire-unpaid-orders";
 import{NextResponse}from"next/server";
 import{runScheduledReminders}from"../../../../lib/scheduled-reminders";
 import{systemAudit}from"../../../../lib/audit";
@@ -20,12 +21,13 @@ export async function POST(req:Request){
   if(source!==selectedMode)return NextResponse.json({ok:true,skipped:true,source,selectedMode,message:`当前已选择${selectedMode==="container"?"容器内置调度":"宝塔计划任务"}，本次请求未执行`});
   const now=new Date();
   try{
+    const unpaidOrders=await expireUnpaidOrders();
     const[reminders,vpsSync,creditRisk]=await Promise.all([runScheduledReminders(new URL(req.url).origin),syncDueXPanelServers(),runCreditRiskChecks()]);
     const komariSync=await syncKomari().catch(()=>({synced:0,error:"Komari 同步失败，请在 VPS 运营中心检查连接"}));
-    const result={...reminders,vpsSync,creditRisk,komariSync,source};
+    const result={...reminders,vpsSync,creditRisk,komariSync,unpaidOrders,source};
     await setSystemOption("scheduled_reminder_runner",JSON.stringify({source,ranAt:now.toISOString(),selectedMode}),now);
     const ticket=reminders.ticketAutomation;
-    const hasActivity=reminders.created>0||reminders.emailed>0||reminders.emailFailed>0||ticket.reminded>0||ticket.closed>0||ticket.emailed>0||ticket.emailFailed>0||vpsSync.failed>0||creditRisk.notificationsCreated>0;
+    const hasActivity=unpaidOrders.cancelled>0||unpaidOrders.paid>0||unpaidOrders.failed>0||reminders.created>0||reminders.emailed>0||reminders.emailFailed>0||ticket.reminded>0||ticket.closed>0||ticket.emailed>0||ticket.emailFailed>0||vpsSync.failed>0||creditRisk.notificationsCreated>0;
     const[lastAudit]=await getDb().select().from(systemOptions).where(eq(systemOptions.key,"scheduled_reminder_last_audit_at")).limit(1);
     const needsDailySummary=!lastAudit||lastAudit.value.slice(0,10)!==now.toISOString().slice(0,10);
     if(hasActivity||needsDailySummary){
