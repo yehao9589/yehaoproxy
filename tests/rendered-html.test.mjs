@@ -44,8 +44,20 @@ test("traffic reset resolves both binding providers and preserves Komari history
  assert.match(traffic,/orderVpsTargets\(orderId\)/);
  assert.match(traffic,/target.provider==="komari"/);
  const komari=await read("lib/komari.ts");
- assert.match(komari,/state.resetRequests\?\.\[requestId\]/);
- assert.match(komari,/baselineUp:meter.up,baselineDown:meter.down,adjustment:0/);
+ assert.match(komari,/resetRequests\?\.\[requestId\]/);
+ assert.match(komari,/configureServiceTraffic\(orderId,\{used:0,requestId,requireOnline:true/);
+ assert.doesNotMatch(komari,/baselineUp:meter.up,baselineDown:meter.down,adjustment:0/);
+ const shared=await read("lib/vps-bindings.ts");
+ assert.match(shared,/state.resetRequests\?\.\[input.requestId\]/);
+ assert.match(shared,/resetServiceTrafficState\(service,snapshot,input.used/);
+ const xpanel=await read("lib/xpanel.ts");
+ assert.match(xpanel,/used:service.used,total:service.total/);
+ assert.match(xpanel,/replaceServiceBinding\(state,x.orderId,target,confirmation,ready\)/);
+ const settings=await read("app/admin/NodeTrafficSettings.tsx");
+ assert.doesNotMatch(settings,/<form/);
+ assert.match(settings,/<input form=""/);
+ assert.match(settings,/<OfflineResetSwitch form=""/);
+ assert.match(settings,/reportValidity\(\)/);
 });
 
 test("node add-on status uses the row order id after order numbers are hidden",async()=>{
@@ -228,7 +240,7 @@ test("release metadata and workflow are pinned behind a quality gate", async () 
     read(".github/workflows/publish-images.yml"),
     read("lib/update-center.ts"),
   ]);
-  assert.equal(JSON.parse(pkg).version, "1.0.22");
+  assert.equal(JSON.parse(pkg).version, "1.0.23");
   assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
   assert.match(compose, /yehaoproxy:stable/);
   assert.match(compose, /UPDATE_CHANNEL: stable/);

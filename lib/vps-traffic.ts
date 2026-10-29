@@ -1,6 +1,6 @@
 import {orderVpsTargets} from "./vps-bindings";
 import {resetKomariOrderTraffic} from "./komari";
-import {fetchXPanelTraffic,resetXPanelCycle} from "./xpanel";
+import {resetXPanelCycle} from "./xpanel";
 
 // Service operations resolve the unified binding, never a provider-specific binding lookup.
 export async function resetOrderVpsTraffic(orderId:string,requestId:string){
@@ -9,6 +9,6 @@ export async function resetOrderVpsTraffic(orderId:string,requestId:string){
  if(targets.length!==1)throw new Error("该订单存在旧版重复绑定，请先选择保留的一台 VPS");
  const target=targets[0];
  if(target.provider==="komari")await resetKomariOrderTraffic(orderId,target.serverId,requestId);
- else{const binding={orderId,serverId:target.serverId,updatedAt:target.updatedAt};await fetchXPanelTraffic(binding);await resetXPanelCycle(target.serverId);await fetchXPanelTraffic(binding);}
+ else await resetXPanelCycle(target.serverId,requestId,orderId);
  return target;
 }

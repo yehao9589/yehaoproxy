@@ -1,0 +1,15 @@
+.node-service-traffic-settings{box-sizing:border-box;min-width:0;padding:20px;border:1px solid #dce7f4;border-radius:14px;background:#f8fafd}
+.node-service-traffic-settings h3{margin:0 0 8px;color:#173452;font-size:16px}
+.node-service-traffic-settings p{margin:8px 0 16px;color:#7186a0;font-size:12px;line-height:1.7}
+.node-service-traffic-settings .order-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.node-service-traffic-settings label{display:flex;min-width:0;flex-direction:column;gap:7px;color:#45617f;font-size:12px}
+.node-service-traffic-settings input,.node-service-traffic-settings select{box-sizing:border-box;width:100%;min-width:0;height:40px;padding:0 12px;border:1px solid #d6e2f0;border-radius:8px;background:#fff;color:#173452;font:inherit}
+.node-service-traffic-settings input:disabled{background:#eef3f9;color:#537092}
+.node-service-traffic-settings .vps-enable{display:flex;flex-direction:row;align-items:center;gap:12px;margin:18px 0;padding:14px;border:1px solid #e2eaf4;border-radius:10px;background:#fff}
+.node-service-traffic-settings .vps-enable span{display:grid;gap:5px;min-width:0}
+.node-service-traffic-settings .vps-enable small{font-size:11px;line-height:1.6;color:#7186a0}
+.node-service-traffic-settings>div>button{min-height:38px;padding:0 16px;border-radius:8px}
+.server-detail-columns>.node-service-traffic-settings{grid-column:1/-1}
+.vps-card>.node-service-traffic-settings{margin:0 20px 20px}
+.vps-server-quota-note{padding:0 24px;color:#7186a0;font-size:12px;line-height:1.7}
+@media(max-width:600px){.node-service-traffic-settings{padding:16px}.node-service-traffic-settings .order-form-grid{grid-template-columns:minmax(0,1fr)}.vps-card>.node-service-traffic-settings{margin:0 14px 14px}}

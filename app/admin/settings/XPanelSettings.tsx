@@ -1,6 +1,6 @@
 "use client";
-import OfflineResetSwitch from "./OfflineResetSwitch";
-import {AdminRefreshButton,useAdminRefresh} from "../AdminRefresh";
+import NodeTrafficSettings from "../NodeTrafficSettings";
+import {useAdminRefresh} from "../AdminRefresh";
 
 import { useEffect, useMemo, useState } from "react";
 import KomariSettings from "./KomariSettings";
@@ -36,6 +36,7 @@ type Server = {
   boundOrderExpiry?: string;
   resetDay: number;
   deferOfflineReset?:boolean;
+  serviceOrderId?:string|null;
   lastSyncAt?: string;
   lastSyncStatus?: string;
   lastSyncError?: string;
@@ -166,7 +167,7 @@ export default function XPanelSettings() {
           <em>{servers.length} 台服务器 · {servers.filter((x) => x.enabled).length} 台在线</em>
         </span></article>
         <article><i className="warning">流</i><span>
-          <small>本周期流量</small>
+          <small>服务器统计流量</small>
           <b>
             {size(totals.used)}
           </b>
@@ -196,7 +197,7 @@ export default function XPanelSettings() {
                 </header>
                 <div className="vps-traffic">
                   <div>
-                    <span>本周期已用</span>
+                    <span>服务器统计已用</span>
                     <b>{m ? size(m.used) : "--"}</b>
                     <small>
                       {m?.total ? `剩余 ${size(m.remaining)}` : "未限制总流量"}
@@ -228,7 +229,7 @@ export default function XPanelSettings() {
                     <b>{x.syncIntervalMinutes} 分钟</b>
                   </div>
                   <div>
-                    <span>重置周期</span>
+                    <span>服务器统计周期</span>
                     <b>
                       {x.resetCycle === "monthly"
                         ? `每月 ${x.resetDay} 日`
@@ -247,6 +248,7 @@ export default function XPanelSettings() {
                   </div>
                 </div>
                 {expanded === x.id && <div className="vps-inbounds"><div className="vps-inbounds-head"><b>入站节点流量明细</b><span>同步于 {time(m?.syncedAt)}</span></div>{m?.inbounds?.length?<div className="vps-inbound-table"><header><span>节点</span><span>协议 / 端口</span><span>上传</span><span>下载</span><span>总流量</span><span>用户 / 状态</span></header>{m.inbounds.map(node=><div key={node.id}><b title={node.name}>{node.name}</b><span>{node.protocol} / {node.port||"--"}</span><span>{size(node.up)}</span><span>{size(node.down)}</span><strong>{size(node.used)}</strong><span><i className={node.enabled?"on":"off"}/>{node.clientCount} 人 · {node.enabled?"已启用":"已停用"}</span></div>)}</div>:<div className="vps-inbounds-empty">暂无入站明细，请先点击“立即同步”。</div>}</div>}
+                {expanded===x.id&&x.serviceOrderId&&<NodeTrafficSettings orderId={x.serviceOrderId}/>}
                 <footer>
                   <button
                     disabled={!!busy}
@@ -260,18 +262,18 @@ export default function XPanelSettings() {
                     立即同步
                   </button>
                   <button onClick={() => setEditing(x)}>编辑配置</button>
-                  <button disabled={!m || !!busy} onClick={() => setCalibrating(x)}>校准流量</button>
+                  {x.serviceOrderId?<button onClick={()=>setExpanded(expanded===x.id?"":x.id)}>服务套餐</button>:<button disabled={!m || !!busy} onClick={() => setCalibrating(x)}>校准服务器流量</button>}
                   <button
                     disabled={!m || !!busy}
                     onClick={() =>
-                      confirm("确认从当前流量重新开始本统计周期？") &&
+                      confirm(x.serviceOrderId?"确认清零该节点服务的本期用量？套餐额度与服务周期不变。":"确认从当前流量重新开始服务器统计周期？") &&
                       void post(
                         { action: "reset-cycle", serverId: x.id },
-                        "统计周期已重置",
+                        x.serviceOrderId?"服务流量已重置":"服务器统计周期已重置",
                       )
                     }
                   >
-                    重置周期
+                    {x.serviceOrderId?"重置服务流量":"重置服务器统计"}
                   </button>
                   <button
                     className="danger"
@@ -322,7 +324,7 @@ export default function XPanelSettings() {
               />
             </label>
             <label>
-              套餐总流量（GB）
+              服务器供应商额度（GiB）
               <input
                 name="totalGb"
                 type="number"
@@ -376,13 +378,12 @@ export default function XPanelSettings() {
               </select>
             </label>
             <label>
-              流量重置周期
+              服务器统计重置周期
               <select
                 name="resetCycle"
-                defaultValue={editing?.resetCycle || "monthly"}
+                defaultValue={editing?.resetCycle==="order-expiry"?"never":editing?.resetCycle||"monthly"}
               >
                 <option value="monthly">每月固定日期</option>
-                <option value="order-expiry">跟随绑定订单到期时间</option>
                 <option value="never">不自动重置</option>
               </select>
             </label>
@@ -397,7 +398,7 @@ export default function XPanelSettings() {
               />
             </label>
           </div>
-          <OfflineResetSwitch key={editing?.id||"new"} value={editing?.deferOfflineReset!==false}/>
+          <p className="vps-server-quota-note">此处仅管理服务器统计，不影响已绑定服务的套餐。客户额度、用量和周期请在“服务套餐”中设置。</p>
           <label className="vps-enable">
             <input
               name="enabled"

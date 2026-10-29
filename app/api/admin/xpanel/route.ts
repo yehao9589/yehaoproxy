@@ -1,12 +1,18 @@
 import {NextResponse} from "next/server";
 import {requireAdminApi} from "../../../../lib/admin-auth";
 import {audit} from "../../../../lib/audit";
-import {BindingSwitchRequired} from "../../../../lib/vps-bindings";
+import {BindingSwitchRequired,getVpsBindingState} from "../../../../lib/vps-bindings";
 import {calibrateXPanelTraffic,deleteXPanelServer,fetchXPanelTraffic,getCachedXPanelTraffic,getXPanelBinding,getXPanelServers,resetXPanelCycle,saveXPanelBinding,saveXPanelServer,syncXPanelServer} from "../../../../lib/xpanel";
 
-function publicServers(rows:Awaited<ReturnType<typeof getXPanelServers>>){return rows.map(({encryptedPassword,...x})=>({...x,totalGb:x.totalBytes/1073741824,passwordConfigured:Boolean(encryptedPassword)}))}
+async function publicServers(rows:Awaited<ReturnType<typeof getXPanelServers>>){
+ const state=await getVpsBindingState();
+ return rows.map(({encryptedPassword,...x})=>{
+  const serviceOrderId=Object.entries(state.orders).find(([,targets])=>targets.length===1&&targets[0].provider==="xpanel"&&targets[0].serverId===x.id)?.[0]||null;
+  return {...x,totalGb:x.totalBytes/1073741824,passwordConfigured:Boolean(encryptedPassword),serviceOrderId};
+ });
+}
 
-export async function GET(req:Request){if(!await requireAdminApi("settings"))return NextResponse.json({error:"无管理员权限"},{status:403});const orderId=new URL(req.url).searchParams.get("orderId");return NextResponse.json({servers:publicServers(await getXPanelServers()),binding:orderId?await getXPanelBinding(orderId):null,traffic:orderId?await getCachedXPanelTraffic(orderId):null})}
+export async function GET(req:Request){if(!await requireAdminApi("settings"))return NextResponse.json({error:"无管理员权限"},{status:403});const orderId=new URL(req.url).searchParams.get("orderId");return NextResponse.json({servers:await publicServers(await getXPanelServers()),binding:orderId?await getXPanelBinding(orderId):null,traffic:orderId?await getCachedXPanelTraffic(orderId):null})}
 
 export async function POST(req:Request){
  const admin=await requireAdminApi("settings");if(!admin)return NextResponse.json({error:"无管理员权限"},{status:403});const b=await req.json().catch(()=>null),action=String(b?.action||"");
