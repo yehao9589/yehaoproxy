@@ -8,6 +8,8 @@ import {normalizeCityName} from "../../../../../../../lib/cities";
 import {audit} from "../../../../../../../lib/audit";
 import {databaseText} from "../../../../../../../lib/database-text";
 import {composeProxyNote,proxyNoteValue} from "../../../../../../../lib/proxy-note";
+import {customerWifiNameDuplicates} from "../../../../../../../lib/customer-wifi-name";
+import {wifiNameDuplicateMessage} from "../../../../../../../lib/wifi-name";
 
 function adminDate(value:unknown){const raw=String(value||"").trim();return new Date(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(raw)?`${raw}+08:00`:raw)}
 
@@ -35,8 +37,10 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string;allo
   const updates:any={host,port,username:b?.username?String(b.username):null,wifiName,protocol,note:composeProxyNote(String(row.note||""),row.note,city,transitUrl),expiresAt};
   if(b?.password)updates.encryptedPassword=await encryptCredential(String(b.password));
   const [order]=await db.select().from(orders).where(eq(orders.id,id)).limit(1);
+  if(!order)return NextResponse.json({error:"关联订单不存在"},{status:404});
+  const wifiDuplicates=await customerWifiNameDuplicates(db,order.customerEmail,wifiName,row.id);
   try{await db.update(proxyAllocations).set(updates).where(eq(proxyAllocations.id,row.id));await db.update(orders).set({expiresAt,region:country,updatedAt:new Date()}).where(eq(orders.id,id));await audit({id:admin.id,role:admin.role},"proxy.resource.update","proxy",row.id,{orderId:id,previousExpiresAt:row.expiresAt?.toISOString()||null,expiresAt:expiresAt.toISOString(),previousAddress:`${row.host}:${row.port}`,address:`${host}:${port}`,previousCountry:order?.region||null,country,previousCity:proxyNoteValue(row.note,"CITY")||null,city,protocol,passwordChanged:Boolean(b?.password),transitUrlConfigured:Boolean(transitUrl)},req);}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"资源保存失败"},{status:409})}
-  return NextResponse.json({ok:true});
+  return NextResponse.json({ok:true,wifiNameWarning:wifiNameDuplicateMessage(wifiName,wifiDuplicates.length)});
 }
 
 export async function DELETE(req:Request,{params}:{params:Promise<{id:string;allocationId:string}>}){

@@ -110,7 +110,7 @@ async function bootOne(name){
   const saved=await runtimeEnv();
   const common={...saved};
   if(name==="mysql")start(name,"node",["scripts/mysql-bridge.mjs"],{...common,PORT:"8789"});
-  if(name==="xpanel")start(name,"node",["scripts/xpanel-bridge.mjs"],{PORT:"8787"});
+  if(name==="xpanel")start(name,"node",["scripts/xpanel-bridge.mjs"],{PORT:"8787",VPS_OPERATIONS_DIR:"/app/backups/vps"});
   if(name==="web")start(name,"node",["node_modules/vinext/dist/cli.js","start","--hostname","127.0.0.1","--port","3001"],{
     ...common,DATABASE_DRIVER:"mysql",MYSQL_BRIDGE_URL:"http://127.0.0.1:8789",XPANEL_BRIDGE_URL:"http://127.0.0.1:8787",UPDATE_WEBHOOK_URL:"http://127.0.0.1:8788",
   });

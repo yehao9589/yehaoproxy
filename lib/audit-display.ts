@@ -11,6 +11,7 @@ export type AuditDisplayLog = {
 };
 
 const actions: Record<string, string> = {
+  "vps.operations.save-plan":"保存 VPS 自动备份计划","vps.operations.check":"提交 VPS 连接检测","vps.operations.backup":"提交 VPS 备份","vps.operations.check-all":"批量检测 VPS","vps.operations.backup-all":"批量备份 VPS","vps.operations.delete-backup":"删除 VPS 备份","vps.operations.download":"下载 VPS 面板备份",
   "credit.risk_status.update":"信用风险状态自动更新","ticket.automation.close":"系统自动关闭超时工单","node.note.update":"修改节点备注","node.auto_renew.update":"修改节点自动续费",
   "auth.login.success":"登录成功","auth.login.failed":"登录失败","auth.logout":"退出登录",
   "email.sent":"邮件发送成功","email.failed":"邮件发送失败","email.settings.update":"修改邮件发送配置","scheduled.reminders.run":"服务提醒任务执行","scheduled.reminders.activity":"定时任务产生业务处理","scheduled.reminders.daily":"定时任务每日健康摘要","scheduled.reminders.failed":"定时任务执行失败","scheduled.reminders.manual_run":"管理员手动执行提醒任务","scheduled.runner_mode.update":"修改定时任务执行方式","scheduled.settings.update":"修改定时任务配置",
@@ -33,6 +34,7 @@ const resources: Record<string, string> = {
 };
 
 const keys: Record<string, string> = {
+  action:"操作",schedule:"备份计划",
   before:"修改前",after:"修改后",totalGb:"服务流量额度 GB",usedGb:"本期已用 GB",direction:"流量计量方向",deferOfflineReset:"离线时延后重置",
   originalProduct:"原商品",previousProduct:"原商品",previousRegion:"原地区",previousQuantity:"原数量",previousDurationDays:"原服务周期",regionName:"地区名称",paymentMethod:"付款方式",referenceConfigured:"已填写收款凭证",configured:"已配置",autoRenew:"自动续费",provider:"服务商",fromName:"发件名称",fromEmail:"发件邮箱",secretUpdated:"密钥已更新",keyMaterialUpdated:"密钥已更新",keyMaterialConfigured:"密钥已配置",configurationCount:"配置项数量",endpointConfigured:"接口地址已配置",senderId:"发送方标识",mode:"执行方式",targetGb:"校准流量",succeeded:"成功数量",failed:"失败数量",idleDays:"未回复天数",walletsUpdated:"钱包币种已同步",ordersUpdated:"订单币种已同步",
   email:"邮箱",name:"名称",reason:"原因",amount:"金额",note:"备注",status:"状态",to:"收件人",subject:"标题",error:"错误信息",
@@ -66,7 +68,7 @@ const configurationNames:Record<string,string>={
 };
 
 const permissionNames: Record<string, string> = {overview:"运营概览",orders:"订单管理",products:"商品管理",customers:"客户管理",finance:"财务运营",sales:"销售业绩",tickets:"工单管理",coupons:"优惠券",requests:"售后申请",automation:"定时任务",settings:"系统设置",admins:"管理员账户",audit:"审计日志"};
-const hiddenKeys = new Set(["allocationId","allocationIds","resourceId","resourceIds","passwordHash","encryptedPassword","password","token","tokenHash","credentialRef","appPrivateKey","alipayPublicKey","privateKey","secret"]);
+const hiddenKeys = new Set(["allocationId","allocationIds","resourceId","resourceIds","passwordHash","encryptedPassword","encryptedTotpSecret","totpSecret","password","token","tokenHash","credentialRef","appPrivateKey","alipayPublicKey","privateKey","secret"]);
 
 function isEncodedBytes(value: unknown) {
   if (Array.isArray(value)) return value.length > 0 && value.every(item => Number.isInteger(Number(item)) && Number(item) >= 0 && Number(item) <= 255);

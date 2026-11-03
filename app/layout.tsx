@@ -41,6 +41,7 @@ import "./customer-orders.css";
 import "./order-coupon.css";
 import "./coupon-editor.css";
 import "./manual-allocation.css";
+import "./wifi-name.css";
 import "./proxy-batch.css";
 import "./proxy-copy.css";
 import "./auto-renew-switch.css";

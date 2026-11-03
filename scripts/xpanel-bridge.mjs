@@ -1,73 +1,57 @@
-import {createServer} from "node:http";
-import {timingSafeEqual} from "node:crypto";
+import {createServer} from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {timingSafeEqual,createHash} from 'node:crypto';
+import {VpsOperations,OperationError} from './vps/operations.mjs';
 
-const port=Number(process.env.PORT||8787);
-const secret=String(process.env.XPANEL_BRIDGE_SECRET||"");
-const timeoutMs=Number(process.env.XPANEL_BRIDGE_TIMEOUT_MS||15000);
-
-function json(res,status,data){
-  res.writeHead(status,{"content-type":"application/json; charset=utf-8","cache-control":"no-store"});
-  res.end(JSON.stringify(data));
-}
-
-function authorized(req){
-  const supplied=String(req.headers["x-bridge-secret"]||"");
-  if(!secret||supplied.length!==secret.length)return false;
-  return timingSafeEqual(Buffer.from(supplied),Buffer.from(secret));
-}
-
+function json(res,status,data){res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(data));}
 async function readBody(req){
-  const chunks=[];
-  let size=0;
-  for await(const chunk of req){
-    size+=chunk.length;
-    if(size>65536)throw new Error("请求内容过大");
-    chunks.push(chunk);
-  }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8")||"{}");
+  const chunks=[];let size=0;
+  for await(const chunk of req){size+=chunk.length;if(size>65536)throw new OperationError(413,'请求内容过大');chunks.push(chunk);}
+  try{const input=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');if(!input||typeof input!=='object'||Array.isArray(input))throw new Error();return input;}
+  catch{throw new OperationError(400,'请求 JSON 无效');}
 }
 
-function cleanBaseUrl(value){
-  const url=new URL(String(value||"").trim().replace(/\/+$/,"").replace(/\/panel$/i,""));
-  if(url.protocol!=="https:")throw new Error("X-Panel 地址必须使用 HTTPS");
-  if(url.username||url.password)throw new Error("X-Panel 地址不能包含账号密码");
-  return url.toString().replace(/\/+$/,"");
-}
-
-async function loadInbounds(input){
-  const baseUrl=cleanBaseUrl(input.baseUrl);
-  const loginBody=new URLSearchParams({username:String(input.username||""),password:String(input.password||"")});
-  const login=await fetch(`${baseUrl}/login`,{
-    method:"POST",
-    headers:{"content-type":"application/x-www-form-urlencoded"},
-    body:loginBody,
-    redirect:"manual",
-    signal:AbortSignal.timeout(timeoutMs),
+export function createXPanelBridge(options={}){
+  const secret=String(options.secret??process.env.XPANEL_BRIDGE_SECRET??'');
+  const operations=new VpsOperations({...options,timeout:options.timeout??Number(process.env.XPANEL_BRIDGE_TIMEOUT_MS||45000)});
+  const server=createServer(async(req,res)=>{
+    try{
+      if(req.url==='/health')return json(res,200,{ok:true,vpsOperations:true});
+      const supplied=Buffer.from(String(req.headers['x-bridge-secret']||'')),expected=Buffer.from(secret);
+      if(!expected.length||supplied.length!==expected.length||!timingSafeEqual(supplied,expected))return json(res,401,{error:'连接服务认证失败'});
+      const url=new URL(req.url,'http://localhost'),route=url.pathname;
+      const head=req.method==='HEAD'&&route==='/operations/download';
+      if(req.method!=='POST'&&!head)return json(res,405,{error:'请求方法不支持'});
+      const input=head?{backupId:url.searchParams.get('backupId'),kind:url.searchParams.get('kind')||'db'}:await readBody(req);
+      if(route==='/inbounds'){
+        const connection={...input,id:input.id||`legacy-${createHash('sha256').update(String(input.baseUrl)+String(input.username)).digest('hex').slice(0,24)}`};
+        const rows=await operations.client(connection).json('panel/api/inbounds/list');
+        if(!Array.isArray(rows))throw new OperationError(502,'面板没有返回入站列表');
+        return json(res,200,{ok:true,rows});
+      }
+      if(route==='/operations/state')return json(res,200,operations.snapshot());
+      if(route==='/operations/check')return json(res,202,operations.check(input.server,{trigger:input.trigger==='schedule'?'schedule':'manual',record:input.record!==false}));
+      if(route==='/operations/backup')return json(res,202,operations.backup(input.server,{retain:input.retain,trigger:input.trigger,dueToken:input.dueToken}));
+      if(route==='/operations/delete-backup')return json(res,200,operations.remove(String(input.backupId||'')));
+      if(route==='/operations/download'){
+        const file=operations.download(String(input.backupId||''),input.kind||'db');
+        res.writeHead(200,{'content-type':file.contentType,'content-length':file.bytes,'content-disposition':file.contentDisposition,'cache-control':'no-store','x-content-type-options':'nosniff'});
+        if(head)return res.end();
+        const stream=fs.createReadStream(file.filename);stream.on('error',()=>res.destroy());res.on('close',()=>stream.destroy());return stream.pipe(res);
+      }
+      return json(res,404,{error:'接口不存在'});
+    }catch(error){if(res.headersSent)return res.destroy();return json(res,error.status||502,{error:error.status?error.message:'X-Panel 操作失败，请检查网络、面板配置和备份目录权限'});}
   });
-  const loginText=await login.text();
-  let loginData=null;
-  try{loginData=JSON.parse(loginText)}catch{}
-  const cookies=typeof login.headers.getSetCookie==="function"?login.headers.getSetCookie():[login.headers.get("set-cookie")||""];
-  const cookie=cookies.filter(Boolean).map(value=>value.split(";")[0]).join("; ");
-  if(!login.ok||loginData?.success===false||!cookie)throw new Error(loginData?.msg||`X-Panel 登录失败（${login.status}）`);
-  const response=await fetch(`${baseUrl}/panel/api/inbounds/list`,{
-    headers:{cookie},
-    signal:AbortSignal.timeout(timeoutMs),
-  });
-  const data=await response.json().catch(()=>null);
-  if(!response.ok||data?.success===false||!Array.isArray(data?.obj))throw new Error(data?.msg||`X-Panel 接口异常（${response.status}）`);
-  return data.obj;
+  server.requestTimeout=60000;server.headersTimeout=15000;
+  return {server,operations,listen(port=Number(process.env.PORT||8787),host=process.env.HOST||'0.0.0.0'){return new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,()=>{server.off('error',reject);resolve(server.address());});});},async close(){await operations.idle();if(!server.listening)return;await new Promise(resolve=>{server.close(resolve);server.closeIdleConnections();});}};
 }
 
-createServer(async(req,res)=>{
-  if(req.url==="/health")return json(res,200,{ok:true});
-  if(req.method!=="POST"||req.url!=="/inbounds")return json(res,404,{error:"接口不存在"});
-  if(!authorized(req))return json(res,401,{error:"连接服务认证失败"});
-  try{
-    const rows=await loadInbounds(await readBody(req));
-    return json(res,200,{ok:true,rows});
-  }catch(error){
-    const message=error instanceof Error?error.message:"X-Panel 连接失败";
-    return json(res,502,{error:message});
-  }
-}).listen(port,"0.0.0.0",()=>console.log(`X-Panel bridge listening on ${port}`));
+if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){
+  const bridge=createXPanelBridge();
+  const address=await bridge.listen();
+  console.log(`X-Panel bridge listening on ${address.port}; VPS backups enabled`);
+  const shutdown=()=>bridge.close().then(()=>process.exit(0));
+  process.once('SIGTERM',shutdown);process.once('SIGINT',shutdown);
+}

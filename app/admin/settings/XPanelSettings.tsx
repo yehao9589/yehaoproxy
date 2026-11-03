@@ -30,6 +30,8 @@ type Server = {
   enabled: boolean;
   totalGb: number;
   passwordConfigured: boolean;
+  totpConfigured?: boolean;
+  group?: string;
   syncIntervalMinutes: number;
   resetCycle: "monthly" | "order-expiry" | "never";
   boundOrderId?: string;
@@ -50,8 +52,8 @@ const size = (n = 0) =>
       : `${(n / 1024).toFixed(1)} KB`;
 const time = (v?: string) =>
   v ? new Date(v).toLocaleString("zh-CN", { hour12: false }) : "尚未同步";
-export default function XPanelSettings() {
-  const [monitorTab,setMonitorTab]=useState<"komari"|"xpanel">("komari");
+export default function XPanelSettings({initialTab="komari",showProviderTabs=true}:{initialTab?:"komari"|"xpanel";showProviderTabs?:boolean}={}) {
+  const [monitorTab,setMonitorTab]=useState<"komari"|"xpanel">(initialTab);
   const [servers, setServers] = useState<Server[]>([]),
     [editing, setEditing] = useState<Server | null | undefined>(undefined),
     [calibrating, setCalibrating] = useState<Server | null>(null),
@@ -109,6 +111,7 @@ export default function XPanelSettings() {
           id: editing?.id,
           action: "save-server",
           enabled: b.enabled === "on",
+          clearTotp: b.clearTotp === "on",
         },
         "VPS 配置已保存",
       )
@@ -122,7 +125,7 @@ export default function XPanelSettings() {
       <section className="vps-toolbar business-hero">
         <div>
           <small>INFRASTRUCTURE OPERATIONS</small>
-          <h2>VPS 运营中心</h2>
+          <h2>{showProviderTabs?"VPS 运营中心":"面板与流量"}</h2>
           <p>统一管理服务器监控、代理面板与流量使用情况。</p>
         </div>
         <div>
@@ -141,8 +144,8 @@ export default function XPanelSettings() {
           </>:null}
         </div>
       </section>
-      <div className="vps-monitor-tabs" role="tablist" aria-label="VPS 管理分区"><button role="tab" aria-selected={monitorTab==="komari"} onClick={()=>setMonitorTab("komari")}>服务器监控 <small>Komari</small></button><button role="tab" aria-selected={monitorTab==="xpanel"} onClick={()=>setMonitorTab("xpanel")}>代理面板 <small>X-Panel</small></button></div>
-      <div hidden={monitorTab!=="komari"}><KomariSettings/></div>
+      {showProviderTabs&&<div className="vps-monitor-tabs" role="tablist" aria-label="VPS 管理分区"><button role="tab" aria-selected={monitorTab==="komari"} onClick={()=>setMonitorTab("komari")}>服务器监控 <small>Komari</small></button><button role="tab" aria-selected={monitorTab==="xpanel"} onClick={()=>setMonitorTab("xpanel")}>代理面板 <small>X-Panel</small></button></div>}
+      {showProviderTabs&&<div hidden={monitorTab!=="komari"}><KomariSettings/></div>}
       <div hidden={monitorTab!=="xpanel"}>
       {message && (
         <div
@@ -188,7 +191,7 @@ export default function XPanelSettings() {
                     VPS
                   </div>
                   <div>
-                    <h3>{x.name}</h3>
+                    <h3>{x.name}</h3>{x.group&&<small>{x.group}</small>}
                     <p>{x.baseUrl.replace(/^https?:\/\//, "")}</p>
                   </div>
                   <span className={x.enabled ? "on" : "off"}>
@@ -314,6 +317,7 @@ export default function XPanelSettings() {
             </button>
           </div>
           <div className="vps-form">
+            <label>分组（可选）<input name="group" maxLength={40} defaultValue={editing?.group||""} placeholder="例如：香港 / 个人 / 测试"/></label>
             <label>
               VPS 名称
               <input
@@ -364,6 +368,8 @@ export default function XPanelSettings() {
                 }
               />
             </label>
+            <label className="wide">TOTP 密钥（可选）<input name="totpSecret" type="password" autoComplete="new-password" placeholder={editing?.totpConfigured?"已配置，留空保留原密钥":"开启两步验证时填写 Base32 密钥，不是六位验证码"}/></label>
+            {editing?.totpConfigured&&<label className="wide"><span><input name="clearTotp" type="checkbox"/> 清除现有 TOTP 密钥（仅在远端已关闭两步验证时使用）</span></label>}
             <label>
               同步间隔
               <select

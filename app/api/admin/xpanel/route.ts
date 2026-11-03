@@ -6,9 +6,9 @@ import {calibrateXPanelTraffic,deleteXPanelServer,fetchXPanelTraffic,getCachedXP
 
 async function publicServers(rows:Awaited<ReturnType<typeof getXPanelServers>>){
  const state=await getVpsBindingState();
- return rows.map(({encryptedPassword,...x})=>{
+ return rows.map(({encryptedPassword,encryptedTotpSecret,...x})=>{
   const serviceOrderId=Object.entries(state.orders).find(([,targets])=>targets.length===1&&targets[0].provider==="xpanel"&&targets[0].serverId===x.id)?.[0]||null;
-  return {...x,totalGb:x.totalBytes/1073741824,passwordConfigured:Boolean(encryptedPassword),serviceOrderId};
+  return {...x,totalGb:x.totalBytes/1073741824,passwordConfigured:Boolean(encryptedPassword),totpConfigured:Boolean(encryptedTotpSecret),serviceOrderId};
  });
 }
 

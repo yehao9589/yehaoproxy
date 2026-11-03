@@ -1,0 +1,5 @@
+.wifi-name-duplicate-warning{display:grid!important;gap:4px!important;min-width:0;margin:2px 0 0!important;padding:10px 12px!important;border:1px solid #f5d59e!important;border-radius:8px;background:#fff8eb!important;color:#9a5b13!important;font-size:11px!important;line-height:1.55!important;overflow-wrap:anywhere}
+.wifi-name-duplicate-warning>b{font-size:inherit!important;color:#8a4c0b!important;font-weight:600!important}
+.wifi-name-duplicate-warning>span{display:block!important;color:#9a6b32!important;font-size:inherit!important;line-height:inherit!important}
+.wifi-name-check-note{display:block;color:#7c8fa6!important;font-size:11px!important;line-height:1.5!important}
+.wifi-name-duplicate-badge{display:inline-flex;margin-top:4px;padding:2px 6px;border:1px solid #f5d59e;border-radius:5px;background:#fff8eb;color:#9a5b13;font-size:10px;font-style:normal;white-space:nowrap}

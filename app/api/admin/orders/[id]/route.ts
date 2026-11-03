@@ -11,6 +11,8 @@ import{orderVpsTargets}from"../../../../../lib/vps-bindings";
 import{audit}from"../../../../../lib/audit";
 import{databaseText}from"../../../../../lib/database-text";
 import{billKind}from"../../../../../lib/bill-workflow";
+import{customerWifiNameDuplicates,customerWifiNameSuggestion}from"../../../../../lib/customer-wifi-name";
+import{wifiNameDuplicateMessage}from"../../../../../lib/wifi-name";
 
 const metadataLine=/^\[[A-Z_]+\][^\n]*$/gm;
 function adminDate(value:unknown){const raw=String(value||"").trim();return new Date(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(raw)?`${raw}+08:00`:raw)}
@@ -63,6 +65,7 @@ export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){
     suggestedExpiresAt:targetOrder?addBillingPeriod(new Date(),targetOrder.durationDays,billingCycleFromNote(targetOrder.adminNote)).toISOString():null,
     durationDays:targetOrder?.durationDays||0,
     billingCycle:targetOrder?billingCycleFromNote(targetOrder.adminNote):null,
+    wifiNameSuggestion:targetOrder?await customerWifiNameSuggestion(db,order.customerEmail,targetOrder.product,targetOrder.region):null,
   };
   const payments=await db.select().from(paymentTransactions).where(eq(paymentTransactions.orderId,id));
   const[walletTx]=order.paymentReference?await db.select().from(walletTransactions).where(eq(walletTransactions.id,order.paymentReference)).limit(1):[null],walletBalanceAfter=Number(walletTx?.balanceAfter??0),balanceBefore=walletTx?Number((walletBalanceAfter-walletTx.amount).toFixed(2)):0,paymentSource=order.paymentMethod!=="balance"?order.paymentMethod:walletTx&&walletBalanceAfter<0?(balanceBefore>0?"balance_credit":"credit"):"balance";
@@ -178,9 +181,12 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   }
   if(action==="manual-allocate"){
     if(!["paid","provisioning"].includes(order.status))return NextResponse.json({error:"只有已付款或开通中的订单可以手动交付"},{status:409});
-    const host=String(b?.host||"").trim(),port=Number(b?.port),username=String(b?.username||"").trim()||null,password=String(b?.password||""),wifiName=String(b?.wifiName||"").trim()||null,protocol=String(b?.protocol||"HTTPS").toUpperCase(),country=String(b?.country||order.region).trim().toUpperCase(),city=normalizeCityName(String(b?.city||"")),transitUrl=String(b?.transitUrl||"").trim();
+    const host=String(b?.host||"").trim(),port=Number(b?.port),username=String(b?.username||"").trim()||null,password=String(b?.password||""),requestedWifiName=String(b?.wifiName||"").trim()||null,protocol=String(b?.protocol||"HTTPS").toUpperCase(),country=String(b?.country||order.region).trim().toUpperCase(),city=normalizeCityName(String(b?.city||"")),transitUrl=String(b?.transitUrl||"").trim();
     if(!host||!Number.isInteger(port)||port<1||port>65535||!["HTTP","HTTPS","SOCKS5"].includes(protocol)||!/^[A-Z]{2}$/.test(country)||!city)return NextResponse.json({error:"请填写有效的连接信息、国家代码和城市"},{status:400});
     if(transitUrl)try{const parsed=new URL(transitUrl);if(!["http:","https:"].includes(parsed.protocol))throw new Error()}catch{return NextResponse.json({error:"直连订阅链接必须是有效的 HTTP 或 HTTPS 地址"},{status:400})}
+    return withRequestLock(`wifi-name:${order.customerEmail}:${order.product}:${country}`,async()=>{
+    const wifiName=b?.wifiNameMode==="auto"?(await customerWifiNameSuggestion(db,order.customerEmail,order.product,country)).suggestedName:requestedWifiName;
+    const wifiDuplicates=await customerWifiNameDuplicates(db,order.customerEmail,wifiName);
     const existing=await db.select().from(proxyAllocations).where(eq(proxyAllocations.orderId,id));
     if(existing.length>=order.quantity)return NextResponse.json({error:"该订单的 IP 已全部交付"},{status:409});
     if(existing.some(x=>x.host===host&&x.port===port))return NextResponse.json({error:"该 IP 和端口已在本订单中"},{status:409});
@@ -200,7 +206,8 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
       allocated:existing.length+1,required:order.quantity,completed:completes,
       expiresAt:expiry?.toISOString()||null,
     },req);
-    return NextResponse.json({ok:true,allocated:existing.length+1,remaining:Math.max(0,order.quantity-existing.length-1),status:completes?"active":"provisioning",expiresAt:expiry});
+    return NextResponse.json({ok:true,allocated:existing.length+1,remaining:Math.max(0,order.quantity-existing.length-1),status:completes?"active":"provisioning",expiresAt:expiry,wifiName,wifiNameWarning:wifiNameDuplicateMessage(wifiName,wifiDuplicates.length)});
+    });
   }
   return NextResponse.json({error:"不支持的操作"},{status:400});
   });

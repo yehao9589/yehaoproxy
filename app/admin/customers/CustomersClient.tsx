@@ -505,6 +505,7 @@ function AssetsPanel({ rows }: { rows: any[] }) {
       window.dispatchEvent(
         new CustomEvent("yehao:edit-resource", {
           detail: {
+            allocationId: d.id,
             orderId: x.orderId,
             currentHost,
             currentPort,
@@ -512,6 +513,9 @@ function AssetsPanel({ rows }: { rows: any[] }) {
             port: String(d.port || currentPort),
             username: d.username || "",
             password: d.password || "",
+            wifiName: d.wifiName || "",
+            transitUrl: d.transitUrl || "",
+            expiresAt: d.expiresAt || "",
             protocol: d.protocol || "HTTPS",
             country: d.country || x.country || "",
             city: d.city || x.city || "",

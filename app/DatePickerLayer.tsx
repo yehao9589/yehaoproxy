@@ -71,5 +71,5 @@ export default function DatePickerLayer(){
     {hasTime&&<div className="yh-date-time"><span>时间</span><div><select aria-label="小时" value={time.slice(0,2)} onChange={event=>setTime(`${event.target.value}:${time.slice(3,5)}`)}>{Array.from({length:24},(_,index)=><option key={index}>{pad(index)}</option>)}</select><b>:</b><select aria-label="分钟" value={time.slice(3,5)} onChange={event=>setTime(`${time.slice(0,2)}:${event.target.value}`)}>{Array.from({length:60},(_,index)=><option key={index}>{pad(index)}</option>)}</select></div><small>24 小时制</small></div>}
     {message&&<p className="yh-date-error">{message}</p>}
     <div className="yh-date-footer"><button type="button" disabled={target.required} onClick={()=>commit("")}>清空</button><button type="button" onClick={()=>{const now=new Date();setDay(today);setMonth(now);setTime(`${pad(now.getHours())}:${pad(now.getMinutes())}`);if(!hasTime)commit(today)}}>{hasTime?"此刻":"今天"}</button>{hasTime&&<button type="button" className="confirm" onClick={()=>commit(hasDate?`${day}T${time}`:time)}>确定</button>}</div>
-  </div>,document.body);
+  </div>,target.closest("dialog[open]")||document.body);
 }
