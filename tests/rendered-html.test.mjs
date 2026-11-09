@@ -240,7 +240,7 @@ test("release metadata and workflow are pinned behind a quality gate", async () 
     read(".github/workflows/publish-images.yml"),
     read("lib/update-center.ts"),
   ]);
-  assert.equal(JSON.parse(pkg).version, "1.0.24");
+  assert.equal(JSON.parse(pkg).version, "1.0.25");
   assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
   assert.match(compose, /yehaoproxy:stable/);
   assert.match(compose, /UPDATE_CHANNEL: stable/);
@@ -248,7 +248,8 @@ test("release metadata and workflow are pinned behind a quality gate", async () 
   assert.match(workflow, /quality:/);
   assert.match(workflow, /needs: quality/);
   assert.match(workflow, /type=raw,value=stable/);
-  assert.match(workflow, /steps\.app\.outputs\.version/);
+  assert.match(workflow, /version: \$\{\{ steps\.app\.outputs\.version \}\}/);
+  assert.match(workflow, /APP_VERSION=.*needs\.quality\.outputs\.version/);
   assert.doesNotMatch(workflow, /APP_VERSION=.*'stable'/);
   assert.match(updateCenter, /branch: "main"/);
   assert.doesNotMatch(updateCenter, /codex\/pre-release-hardening/);
@@ -514,7 +515,7 @@ test("wallet recharges stay in billing and never become product services", async
     read("app/api/orders/route.ts"),
     read("app/admin/OrderManager.tsx"),
     read("app/api/admin/customers/[id]/route.ts"),
-    read("app/admin/LiveAdmin.tsx"),
+    read("app/admin/ConsoleOverview.tsx"),
   ]);
   assert.match(customerOrders, /order\.product!=="wallet-topup"/);
   assert.match(productOrders, /\["cart-bundle","wallet-topup"\]\.includes\(order\.product\)/);

@@ -255,3 +255,5 @@ docker compose up -d --force-recreate
 - 本次迁移不自动升级或恢复远端面板；运维记录与 YehaoProxy 自身更新日志分别管理。
 
 独立原型的源码快照保存在 `docs/migrations/x-panel-hub-standalone-v0.1.0.zip`，只供追溯，不参与运行。
+
+VPS 备份可选开启 Cloudflare R2 异地加密副本，默认关闭。先创建私有 Standard 存储桶、设置限桶访问密钥，并下载单独保管解密密钥，再在备份页启用。配置、保留规则与离线解密步骤见 [R2_BACKUPS.md](docs/R2_BACKUPS.md)。本地清理不删除 R2 文件，异地副本不能替代恢复演练。

@@ -1,7 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
-import {useRouter,useSearchParams} from "next/navigation";
+
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import "../console.css";
+import ConsoleIcon, { type ConsoleIconName } from "../components/ConsoleIcon";
+import useConsoleMobileMenu from "../components/useConsoleMobileMenu";
+import ConsoleOverview from "./ConsoleOverview";
 import ProxiesClient from "./proxies/ProxiesClient";
 import OrderClient from "./orders/OrderClient";
 import RequestsClient from "./requests/RequestsClient";
@@ -10,8 +14,8 @@ import CreditBillsClient from "./credit-bills/CreditBillsClient";
 import WhitelistClient from "./whitelist/WhitelistClient";
 import SupportClient from "./support/SupportClient";
 import NotificationClient from "./notifications/NotificationClient";
-import { dashboardJson } from "./data-cache";
-type Tab =
+
+export type DashboardTab =
   | "overview"
   | "proxies"
   | "orders"
@@ -21,177 +25,105 @@ type Tab =
   | "whitelist"
   | "support"
   | "notifications";
-type ProxyItem = {
-  id: string;
-  host: string;
-  port: number;
-  username: string | null;
-  password: string | null;
-  protocol: string;
-  expiresAt: string | null;
-  region: string;
-};
-type Order = {
-  id: string;
-  product: string;
-  region: string;
-  quantity: number;
-  amount: number;
-  status: string;
-};
+
+const navigation: { id: DashboardTab; label: string; icon: ConsoleIconName }[] = [
+  { id: "overview", label: "账户概览", icon: "home" },
+  { id: "proxies", label: "我的服务", icon: "layers" },
+  { id: "orders", label: "订单管理", icon: "orders" },
+  { id: "wallet", label: "余额与流水", icon: "wallet" },
+  { id: "credit-bills", label: "信用账单", icon: "orders" },
+  { id: "requests", label: "售后申请", icon: "renew" },
+  { id: "support", label: "工单支持", icon: "support" },
+  { id: "notifications", label: "消息通知", icon: "bell" },
+  { id: "whitelist", label: "IP 白名单", icon: "network" },
+];
+
 export default function LiveDashboard({ name }: { name: string }) {
-  const router=useRouter(),params=useSearchParams();
-  const requested=params.get("tab")||"overview";
-  const tab:Tab=(["overview","proxies","orders","requests","wallet","credit-bills","whitelist","support","notifications"] as string[]).includes(requested)?requested as Tab:"overview";
-  const [loading, setLoading] = useState(true),
-    [error, setError] = useState(""),
-    [wallet, setWallet] = useState({
-      balance: 0,
-      frozen: 0,
-      currency: "CNY",
-      currencySymbol: "¥",
-    }),
-    [proxies, setProxies] = useState<ProxyItem[]>([]),
-    [orders, setOrders] = useState<Order[]>([]),
-    [reveal, setReveal] = useState(false),
-    [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  async function load(show = false) {
-    setLoading(true);
-    setError("");
+  const router = useRouter();
+  const params = useSearchParams();
+  const requested = params.get("tab") || "overview";
+  const tab = navigation.some(item => item.id === requested) ? requested as DashboardTab : "overview";
+  const current = navigation.find(item => item.id === tab)!;
+  const { mobileMenuOpen, setMobileMenuOpen, drawerRef, triggerRef, closeRef } = useConsoleMobileMenu("dashboard-mobile-menu-active");
+  const [menuQuery, setMenuQuery] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+
+  function choose(id: DashboardTab) {
+    setMobileMenuOpen(false);
+    router.push(id === "overview" ? "/dashboard" : `/dashboard?tab=${id}`);
+  }
+
+  async function logout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setLogoutError("");
     try {
-      const tasks = [
-        dashboardJson<any>("/api/wallet"),
-        dashboardJson<any>(show ? "/api/proxies?reveal=1" : "/api/proxies"),
-        dashboardJson<any>("/api/orders"),
-      ];
-      const [w, p, o] = await Promise.all(tasks);
-      if ([w, p, o].some((x) => x.status === 401)) {
-        location.href = "/login";
-        return;
-      }
-      if (!w.ok || !p.ok || !o.ok)
-        throw new Error(
-          w.data.error || p.data.error || o.data.error || "数据加载失败",
-        );
-      setWallet(w.data.wallet);
-      setProxies(p.data.items);
-      setOrders(o.data.items);
-      setReveal(show);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "数据加载失败");
-    } finally {
-      setLoading(false);
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      if (!response.ok) throw new Error("退出失败，请稍后重试");
+      location.href = "/login";
+    } catch (error) {
+      setLogoutError(error instanceof Error ? error.message : "退出失败，请稍后重试");
+      setLoggingOut(false);
     }
   }
-  useEffect(() => {
-    void load();
-  }, []);
-  useEffect(() => {
-    if (!mobileMenuOpen) return;
-    const close = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileMenuOpen(false);
-    };
-    document.body.classList.add("dashboard-mobile-menu-active");
-    window.addEventListener("keydown", close);
-    return () => {
-      document.body.classList.remove("dashboard-mobile-menu-active");
-      window.removeEventListener("keydown", close);
-    };
-  }, [mobileMenuOpen]);
-  function choose(id: Tab) {
-    setMobileMenuOpen(false);
-    router.push(id==="overview"?"/dashboard":`/dashboard?tab=${id}`);
-  }
-  const nav = (id: Tab, label: string, icon: string) => (
-    <button className={tab === id ? "on" : ""} onClick={() => choose(id)}>
-      <i>{icon}</i>
-      {label}
-    </button>
-  );
+
+  const visibleNavigation = navigation.filter(item => item.label.toLowerCase().includes(menuQuery.trim().toLowerCase()));
+
   return (
-    <main className={`console unified-console${mobileMenuOpen ? " mobile-nav-open" : ""}`}>
-      <aside className="console-side" id="dashboard-mobile-navigation">
+    <main className={`console unified-console customer-console${mobileMenuOpen ? " mobile-nav-open" : ""}`}>
+      <aside ref={drawerRef} className="console-side" id="dashboard-mobile-navigation" aria-label="客户中心导航" role={mobileMenuOpen ? "dialog" : undefined} aria-modal={mobileMenuOpen || undefined}>
         <div className="dashboard-mobile-nav-head">
           <span>客户中心菜单</span>
-          <button type="button" aria-label="关闭菜单" onClick={() => setMobileMenuOpen(false)}>×</button>
+          <button ref={closeRef} type="button" aria-label="关闭菜单" onClick={() => setMobileMenuOpen(false)}>×</button>
         </div>
-        <a className="brand" href="/">
-          <span>Y</span> YehaoProxy
-        </a>
+        <a className="brand" href="/"><span>Y</span> YehaoProxy</a>
+        <label className="console-sidebar-search">
+          <ConsoleIcon name="search" />
+          <input aria-label="搜索客户中心菜单" placeholder="搜索菜单…" value={menuQuery} onChange={event => setMenuQuery(event.target.value)} />
+        </label>
         <nav className="console-menu">
-          {nav("overview", "账户概览", "⌂")}
-          {nav("proxies", "我的代理", "◫")}
-          {nav("orders", "订单管理", "▤")}
-          {nav("requests", "售后申请", "◎")}
-          {nav("wallet", "余额与总流水", "◈")}
-          {nav("credit-bills", "信用账单", "¥")}
-          {nav("whitelist", "IP 白名单", "⌁")}
-          {nav("support", "工单支持", "◇")}
-          {nav("notifications", "消息通知", "◉")}
-        </nav>
-      </aside>
-      <button type="button" className="dashboard-mobile-backdrop" aria-label="关闭菜单" onClick={() => setMobileMenuOpen(false)} />
-      <section className="console-body">
-        <header className="console-top">
-          <button
-            type="button"
-            className="dashboard-mobile-menu-button"
-            aria-label="打开客户中心菜单"
-            aria-controls="dashboard-mobile-navigation"
-            aria-expanded={mobileMenuOpen}
-            onClick={() => setMobileMenuOpen(true)}
-          >
-            <span>☰</span> 菜单
-          </button>
-          <div className="dashboard-context">
-            <div>
-              <b>客户中心</b>
-            </div>
-          </div>
-          <div className="top-actions">
-            <span className="avatar">{name.trim().slice(0, 1).toUpperCase() || "Y"}</span>
-            <div className="dashboard-account">
-              <b>{name}</b>
-              <small><i /> 客户账户</small>
-            </div>
-            <button
-              className="dashboard-logout"
-              title="退出当前账户"
-              onClick={async () => {
-                await fetch("/api/auth/logout", { method: "POST" });
-                location.href = "/login";
-              }}
-            >
-              <span>↪</span>退出
+          {visibleNavigation.map(item => (
+            <button type="button" key={item.id} className={tab === item.id ? "on" : ""} aria-current={tab === item.id ? "page" : undefined} onClick={() => choose(item.id)}>
+              <ConsoleIcon name={item.icon} /><span>{item.label}</span>
             </button>
+          ))}
+          {!visibleNavigation.length && <p className="console-menu-empty">没有匹配的菜单</p>}
+        </nav>
+        <div className="console-side-footer">
+          <button type="button" className="dashboard-logout" disabled={loggingOut} onClick={() => void logout()}><ConsoleIcon name="logout" />{loggingOut ? "正在退出…" : "退出登录"}</button>
+          <div className="console-side-context"><ConsoleIcon name="users" /><span>客户中心</span></div>
+        </div>
+      </aside>
+      <button type="button" className="dashboard-mobile-backdrop" tabIndex={-1} aria-label="关闭菜单" onClick={() => setMobileMenuOpen(false)} />
+      <section className="console-body" inert={mobileMenuOpen}>
+        <header className="console-top console-header">
+          <button ref={triggerRef} type="button" className="dashboard-mobile-menu-button" aria-label="打开客户中心菜单" aria-controls="dashboard-mobile-navigation" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(true)}>
+            <ConsoleIcon name="layers" /> 菜单
+          </button>
+          <div className="dashboard-context"><div><b>{current.label}</b><small>客户中心</small></div></div>
+          <div className="top-actions">
+            {tab === "overview" && <button data-ui="action" data-ui-tone="secondary" type="button" className="outline console-refresh" disabled={overviewLoading} onClick={() => setRefreshKey(value => value + 1)}><ConsoleIcon name="renew" />{overviewLoading ? "正在刷新" : "刷新数据"}</button>}
+            <a data-ui="action" data-ui-tone="primary" className="console-top-purchase" href="/#pricing" aria-label="购买服务"><ConsoleIcon name="plus" /><span>购买服务</span></a>
+            <button type="button" className="console-top-notifications" onClick={() => choose("notifications")}><ConsoleIcon name="bell" /><span>消息通知</span></button>
+            <span className="avatar">{name.trim().slice(0, 1).toUpperCase() || "Y"}</span>
+            <div className="dashboard-account"><b>{name}</b><small>客户账户</small></div>
           </div>
         </header>
         <div className="console-content">
-            <section
-              className="dashboard-tab-panel"
-              key={tab}
-            >
-              {tab === "overview" ? (
-                <Overview
-                  loading={loading}
-                  error={error}
-                  wallet={wallet}
-                  proxies={proxies}
-                  orders={orders}
-                  reveal={reveal}
-                  load={load}
-                  setTab={choose}
-                />
-              ) : (
-                <Module tab={tab} />
-              )}
-            </section>
+          {logoutError && <div className="live-error" role="alert">{logoutError}</div>}
+          <section className="dashboard-tab-panel" key={tab}>
+            {tab === "overview" ? <ConsoleOverview refreshKey={refreshKey} onLoading={setOverviewLoading} setTab={choose} /> : <Module tab={tab} />}
+          </section>
         </div>
       </section>
     </main>
   );
 }
-function Module({ tab }: { tab: Exclude<Tab, "overview"> }) {
+
+function Module({ tab }: { tab: Exclude<DashboardTab, "overview"> }) {
   if (tab === "proxies") return <ProxiesClient />;
   if (tab === "orders") return <OrderClient />;
   if (tab === "requests") return <RequestsClient />;
@@ -200,161 +132,4 @@ function Module({ tab }: { tab: Exclude<Tab, "overview"> }) {
   if (tab === "whitelist") return <WhitelistClient />;
   if (tab === "support") return <SupportClient />;
   return <NotificationClient />;
-}
-function Overview({
-  loading,
-  error,
-  wallet,
-  proxies,
-  orders,
-  reveal,
-  load,
-  setTab,
-}: {
-  loading: boolean;
-  error: string;
-  wallet: any;
-  proxies: ProxyItem[];
-  orders: Order[];
-  reveal: boolean;
-  load: (s?: boolean) => void;
-  setTab: (t: Tab) => void;
-}) {
-  return (
-    <>
-      <div className="welcome">
-        <div>
-          <p>欢迎回来</p>
-          <h1>账户概览</h1>
-        </div>
-        <a className="primary" href="/#pricing">
-          ＋ 购买代理
-        </a>
-      </div>
-      {error && (
-        <div className="live-error">
-          {error}
-          <button onClick={() => load()}>重试</button>
-        </div>
-      )}
-      {loading ? (
-        <div className="live-loading">正在加载账户数据…</div>
-      ) : (
-        <>
-          <div className="balance-banner">
-            <div>
-              <span>账户余额</span>
-              <strong>
-                {wallet.currencySymbol} {wallet.balance.toFixed(2)}
-              </strong>
-              <small>
-                {wallet.currency} · 冻结 {wallet.currencySymbol}
-                {wallet.frozen.toFixed(2)}
-              </small>
-            </div>
-            <div className="balance-stat">
-              <span>有效代理</span>
-              <b>{proxies.length}</b>
-              <small>当前可用资产</small>
-            </div>
-            <div className="balance-stat">
-              <span>累计订单</span>
-              <b>{orders.length}</b>
-              <small>最近 100 笔</small>
-            </div>
-            <button onClick={() => setTab("wallet")}>查看流水</button>
-          </div>
-          <div className="live-grid">
-            <article className="proxy-panel">
-              <div className="panel-title">
-                <div>
-                  <h2>我的代理</h2>
-                  <p>已发放的有效代理资源</p>
-                </div>
-                <div>
-                  <button className="outline" onClick={() => load(!reveal)}>
-                    {reveal ? "隐藏密码" : "显示密码"}
-                  </button>
-                  <button className="primary" onClick={() => setTab("proxies")}>
-                    管理代理
-                  </button>
-                </div>
-              </div>
-              {proxies.length === 0 ? (
-                <Empty text="暂无代理资产，完成订单发放后会显示在这里。" />
-              ) : (
-                <div className="proxy-table">
-                  <div className="proxy-row head">
-                    <span>IP : 端口</span>
-                    <span>用户名</span>
-                    <span>密码</span>
-                    <span>地区</span>
-                    <span>协议</span>
-                    <span>到期时间</span>
-                    <span>状态</span>
-                    <span>操作</span>
-                  </div>
-                  {proxies.map((x) => (
-                    <div className="proxy-row" key={x.id}>
-                      <span className="mono">
-                        {x.host}:{x.port}
-                      </span>
-                      <span>{x.username || "—"}</span>
-                      <span>{reveal ? x.password || "—" : "••••••••"}</span>
-                      <span>{x.region}</span>
-                      <span>{x.protocol}</span>
-                      <span>
-                        {x.expiresAt
-                          ? new Date(x.expiresAt).toLocaleDateString()
-                          : "长期"}
-                      </span>
-                      <span>
-                        <i className="status-dot" />
-                        使用中
-                      </span>
-                      <span>
-                        <button onClick={() => setTab("proxies")}>管理</button>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </article>
-            <article className="proxy-panel">
-              <div className="panel-title">
-                <div>
-                  <h2>最近订单</h2>
-                  <p>订单状态与金额</p>
-                </div>
-              </div>
-              {orders.length === 0 ? (
-                <Empty text="暂无订单记录。" />
-              ) : (
-                <div className="live-orders">
-                  {orders.slice(0, 8).map((o) => (
-                    <div key={o.id}>
-                      <span>
-                        <b>{o.id}</b>
-                        <small>
-                          {o.product} · {o.region} × {o.quantity}
-                        </small>
-                      </span>
-                      <strong>
-                        {wallet.currencySymbol}
-                        {o.amount.toFixed(2)}
-                      </strong>
-                      <em>{o.status}</em>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </article>
-          </div>
-        </>
-      )}
-    </>
-  );
-}
-function Empty({ text }: { text: string }) {
-  return <div className="empty compact">{text}</div>;
 }

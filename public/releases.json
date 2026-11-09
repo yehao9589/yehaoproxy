@@ -1,9 +1,20 @@
 {
-  "version": "v1.0.24",
-  "publishedAt": "2026-11-03",
-  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.24",
-  "releaseNotes": "YehaoProxy v1.0.24：整合 VPS 运维与面板备份，下载文件按面板名及北京时间命名，新增 WiFi 自动编号和同客户重名提示。",
+  "version": "v1.0.25",
+  "publishedAt": "2026-11-10",
+  "image": "ghcr.io/yehao9589/yehaoproxy:v1.0.25",
+  "releaseNotes": "YehaoProxy v1.0.25：更新后台与客户面板，统一按钮与状态样式，修复服务徽标变形，新增可选的 R2 异地加密备份。",
   "releases": [
+    {
+      "version": "v1.0.25",
+      "publishedAt": "2026-11-10",
+      "title": "YehaoProxy v1.0.25 控制台界面与异地备份",
+      "notes": [
+        "更新后台运营概览与客户账户概览，后台侧栏可直接查看需要关注的事项",
+        "统一按钮、状态标签和订单操作区样式，改善窄屏布局与弹窗中的提示层级",
+        "服务管理增加独立的到期状态，IP 与节点徽标固定尺寸，长订单号悬停可查看全文",
+        "重新设计 VPS 面板备份工作区，支持可选的 Cloudflare R2 异地加密副本，默认关闭"
+      ]
+    },
     {
       "version": "v1.0.24",
       "publishedAt": "2026-11-03",

@@ -6,9 +6,24 @@
 .customer-order-section-tabs{display:flex;gap:5px;margin:0 0 16px;padding:5px;border:1px solid #dfe7ef;border-radius:10px;background:#fff}.customer-order-section-tabs button{display:flex;align-items:center;gap:8px;height:38px;padding:0 15px;border:0;border-radius:7px;background:transparent;color:#60758a;font-size:11px;font-weight:700}.customer-order-section-tabs button:hover{background:#f3f7fb;color:#2d4b69}.customer-order-section-tabs button.on{background:#eaf3ff;color:#1266e3}.customer-order-section-tabs button b{display:grid;place-items:center;min-width:21px;height:21px;padding:0 6px;border-radius:11px;background:#edf2f7;color:#718397;font-size:9px}.customer-order-section-tabs button.on b{background:#1266e3;color:#fff}.customer-order-section-tabs+.customer-service-request-history{margin-top:0}
 .node-renewal-modal{width:min(460px,calc(100vw - 32px))}.node-renewal-modal>label{display:grid;gap:8px;padding:18px 20px 10px;color:#40566d;font-size:11px;font-weight:700}.node-renewal-modal>label select{height:40px;padding:0 11px;border:1px solid #d4dee9;border-radius:8px;background:#fff;color:#20364d;font-size:11px}.node-renewal-summary{display:grid;grid-template-columns:1fr auto;gap:9px 16px;margin:5px 20px 13px;padding:13px 14px;border-radius:9px;background:#f5f8fc;color:#718399;font-size:10px}.node-renewal-summary b,.node-renewal-summary strong{color:#20364d;font-size:12px}.node-renewal-summary strong{color:#1266e3}.node-renewal-modal>p{margin:0;padding:0 20px 17px;color:#7b8c9d;font-size:10px;line-height:1.7}
 
-.order-customer-table{overflow-x:auto}
-.order-customer-table .orow{grid-template-columns:minmax(138px,1fr) minmax(128px,.92fr) minmax(150px,1.05fr) minmax(170px,1.18fr) 78px 138px 78px minmax(152px,.92fr);gap:12px;min-width:1150px;padding:13px 16px;align-items:center}
+.order-customer-table{container:customer-orders / inline-size;max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
+.order-customer-page .order-customer-table .orow{
+  --order-actions-width:140px;
+  --order-actions-columns:1;
+  box-sizing:border-box;
+  grid-template-columns:30px minmax(150px,1fr) minmax(130px,1fr) 110px minmax(145px,1fr) minmax(130px,1fr) 75px 138px 92px var(--order-actions-width)!important;
+  /* 1000px of other columns, 108px of gaps and 32px of row padding. */
+  min-width:calc(1140px + var(--order-actions-width))!important;
+  gap:12px;padding:13px 16px;align-items:center;
+}
+/* Base the two-button layout on the visible table, not the window with its sidebar. */
+@container customer-orders (min-width:1384px){
+  .order-customer-page .order-customer-table .orow{--order-actions-width:244px;--order-actions-columns:2}
+}
 .order-customer-table .orow.head{min-height:42px;padding-top:0;padding-bottom:0}
+.order-customer-page .order-customer-table .orow>span:last-child{position:sticky;inset-inline-end:0;z-index:1;align-self:stretch;box-sizing:border-box;padding-inline:8px;background:inherit;box-shadow:-8px 0 10px -10px #33415580}
+.order-customer-page .order-customer-table .orow.head>span:last-child{display:flex;align-items:center}
+.order-customer-page .order-customer-table:focus-visible{outline:2px solid #1677ff;outline-offset:2px}
 .order-customer-table .orow>span{min-width:0}
 .order-customer-table .orow>span:nth-child(2),.order-customer-table .orow>span:nth-child(3){display:grid;gap:4px;line-height:1.35}
 .order-customer-table .orow>span:nth-child(3)>small:nth-of-type(2){display:none}
@@ -26,5 +41,19 @@
 .customer-order-status.paid,.customer-order-status.provisioning{background:#eaf3ff!important;color:#1769d2!important}
 .renewal-amount-preview{display:grid;grid-template-columns:1fr auto;align-items:center;gap:9px 16px;margin:4px 20px 13px;padding:13px 14px;border:1px solid #d9e8fb;border-radius:9px;background:#f5f9ff;color:#60758b;font-size:11px}.renewal-amount-preview b{color:#20364d;font-size:12px}.renewal-amount-preview strong,.node-renewal-summary .renewal-amount-value{color:#1266e3;font-size:16px;font-weight:800}
 .service-view-expired .service-overview{display:none}.service-view-expired .proxy-list-subtitle::after{content:"（仅显示超过保留期、尚未自动归档的服务）";color:#9a7b54}.service-view-expired .node-list-heading p::after{content:"（已到期服务仅保留续费入口）";color:#9a7b54}
-.order-customer-page .customer-order-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;width:100%}.order-customer-page .customer-order-actions>*:only-child{grid-column:1/-1}.order-customer-page .customer-order-actions a,.order-customer-page .customer-order-actions button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:100%;min-width:0;min-height:30px;padding:0 8px;overflow:hidden;border:1px solid #cbd9e8;border-radius:7px;background:#fff;color:#245f9f;font-size:9px;font-weight:700;line-height:1.15;text-align:center;text-overflow:ellipsis;white-space:nowrap}.order-customer-page .customer-order-actions a:hover,.order-customer-page .customer-order-actions button:hover{border-color:#94b7df;background:#f4f8fd}.order-customer-page .customer-order-actions .primary{border-color:#1266e3;background:#1266e3;color:#fff;box-shadow:0 3px 8px rgba(18,102,227,.12)}.order-customer-page .customer-order-actions .primary:hover{border-color:#0f58c5;background:#0f58c5;color:#fff}.order-customer-page .customer-order-actions button:disabled{border-color:#dfe6ee;background:#f3f6f9;color:#9aa8b6;box-shadow:none;cursor:not-allowed}
-.order-customer-page .service-request-history-row{grid-template-columns:minmax(170px,1.15fr) 88px minmax(230px,1.5fr) 76px 142px 82px;min-width:920px}.request-related-service{display:grid;gap:3px;min-width:0}.request-related-service>b{overflow:hidden;color:#213b55;font-size:10px;text-overflow:ellipsis;white-space:nowrap}.request-related-service>small{margin:0!important;color:#7c8da0;font-size:8.5px;line-height:1.35}.request-related-service>small:last-child{color:#9aa7b4}
+.order-customer-page .customer-order-actions{display:grid;grid-template-columns:repeat(var(--order-actions-columns,1),minmax(0,1fr));gap:8px;width:100%}
+.order-customer-page .customer-order-actions>*:only-child{grid-column:1/-1}
+.order-customer-page .customer-order-actions :is(a,button){
+  display:inline-flex;align-items:center;justify-content:center;
+  box-sizing:border-box;width:100%;min-width:0;min-height:36px;padding:6px 8px;
+  border:1px solid #cbd9e8;border-radius:7px;background:#fff;color:#245f9f;
+  font-size:13px!important;font-weight:600;line-height:1.35;text-align:center;
+  white-space:normal;overflow-wrap:anywhere;
+}
+.order-customer-page .customer-order-actions :is(a,button):hover:not(:disabled){border-color:#94b7df;background:#f4f8fd}
+.order-customer-page .customer-order-actions .primary{border-color:#1266e3;background:#1266e3;color:#fff}
+.order-customer-page .customer-order-actions .primary:hover:not(:disabled){border-color:#0f58c5;background:#0f58c5;color:#fff}
+.order-customer-page .customer-order-actions button:disabled{border-color:#dfe6ee;background:#f3f6f9;color:#9aa8b6;box-shadow:none;cursor:not-allowed}
+@media(pointer:coarse){.order-customer-page .customer-order-actions :is(a,button){min-height:44px}}
+.order-customer-page .service-request-history-table .service-request-history-row{grid-template-columns:30px minmax(170px,1.15fr) 88px minmax(230px,1.5fr) 76px 142px 92px!important;min-width:950px!important}
+.request-related-service{display:grid;gap:3px;min-width:0}.request-related-service>b{overflow:hidden;color:#213b55;font-size:10px;text-overflow:ellipsis;white-space:nowrap}.request-related-service>small{margin:0!important;color:#7c8da0;font-size:8.5px;line-height:1.35}.request-related-service>small:last-child{color:#9aa7b4}

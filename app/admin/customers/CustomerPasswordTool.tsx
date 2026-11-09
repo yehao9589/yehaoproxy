@@ -89,7 +89,7 @@ export default function CustomerPasswordTool() {
           <label>确认新密码<input type="password" value={confirm} onChange={event => setConfirm(event.target.value)} minLength={8} maxLength={128} autoComplete="new-password" required placeholder="再次输入新密码"/></label>
         </div>
         {message && <div className={success ? "offer-success password-result" : "live-error password-result"}>{success && <span>✓</span>}{message}</div>}
-        <footer><button type="button" onClick={close}>取消</button><button className="primary" disabled={saving}>{saving ? "保存中…" : "确认修改"}</button></footer>
+        <footer><button data-ui="action" data-ui-tone="text" type="button" onClick={close}>取消</button><button data-ui="action" data-ui-tone="primary" className="primary" disabled={saving}>{saving ? "保存中…" : "确认修改"}</button></footer>
       </form>
     </div>}
   </>;

@@ -32,8 +32,8 @@
 .credit-row{grid-template-columns:30px 1.3fr .7fr .9fr .9fr 1fr .55fr .55fr!important;min-width:1070px!important}
 .offer-readonly-table .brow{grid-template-columns:30px 1.35fr 1.1fr .65fr .65fr .65fr .8fr 1.25fr!important;min-width:1010px!important}
 .product-order-row{grid-template-columns:30px minmax(110px,1.05fr) minmax(125px,1.15fr) minmax(105px,1fr) minmax(82px,.75fr) minmax(92px,.82fr) 70px 104px 108px 82px!important;min-width:980px!important}
-.admin-pro .bill-ledger .arow.order{grid-template-columns:30px minmax(128px,1.05fr) minmax(150px,1.2fr) minmax(170px,1.35fr) 82px minmax(105px,.8fr) minmax(135px,1fr) 82px minmax(130px,1fr) 116px!important;min-width:1190px!important}
-.renewal-business-row{grid-template-columns:22px 30px 120px minmax(105px,.8fr) minmax(125px,1fr) 82px 82px 62px 68px 112px 84px 142px!important;column-gap:6px!important;min-width:1085px!important;padding-left:12px!important;padding-right:12px!important}
+.admin-pro .bill-ledger .arow.order{grid-template-columns:30px minmax(128px,1.05fr) minmax(150px,1.2fr) minmax(170px,1.35fr) 82px minmax(105px,.8fr) minmax(135px,1fr) 100px minmax(130px,1fr) 116px!important;min-width:1390px!important}
+.renewal-business-row{grid-template-columns:22px 30px 120px minmax(105px,.8fr) minmax(125px,1fr) 82px 82px 62px 68px 112px 100px 142px!important;column-gap:6px!important;min-width:1140px!important;padding-left:12px!important;padding-right:12px!important}
 .renewal-business-row .verify-actions{display:flex!important;align-items:center!important;gap:5px!important;white-space:nowrap}
 .renewal-business-row .verify-actions button,.renewal-business-row>span:last-child>button{display:inline-flex!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important;width:auto!important;height:30px!important;min-width:0!important;min-height:30px!important;max-height:30px!important;margin:0!important;padding:0 9px!important;border-radius:7px!important;font-size:10px!important;line-height:1!important;white-space:nowrap!important}
 .renewal-business-row .verify-actions .primary{min-width:64px!important}.renewal-business-row .verify-actions .reject{min-width:52px!important}.renewal-business-row>span:last-child>button:only-child{min-width:70px!important;color:#7b8795!important;background:#f8fafc!important}
@@ -68,9 +68,12 @@
 @media(max-width:800px){
   .customer-row{grid-template-columns:30px 1.4fr .7fr!important}
   .customer-row>span:nth-child(4),.customer-row>span:nth-child(5){display:none}
+  .customer-center .customer-table .customer-row.head>span:last-child{display:none}
+  .customer-center .customer-table .customer-row:not(.head)>.customer-actions{grid-column:2/-1;display:flex;flex-wrap:wrap;justify-content:flex-start;gap:8px}
+  .customer-center .customer-table .customer-actions>button{min-height:36px}
 }
-@media(max-width:520px){.customer-row{grid-template-columns:30px 1fr .6fr!important}.customer-row>span:last-child{display:none}}
-.aftersales-queue-head,.aftersales-request-card{grid-template-columns:30px minmax(210px,1.25fr) minmax(150px,.9fr) minmax(210px,1.35fr) 90px minmax(180px,1fr)!important;gap:12px!important}
+@media(max-width:520px){.customer-row{grid-template-columns:30px minmax(0,1fr) auto!important;column-gap:8px}}
+.aftersales-queue-head,.aftersales-request-card{grid-template-columns:30px minmax(210px,1.25fr) minmax(150px,.9fr) minmax(210px,1.35fr) 100px minmax(180px,1fr)!important;gap:12px!important}
 .aftersales-request-card>.table-sequence{width:30px;min-width:30px;height:30px;font-size:10px}
 .product-order-row>.product-resource-details{grid-column:1/-1;min-width:0;border-top:1px solid #e5edf5;padding-top:8px}
 .product-resource-details>summary{cursor:pointer;color:#1768cf;font-size:11px;padding:4px 0;width:fit-content}

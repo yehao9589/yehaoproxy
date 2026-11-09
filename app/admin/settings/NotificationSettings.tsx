@@ -181,9 +181,9 @@ export default function NotificationSettings() {
           <p>统一管理邮件、短信接口与客户触达模板</p>
         </div>
         <div className="notify-head-actions">
-          {view === "email" && <button type="button" className="notify-btn secondary" disabled={testingEmail} onClick={() => void testEmail()}>{testingEmail?"发送中…":"发送测试"}</button>}
+          {view === "email" && <button data-ui="action" data-ui-tone="secondary" type="button" className="notify-btn secondary" disabled={testingEmail} onClick={() => void testEmail()}>{testingEmail?"发送中…":"发送测试"}</button>}
           {(view === "email" || view === "sms") && (
-            <button type="button" className="notify-btn primary" onClick={() => {if(view==="email")setEmailProvider(email?.provider||"resend");setEditingChannel(view)}}>配置接口</button>
+            <button data-ui="action" data-ui-tone="primary" type="button" className="notify-btn primary" onClick={() => {if(view==="email")setEmailProvider(email?.provider||"resend");setEditingChannel(view)}}>配置接口</button>
           )}
         </div>
       </header>
@@ -208,7 +208,7 @@ export default function NotificationSettings() {
         <section className="notify-panel">
           <div className="notify-panel-head">
             <div><h3>{view==="admin-templates"?"管理员通知模板":view==="email-templates"?"客户邮件模板":"客户短信模板"}</h3><p>{view==="admin-templates"?"新购、续费和库存预警只发送给管理员账户，不会发送给客户":view==="email-templates"?"维护发给客户的邮件标题、正文，并实时预览":"独立维护发给客户的短信正文"}</p></div>
-            <div className="notify-filter"><span>共 {(view==="admin-templates"?adminTemplates:templates).length} 个模板</span><button type="button">语言：简体中文</button></div>
+            <div className="notify-filter"><span>共 {(view==="admin-templates"?adminTemplates:templates).length} 个模板</span><button data-ui="action" data-ui-tone="secondary" type="button">语言：简体中文</button></div>
           </div>
           <div className="notify-table-wrap">
             <table className="notify-table">
@@ -225,7 +225,7 @@ export default function NotificationSettings() {
                         {view!=="sms-templates"?(item.emailEnabled !== false?<span className="active">邮件已启用</span>:<span className="off">邮件已关闭</span>):(item.smsEnabled === true?<span className="active sms">短信已启用</span>:<span className="off">短信已关闭</span>)}
                       </div>
                     </td>
-                    <td><button className="notify-action" onClick={() => setEditingTemplate(item.id)}>编辑</button></td>
+                    <td><button data-ui="action" data-ui-tone="secondary" className="notify-action" onClick={() => setEditingTemplate(item.id)}>编辑</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -235,7 +235,7 @@ export default function NotificationSettings() {
       )}
 
       {!loading && view === "email" && (
-        <><section className="notify-test-panel"><div><b>发送测试邮件</b><small>发送真实邮件并返回服务商的成功或错误状态</small></div><input type="email" value={testTo} onChange={event=>setTestTo(event.target.value)} placeholder={email?.fromEmail||"请输入测试收件邮箱"}/><button type="button" className="notify-btn primary" disabled={testingEmail} onClick={()=>void testEmail()}>{testingEmail?"正在发送…":"发送测试"}</button>{testResult&&<p className={testResult.ok?"ok":"error"}>{testResult.text}</p>}</section><ChannelTable
+        <><section className="notify-test-panel"><div><b>发送测试邮件</b><small>发送真实邮件并返回服务商的成功或错误状态</small></div><input type="email" value={testTo} onChange={event=>setTestTo(event.target.value)} placeholder={email?.fromEmail||"请输入测试收件邮箱"}/><button data-ui="action" data-ui-tone="primary" type="button" className="notify-btn primary" disabled={testingEmail} onClick={()=>void testEmail()}>{testingEmail?"正在发送…":"发送测试"}</button>{testResult&&<p className={testResult.ok?"ok":"error"}>{testResult.text}</p>}</section><ChannelTable
           title="邮件发送接口"
           description="系统邮件、验证码和服务提醒统一通过主接口发送"
           rows={[{
@@ -278,7 +278,7 @@ export default function NotificationSettings() {
               <div className="notify-vars"><b>可用变量</b>{["{{code}}", "{{orderId}}", "{{product}}", "{{days}}", "{{expiresAt}}", "{{customerName}}"].map(item => <code key={item}>{item}</code>)}</div>
               {view!=="sms-templates"?<><label className="notify-field">邮件标题<input value={current.emailSubject} onChange={event => updateTemplate(current.id, "emailSubject", event.target.value)}/></label><label className="notify-field">邮件正文<textarea rows={8} value={current.emailBody} onChange={event => updateTemplate(current.id, "emailBody", event.target.value)}/></label><EmailPreview template={current} brand={brand}/></>:<><label className="notify-field">短信正文 <small>{current.smsBody.length}/500</small><textarea rows={5} maxLength={500} value={current.smsBody} onChange={event => updateTemplate(current.id, "smsBody", event.target.value)}/></label><div className="notify-preview"><b>短信预览</b><p>{preview(current.smsBody)}</p></div></>}
             </div>
-            <footer className="notify-drawer-foot"><button className="notify-btn secondary" onClick={() => setEditingTemplate(null)}>取消</button><button className="notify-btn primary" onClick={() => void (view==="admin-templates"?persistAdminTemplates():persistTemplates())}>保存模板</button></footer>
+            <footer className="notify-drawer-foot"><button data-ui="action" data-ui-tone="text" className="notify-btn secondary" onClick={() => setEditingTemplate(null)}>取消</button><button data-ui="action" data-ui-tone="primary" className="notify-btn primary" onClick={() => void (view==="admin-templates"?persistAdminTemplates():persistTemplates())}>保存模板</button></footer>
           </section>
         </div>
       )}
@@ -302,7 +302,7 @@ export default function NotificationSettings() {
               </div>
               <div className="setting-note">{emailProvider==="smtp"?"465 端口使用 SSL；587 等其他端口使用 STARTTLS。授权码会加密保存，不会明文显示。":"API Key 会使用系统加密密钥加密保存，不会明文显示。"}</div>
             </div>
-            <footer className="notify-drawer-foot"><button type="button" className="notify-btn secondary" onClick={() => setEditingChannel(null)}>取消</button><button className="notify-btn primary">保存接口</button></footer>
+            <footer className="notify-drawer-foot"><button data-ui="action" data-ui-tone="text" type="button" className="notify-btn secondary" onClick={() => setEditingChannel(null)}>取消</button><button data-ui="action" data-ui-tone="primary" className="notify-btn primary">保存接口</button></footer>
           </form>
         </div>
       )}
@@ -325,7 +325,7 @@ export default function NotificationSettings() {
                 <label>接口地址<input value={sms.endpoint} onChange={event => setSms({...sms, endpoint: event.target.value})}/></label>
               </div>
             </div>
-            <footer className="notify-drawer-foot"><button type="button" className="notify-btn secondary" onClick={() => setEditingChannel(null)}>取消</button><button className="notify-btn primary">保存接口</button></footer>
+            <footer className="notify-drawer-foot"><button data-ui="action" data-ui-tone="text" type="button" className="notify-btn secondary" onClick={() => setEditingChannel(null)}>取消</button><button data-ui="action" data-ui-tone="primary" className="notify-btn primary">保存接口</button></footer>
           </form>
         </div>
       )}
@@ -338,7 +338,7 @@ function Stat({label, value, hint, tone}: {label: string; value: string; hint: s
 }
 
 function ChannelTable({title, description, rows, onEdit}: {title: string; description: string; rows: Array<{name: string; identity: string; detail: string; enabled: boolean}>; onEdit: () => void}) {
-  return <section className="notify-panel"><div className="notify-panel-head"><div><h3>{title}</h3><p>{description}</p></div><button className="notify-btn primary" onClick={onEdit}>配置接口</button></div><div className="notify-table-wrap"><table className="notify-table channel"><thead><tr><th>接口名称</th><th>发送身份</th><th>补充信息</th><th>状态</th><th>操作</th></tr></thead><tbody>{rows.map(row => <tr key={row.name}><td><b>{row.name}</b><small>主发送通道</small></td><td>{row.identity}</td><td>{row.detail}</td><td><span className={`notify-status ${row.enabled ? "enabled" : ""}`}>{row.enabled ? "已启用" : "已关闭"}</span></td><td><button className="notify-action" onClick={onEdit}>编辑</button></td></tr>)}</tbody></table></div></section>;
+  return <section className="notify-panel"><div className="notify-panel-head"><div><h3>{title}</h3><p>{description}</p></div><button data-ui="action" data-ui-tone="primary" className="notify-btn primary" onClick={onEdit}>配置接口</button></div><div className="notify-table-wrap"><table className="notify-table channel"><thead><tr><th>接口名称</th><th>发送身份</th><th>补充信息</th><th>状态</th><th>操作</th></tr></thead><tbody>{rows.map(row => <tr key={row.name}><td><b>{row.name}</b><small>主发送通道</small></td><td>{row.identity}</td><td>{row.detail}</td><td><span data-ui="status" className={`notify-status ${row.enabled ? "enabled" : ""}`}>{row.enabled ? "已启用" : "已关闭"}</span></td><td><button data-ui="action" data-ui-tone="secondary" className="notify-action" onClick={onEdit}>编辑</button></td></tr>)}</tbody></table></div></section>;
 }
 
 function DrawerHead({title, subtitle, onClose}: {title: string; subtitle: string; onClose: () => void}) {

@@ -1,11 +1,22 @@
 "use client";
 
-import {useEffect,useState} from "react";
+import {useEffect,useLayoutEffect,useRef,useState} from "react";
+import {createPortal} from "react-dom";
+import {dismissToastLayer,promoteToastLayer,watchToastHost} from "../lib/toast-top-layer";
 
 type Toast={id:number;text:string;kind:"success"|"error"|"info"};
 
 export default function GlobalToastLayer(){
   const[toasts,setToasts]=useState<Toast[]>([]);
+  const[host,setHost]=useState<HTMLElement|null>(null);
+  const layer=useRef<HTMLDivElement>(null);
+  useEffect(()=>watchToastHost(setHost),[]);
+  useLayoutEffect(()=>{
+    const element=layer.current;
+    if(!element||!toasts.length)return;
+    promoteToastLayer(element);
+    return()=>dismissToastLayer(element);
+  },[toasts,host]);
 
   useEffect(()=>{
     let nextId=1;
@@ -110,11 +121,11 @@ export default function GlobalToastLayer(){
     };
   },[]);
 
-  if(!toasts.length)return null;
+  if(!toasts.length||!host)return null;
   const item=toasts[toasts.length-1];
-  return <div className={`offer-toast ${item.kind==="info"?"success":item.kind}`} data-global-toast="1" role={item.kind==="error"?"alert":"status"} aria-live="polite">
+  return createPortal(<div ref={layer} popover="manual" className={`offer-toast ${item.kind==="info"?"success":item.kind}`} data-global-toast="1" role={item.kind==="error"?"alert":"status"} aria-live="polite">
     <span>{item.kind==="error"?"!":"✓"}</span>
     <b>{item.text}</b>
     {item.kind==="error"&&<button type="button" aria-label="关闭提示" onClick={()=>setToasts([])}>×</button>}
-  </div>;
+  </div>,host);
 }

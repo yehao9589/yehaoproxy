@@ -138,7 +138,7 @@ export default function XPanelSettings({initialTab="komari",showProviderTabs=tru
           >
             ↻ 同步全部
           </button>
-          <button className="primary" onClick={() => setEditing(null)}>
+          <button data-ui="action" data-ui-tone="primary" className="primary" onClick={() => setEditing(null)}>
             ＋ 添加 VPS
           </button>
           </>:null}
@@ -194,7 +194,7 @@ export default function XPanelSettings({initialTab="komari",showProviderTabs=tru
                     <h3>{x.name}</h3>{x.group&&<small>{x.group}</small>}
                     <p>{x.baseUrl.replace(/^https?:\/\//, "")}</p>
                   </div>
-                  <span className={x.enabled ? "on" : "off"}>
+                  <span data-ui="status" className={x.enabled ? "on" : "off"}>
                     {x.enabled ? "同步开启" : "已停用"}
                   </span>
                 </header>
@@ -211,7 +211,7 @@ export default function XPanelSettings({initialTab="komari",showProviderTabs=tru
                   </em>
                 </div>
                 <div className="vps-data">
-                  <button type="button" className="vps-data-link" onClick={() => setExpanded(expanded === x.id ? "" : x.id)}>
+                  <button data-ui="action" data-ui-tone="secondary" type="button" className="vps-data-link" onClick={() => setExpanded(expanded === x.id ? "" : x.id)}>
                     <span>入站节点</span>
                     <b>
                       {m
@@ -253,7 +253,7 @@ export default function XPanelSettings({initialTab="komari",showProviderTabs=tru
                 {expanded === x.id && <div className="vps-inbounds"><div className="vps-inbounds-head"><b>入站节点流量明细</b><span>同步于 {time(m?.syncedAt)}</span></div>{m?.inbounds?.length?<div className="vps-inbound-table"><header><span>节点</span><span>协议 / 端口</span><span>上传</span><span>下载</span><span>总流量</span><span>用户 / 状态</span></header>{m.inbounds.map(node=><div key={node.id}><b title={node.name}>{node.name}</b><span>{node.protocol} / {node.port||"--"}</span><span>{size(node.up)}</span><span>{size(node.down)}</span><strong>{size(node.used)}</strong><span><i className={node.enabled?"on":"off"}/>{node.clientCount} 人 · {node.enabled?"已启用":"已停用"}</span></div>)}</div>:<div className="vps-inbounds-empty">暂无入站明细，请先点击“立即同步”。</div>}</div>}
                 {expanded===x.id&&x.serviceOrderId&&<NodeTrafficSettings orderId={x.serviceOrderId}/>}
                 <footer>
-                  <button
+                  <button data-ui="action" data-ui-tone="secondary"
                     disabled={!!busy}
                     onClick={() =>
                       void post(
@@ -264,9 +264,9 @@ export default function XPanelSettings({initialTab="komari",showProviderTabs=tru
                   >
                     立即同步
                   </button>
-                  <button onClick={() => setEditing(x)}>编辑配置</button>
-                  {x.serviceOrderId?<button onClick={()=>setExpanded(expanded===x.id?"":x.id)}>服务套餐</button>:<button disabled={!m || !!busy} onClick={() => setCalibrating(x)}>校准服务器流量</button>}
-                  <button
+                  <button data-ui="action" data-ui-tone="secondary" onClick={() => setEditing(x)}>编辑配置</button>
+                  {x.serviceOrderId?<button data-ui="action" data-ui-tone="secondary" onClick={()=>setExpanded(expanded===x.id?"":x.id)}>服务套餐</button>:<button data-ui="action" data-ui-tone="secondary" disabled={!m || !!busy} onClick={() => setCalibrating(x)}>校准服务器流量</button>}
+                  <button data-ui="action" data-ui-tone="secondary"
                     disabled={!m || !!busy}
                     onClick={() =>
                       confirm(x.serviceOrderId?"确认清零该节点服务的本期用量？套餐额度与服务周期不变。":"确认从当前流量重新开始服务器统计周期？") &&
@@ -278,7 +278,7 @@ export default function XPanelSettings({initialTab="komari",showProviderTabs=tru
                   >
                     {x.serviceOrderId?"重置服务流量":"重置服务器统计"}
                   </button>
-                  <button
+                  <button data-ui="action" data-ui-tone="danger"
                     className="danger"
                     onClick={() =>
                       confirm(`确认删除 ${x.name}？`) &&
@@ -299,7 +299,7 @@ export default function XPanelSettings({initialTab="komari",showProviderTabs=tru
         <div className="vps-empty">
           <b>还没有 VPS</b>
           <p>添加 X-Panel 服务器后，这里会展示真实同步数据。</p>
-          <button className="primary" onClick={() => setEditing(null)}>
+          <button data-ui="action" data-ui-tone="primary" className="primary" onClick={() => setEditing(null)}>
             添加第一台 VPS
           </button>
         </div>
@@ -417,10 +417,10 @@ export default function XPanelSettings({initialTab="komari",showProviderTabs=tru
             </span>
           </label>
           <footer>
-            <button type="button" onClick={() => setEditing(undefined)}>
+            <button data-ui="action" data-ui-tone="text" type="button" onClick={() => setEditing(undefined)}>
               取消
             </button>
-            <button className="primary" disabled={!!busy}>
+            <button data-ui="action" data-ui-tone="primary" className="primary" disabled={!!busy}>
               保存配置
             </button>
           </footer>
@@ -433,7 +433,7 @@ export default function XPanelSettings({initialTab="komari",showProviderTabs=tru
             <div className="vps-editor-head"><div><h3>校准 {calibrating.name} 流量</h3><p>填写平台当前应显示的已用流量，后续同步将在此基础上继续累计。</p></div><button type="button" onClick={()=>setCalibrating(null)}>×</button></div>
             <div className="vps-calibrate-current"><span>X-Panel 原始累计</span><b>{size(calibrating.lastMetrics?.rawUsed||0)}</b><span>本站当前显示</span><b>{size(calibrating.lastMetrics?.used||0)}</b></div>
             <label className="vps-calibrate-input">校准后的已用流量（GB）<input name="targetGb" type="number" min="0" step="0.001" defaultValue={((calibrating.lastMetrics?.used||0)/1073741824).toFixed(3)} required/><small>校准只调整本站统计基线，不会修改 X-Panel 中的数据。</small></label>
-            <footer><button type="button" onClick={()=>setCalibrating(null)}>取消</button><button className="primary" disabled={!!busy}>确认校准</button></footer>
+            <footer><button data-ui="action" data-ui-tone="text" type="button" onClick={()=>setCalibrating(null)}>取消</button><button data-ui="action" data-ui-tone="primary" className="primary" disabled={!!busy}>确认校准</button></footer>
           </form>
         </div>
       )}

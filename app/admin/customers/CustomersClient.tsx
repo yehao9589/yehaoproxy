@@ -148,7 +148,7 @@ export default function CustomersClient({
             onChange={(e) => setQ(e.target.value)}
             placeholder="搜索客户姓名或邮箱"
           />
-          <button onClick={load}>搜索</button>
+          <button data-ui="action" data-ui-tone="secondary" onClick={load}>搜索</button>
         </div>
         <span>共 {items.length} 位客户</span>
       </div>
@@ -175,7 +175,7 @@ export default function CustomersClient({
             <strong>${(x.balance || 0).toFixed(2)}</strong>
             <span>{new Date(x.createdAt).toLocaleDateString()}</span>
             <span>
-              <em className={x.status}>
+              <em data-ui="status" className={x.status}>
                 {x.status === "active" ? "正常" : "已停用"}
               </em>
             </span>
@@ -183,9 +183,9 @@ export default function CustomersClient({
               className="customer-actions"
               onClick={(e) => e.stopPropagation()}
             >
-              <button onClick={() => open(x.id)}>客户档案</button>
-              <button onClick={() => adjust(x.id)}>调账</button>
-              <button
+              <button data-ui="action" data-ui-tone="secondary" onClick={() => open(x.id)}>客户档案</button>
+              <button data-ui="action" data-ui-tone="secondary" onClick={() => adjust(x.id)}>调账</button>
+              <button data-ui="action" data-ui-tone="danger"
                 className="danger"
                 onClick={() =>
                   update(x.id, x.status === "active" ? "suspended" : "active")
@@ -347,11 +347,11 @@ function Panel({
           </section>
           <section>
             <h3>快捷管理</h3>
-            <button onClick={() => impersonate(d.customer.id)}>
+            <button data-ui="action" data-ui-tone="secondary" onClick={() => impersonate(d.customer.id)}>
               以该客户登录
             </button>
-            <button onClick={() => adjust(d.customer.id)}>管理余额</button>
-            <button
+            <button data-ui="action" data-ui-tone="secondary" onClick={() => adjust(d.customer.id)}>管理余额</button>
+            <button data-ui="action" data-ui-tone="secondary"
               onClick={() =>
                 update(
                   d.customer.id,
@@ -709,7 +709,7 @@ function OrdersPanel({
           <p>点击订单编号可查看完整订单详情，并直接进行后台管理。</p>
         </div>
         <div className="record-head-actions">
-          <button onClick={() => setShowCreate(true)}>＋ 手动创建账单</button>
+          <button data-ui="action" data-ui-tone="secondary" onClick={() => setShowCreate(true)}>＋ 手动创建账单</button>
           <div className="record-order-totals">
             <strong>
               ${receivedTotal.toFixed(2)}
@@ -766,7 +766,7 @@ function OrdersPanel({
                 </small>
               </span>
               <strong>${x.amount.toFixed(2)}</strong>
-              <em className={`record-status ${x.status}`}>
+              <em data-ui="status" className={`record-status ${x.status}`}>
                 {labels[x.status] || x.status}
               </em>
               <i>查看详情 ›</i>
@@ -1011,10 +1011,10 @@ function OrdersPanel({
               </label>
             </div>
             <footer>
-              <button type="button" onClick={() => setShowCreate(false)}>
+              <button data-ui="action" data-ui-tone="text" type="button" onClick={() => setShowCreate(false)}>
                 取消
               </button>
-              <button className="primary" disabled={loading}>
+              <button data-ui="action" data-ui-tone="primary" className="primary" disabled={loading}>
                 {loading ? "正在创建…" : "确认创建账单"}
               </button>
             </footer>
@@ -1141,15 +1141,15 @@ function CustomerOrderDetail({
             <h2>订单 #{o.id}</h2>
           </div>
           <div>
-            <b className={`order-status ${o.status}`}>
+            <b data-ui="status" className={`order-status ${o.status}`}>
               {labels[o.status] || o.status}
             </b>
             <button onClick={close}>×</button>
           </div>
         </header>
         <div className="order-toolbar">
-          <button disabled>发送消息</button>
-          <button disabled>创建工单</button>
+          <button data-ui="action" data-ui-tone="secondary" disabled>发送消息</button>
+          <button data-ui="action" data-ui-tone="secondary" disabled>创建工单</button>
           <span>当前从客户档案查看，关闭后返回该客户档案</span>
         </div>
         <div className="mofang-order-form customer-record-order-form">
@@ -1286,7 +1286,7 @@ function CustomerOrderDetail({
           <footer className="order-savebar">
             <div />
             <div>
-              <button type="button" className="primary" onClick={close}>
+              <button data-ui="action" data-ui-tone="primary" type="button" className="primary" onClick={close}>
                 关闭并返回客户档案
               </button>
             </div>
@@ -1366,10 +1366,10 @@ function AssetRow({
           ? new Date(x.expiresAt).toLocaleString("zh-CN", { hour12: false })
           : "未设置"}
       </strong>
-      <em className={`record-status ${displayStatus}`}>
+      <em data-ui="status" className={`record-status ${displayStatus}`}>
         {labels[displayStatus] || "状态未知"}
       </em>
-      <button
+      <button data-ui="action" data-ui-tone="secondary"
         className="asset-detail-action"
         type="button"
         onClick={(e) => {

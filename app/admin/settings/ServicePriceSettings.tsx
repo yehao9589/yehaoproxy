@@ -72,6 +72,6 @@ export default function ServicePriceSettings(){
       <div className="policy-price-grid"><label><span>原列表保留时间<small>到期后仍显示在原服务列表，只允许续费</small></span><div><input type="number" min="0" max="3650" step="1" value={expiredGraceDays} onChange={e=>setExpiredGraceDays(e.target.value)}/><b>天</b></div></label><label><span>自动归档时间<small>超过此时间后从客户中心隐藏</small></span><div><input type="number" min="1" max="3650" step="1" value={expiredArchiveDays} onChange={e=>setExpiredArchiveDays(e.target.value)}/><b>天</b></div></label></div>
       <div className="policy-tip"><b>当前规则</b><span>到期 {expiredGraceDays||0} 天内保留原处，之后移入“已到期服务”，{expiredArchiveDays||0} 天后自动归档。</span></div>
     </div>
-    <footer className="service-policy-footer"><button className="primary" type="button" disabled={saving} onClick={save}>{saving?"正在保存…":"保存默认配置"}</button></footer>
+    <footer className="service-policy-footer"><button data-ui="action" data-ui-tone="primary" className="primary" type="button" disabled={saving} onClick={save}>{saving?"正在保存…":"保存默认配置"}</button></footer>
   </section>;
 }

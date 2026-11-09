@@ -40,6 +40,7 @@ export default function CreditEnhancer() {
 
         const button = document.createElement("button");
         button.className = "credit-admin-button";
+        button.dataset.ui = "action";
         button.textContent = `信用额度 ¥${Number(summary.creditLimit||0).toFixed(2)}`;
         button.onclick = async () => {
           const detailResponse = await fetch(`/api/admin/customers/${customer.id}`);
@@ -59,7 +60,7 @@ export default function CreditEnhancer() {
               <label>信用功能状态<select data-status><option value="active" ${detail.summary.creditStatus!=="frozen"?"selected":""}>正常使用</option><option value="frozen" ${detail.summary.creditStatus==="frozen"?"selected":""}>手动冻结</option></select></label>
             </div>
             <small class="credit-modal-hint">同一账期内的信用消费会合并为月度账单；到还款日未还即逾期，超过宽限期后冻结信用支付和自动续费。</small>
-            <div class="credit-modal-actions"><button type="button" data-cancel>取消</button><button type="button" data-save>保存</button></div>
+            <div class="credit-modal-actions"><button data-ui="action" data-ui-tone="text" type="button" data-cancel>取消</button><button data-ui="action" data-ui-tone="primary" type="button" data-save>保存</button></div>
             <div class="credit-modal-error"></div>
           </div>`;
           document.body.appendChild(overlay);

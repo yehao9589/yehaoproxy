@@ -112,13 +112,13 @@ test('配置副本落盘失败时保留已经校验通过的数据库',async t=>
 });
 test('迁移后的 VPS 菜单、分页、开关与刷新复用主系统',async()=>{
   const read=file=>fs.readFile(fileURLToPath(new URL('../'+file,import.meta.url)),'utf8');
-  const [shell,routes,client,datepicker,backend]=await Promise.all(['app/admin/LiveAdmin.tsx','app/admin/AdminRoutePersistence.tsx','app/admin/vps/VpsOperations.tsx','app/DatePickerLayer.tsx','lib/vps-operations.ts'].map(read));
+  const [shell,routes,client,datepicker,backend,workspace]=await Promise.all(['app/admin/LiveAdmin.tsx','app/admin/AdminRoutePersistence.tsx','app/admin/vps/VpsOperations.tsx','app/DatePickerLayer.tsx','lib/vps-operations.ts','app/admin/vps/VpsBackupWorkspace.tsx'].map(read));
   for(const tab of ['vps-overview','vps-monitor','vps-backups','vps-jobs']){assert.ok(shell.includes(tab));assert.ok(routes.includes(tab));}
-  assert.match(shell,/id:"vps",label:"VPS 运维"/);assert.match(client,/usePageSize\(\)/);assert.match(client,/<Pagination/);assert.match(client,/<AdminRefreshButton/);
+  assert.match(shell,/id:\s*"vps",\s*label:\s*"VPS 运维"/);assert.match(client,/usePageSize\(\)/);assert.match(client,/<Pagination/);assert.match(client,/<AdminRefreshButton/);
   assert.match(client,/role="switch" aria-label="启用自动备份"/);assert.doesNotMatch(client,/type="checkbox"/);assert.match(client,/yehao:toast/);
   assert.match(datepicker,/target.closest\("dialog\[open\]"\)\|\|document.body/);
   assert.match(backend,/action==="download"&&!head\?600000:20000/);assert.doesNotMatch(backend,/cycleBaselineBytes|resetServiceTraffic/);
-  assert.match(client,/anchor.download=vpsBackupFileName\(backup,kind\)/);assert.match(client,/title=\{vpsBackupFileName\(backup\)\}/);
+  assert.match(client,/anchor.download=vpsBackupFileName\(backup,kind\)/);assert.match(workspace,/title=\{vpsBackupFileName\(backup\)\}/);
 });
 test('备份文件名包含面板名称、北京时间与文件类型，跨日和零点正确',()=>{
   const backup={id:'legacy-backup-id',serverName:'君山电脑节点',createdAt:'2026-10-30T18:30:05.000Z'};

@@ -4,7 +4,31 @@
 .proxy-search>span{margin-right:7px;font-size:15px}
 .proxy-search input{min-width:0;flex:1;border:0!important;outline:0!important;background:transparent!important;color:#30475f;font-size:10px;box-shadow:none!important}
 .proxy-search button{display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:5px;background:#eef3f8;color:#718297}
-.managed-proxy-table .orow{grid-template-columns:28px 30px minmax(104px,.86fr) minmax(66px,.6fr) minmax(70px,.64fr) minmax(70px,.64fr) minmax(72px,.68fr) minmax(76px,.7fr) minmax(124px,1.08fr) 100px 62px 92px!important;column-gap:3px!important}
+.proxy-management-page .managed-proxy-table{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
+.proxy-management-page .managed-proxy-table .orow{
+  box-sizing:border-box;
+  grid-template-columns:28px 30px minmax(104px,.86fr) minmax(66px,.6fr) minmax(70px,.64fr) minmax(70px,.64fr) minmax(72px,.68fr) minmax(76px,.7fr) minmax(124px,1.08fr) 100px 92px 128px!important;
+  column-gap:6px!important;min-width:1050px!important;
+}
+.proxy-management-page .managed-proxy-table .proxy-row-actions{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;
+}
+.proxy-management-page .managed-proxy-table .proxy-row-actions>*:only-child{grid-column:1/-1}
+.proxy-management-page .managed-proxy-table .proxy-row-actions>:is(button,a){
+  display:inline-flex;align-items:center;justify-content:center;
+  box-sizing:border-box;width:100%;min-width:0!important;
+  min-height:32px!important;height:auto!important;padding:5px 6px!important;
+  border-radius:6px!important;font-size:12px!important;line-height:1.3!important;
+  white-space:normal;text-align:center;overflow-wrap:anywhere;
+}
+.proxy-management-page .managed-proxy-table .proxy-note-cell>button{
+  flex:0 0 auto;width:30px!important;min-width:30px!important;height:30px!important;
+  font-size:15px!important;
+}
+@media(pointer:coarse){
+  .proxy-management-page .managed-proxy-table .proxy-row-actions>:is(button,a){min-height:44px!important}
+  .proxy-management-page .managed-proxy-table .proxy-note-cell>button{width:40px!important;min-width:40px!important;height:40px!important}
+}
 .managed-proxy-table .proxy-region-cell b{font-weight:400!important}
 .managed-proxy-table .proxy-note-cell.has-note>span{max-width:100%;padding:0;background:transparent;color:#475569;font-weight:700;box-shadow:none}
 .managed-proxy-table .proxy-note-cell.has-note>button{color:#94a3b8!important}

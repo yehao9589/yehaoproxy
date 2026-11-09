@@ -33,7 +33,10 @@ export function createXPanelBridge(options={}){
       }
       if(route==='/operations/state')return json(res,200,operations.snapshot());
       if(route==='/operations/check')return json(res,202,operations.check(input.server,{trigger:input.trigger==='schedule'?'schedule':'manual',record:input.record!==false}));
-      if(route==='/operations/backup')return json(res,202,operations.backup(input.server,{retain:input.retain,trigger:input.trigger,dueToken:input.dueToken}));
+      if(route==='/operations/backup')return json(res,202,operations.backup(input.server,{retain:input.retain,trigger:input.trigger,dueToken:input.dueToken,cloud:input.cloud||null}));
+      if(route==='/operations/test-cloud')return json(res,200,await operations.testCloud(input.cloud));
+      if(route==='/operations/upload-backup')return json(res,202,operations.upload(String(input.backupId||''),input.cloud));
+      if(route==='/operations/retry-cloud')return json(res,202,operations.retryCloud(input.cloud));
       if(route==='/operations/delete-backup')return json(res,200,operations.remove(String(input.backupId||'')));
       if(route==='/operations/download'){
         const file=operations.download(String(input.backupId||''),input.kind||'db');

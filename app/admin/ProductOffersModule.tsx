@@ -192,7 +192,7 @@ export default function ProductOffersModule() {
       {error && <div className="offer-toast error" role="alert"><span>!</span><b>{error}</b><button aria-label="关闭提示" onClick={() => setError("")}>×</button></div>}
       {success && <div className="offer-toast success" role="status"><span>✓</span><b>{success}</b></div>}
 
-      <section className="business-hero"><div><small>PRODUCT OPERATIONS</small><h2>商品运营中心</h2><p>集中管理商品分类、地区定价、销售周期、可售额度和服务规则，配置结果实时同步到客户购买页面。</p></div><button className="business-hero-primary" onClick={openOfferCreator}>＋ 添加商品</button></section>
+      <section className="business-hero"><div><small>PRODUCT OPERATIONS</small><h2>商品运营中心</h2><p>集中管理商品分类、地区定价、销售周期、可售额度和服务规则，配置结果实时同步到客户购买页面。</p></div><button data-ui="action" data-ui-tone="primary" className="business-hero-primary" onClick={openOfferCreator}>＋ 添加商品</button></section>
 
       <div className="business-metrics">
         <article><i>商</i><span><small>商品配置</small><b>{items.length}</b><em>地区独立定价</em></span></article>
@@ -207,7 +207,7 @@ export default function ProductOffersModule() {
             <h2>商品管理</h2>
             <p>通过“编辑商品”统一修改类型、地区、周期价格、销售额度和排序。</p>
           </div>
-          <div className="product-header-actions"><button onClick={()=>setShowDefaultPolicy(true)}>默认服务配置</button><button onClick={()=>setManagingTypes(true)}>管理商品类型</button></div>
+          <div className="product-header-actions"><button data-ui="action" data-ui-tone="secondary" onClick={()=>setShowDefaultPolicy(true)}>默认服务配置</button><button data-ui="action" data-ui-tone="secondary" onClick={()=>setManagingTypes(true)}>管理商品类型</button></div>
         </header>
 
         <div className="offer-category-tabs" aria-label="商品分类">
@@ -234,7 +234,7 @@ export default function ProductOffersModule() {
               <span className="offer-price">{item.billingCycle==="calendar-month"?(item.price180 < 0 ? "不出售" : <><b>¥{item.price180.toFixed(2)}</b><small>6 个自然月</small></>):item.price90 < 0 ? "不出售" : <><b>¥{item.price90.toFixed(2)}</b><small>90 天</small></>}</span>
               <span><b>{item.saleStock < 0 ? "不限量" : item.saleStock}</b><small>{item.saleStock < 0 ? `已售 ${item.sold}` : `剩余 ${Math.max(0, item.saleStock - item.sold)}`}</small></span>
               <span className="offer-row-actions">
-                <button className="offer-edit" onClick={() => openOfferEditor(item)}>编辑商品</button>
+                <button data-ui="action" data-ui-tone="secondary" className="offer-edit" onClick={() => openOfferEditor(item)}>编辑商品</button>
                 <button type="button" role="switch" aria-checked={item.enabled} title={item.enabled ? "点击暂停销售" : "点击恢复销售"} className={`sale-toggle ${item.enabled ? "on" : "off"}`} onClick={() => void toggle(item)}>
                   <span/><b>{item.enabled ? "正在售卖" : "暂停销售"}</b><i/>
                 </button>
@@ -280,16 +280,16 @@ export default function ProductOffersModule() {
             </section>
             <p className="modal-note">保存后会立即更新商品中心配置；已产生的历史订单不会修改。</p>
             <footer>
-              <button type="button" onClick={() => {setCreating(false); setEditing(null);}}>取消</button>
-              <button className="primary" disabled={saving}>{saving ? "保存中…" : "保存更改"}</button>
+              <button data-ui="action" data-ui-tone="text" type="button" onClick={() => {setCreating(false); setEditing(null);}}>取消</button>
+              <button data-ui="action" data-ui-tone="primary" className="primary" disabled={saving}>{saving ? "保存中…" : "保存更改"}</button>
             </footer>
           </form>
         </div>
       )}
       {managingTypes&&<div className="modal product-type-modal"><section>
         <header><div><h2>商品类型管理</h2><p>新增类型会同步到商品编辑和前台商品导航。</p></div><button onClick={()=>{setManagingTypes(false);setEditingType(null)}}>×</button></header>
-        <div className="product-type-list">{productTypes.map(type=><article key={type.id}><div><b>{type.name}</b><small>{type.id} · {type.category==="node"?"节点服务":"代理 IP"}</small></div><em className={type.enabled?"on":""}>{type.enabled?"已启用":"已停用"}</em><button onClick={()=>setEditingType(type)}>编辑</button><button onClick={()=>void toggleType(type)}>{type.enabled?"停用":"启用"}</button><button className="danger-outline" onClick={()=>void removeType(type)}>删除</button></article>)}</div>
-        <form onSubmit={saveType}><h3>{editingType?"编辑商品类型":"新增商品类型"}</h3><div className="form-grid"><label>类型标识<input name="id" required disabled={!!editingType} defaultValue={editingType?.id} placeholder="例如 mobile-proxy"/></label><label>显示名称<input name="name" required defaultValue={editingType?.name}/></label><label>所属分类<select name="category" defaultValue={editingType?.category||"proxy"}><option value="proxy">代理 IP</option><option value="node">节点服务</option></select></label><label>排序<input name="sortOrder" type="number" defaultValue={editingType?.sortOrder??100}/></label><label className="wide">商品说明<input name="description" maxLength={160} defaultValue={editingType?.description}/></label></div><label className="type-enabled"><input name="enabled" type="checkbox" defaultChecked={editingType?.enabled??true}/> 启用该商品类型</label><footer><button type="button" onClick={()=>setEditingType(null)}>清空</button><button className="primary">保存商品类型</button></footer></form>
+        <div className="product-type-list">{productTypes.map(type=><article key={type.id}><div><b>{type.name}</b><small>{type.id} · {type.category==="node"?"节点服务":"代理 IP"}</small></div><em data-ui="status" className={type.enabled?"on":""}>{type.enabled?"已启用":"已停用"}</em><button onClick={()=>setEditingType(type)}>编辑</button><button onClick={()=>void toggleType(type)}>{type.enabled?"停用":"启用"}</button><button data-ui="action" data-ui-tone="danger" className="danger-outline" onClick={()=>void removeType(type)}>删除</button></article>)}</div>
+        <form onSubmit={saveType}><h3>{editingType?"编辑商品类型":"新增商品类型"}</h3><div className="form-grid"><label>类型标识<input name="id" required disabled={!!editingType} defaultValue={editingType?.id} placeholder="例如 mobile-proxy"/></label><label>显示名称<input name="name" required defaultValue={editingType?.name}/></label><label>所属分类<select name="category" defaultValue={editingType?.category||"proxy"}><option value="proxy">代理 IP</option><option value="node">节点服务</option></select></label><label>排序<input name="sortOrder" type="number" defaultValue={editingType?.sortOrder??100}/></label><label className="wide">商品说明<input name="description" maxLength={160} defaultValue={editingType?.description}/></label></div><label className="type-enabled"><input name="enabled" type="checkbox" defaultChecked={editingType?.enabled??true}/> 启用该商品类型</label><footer><button data-ui="action" data-ui-tone="secondary" type="button" onClick={()=>setEditingType(null)}>清空</button><button data-ui="action" data-ui-tone="primary" className="primary">保存商品类型</button></footer></form>
       </section></div>}
     </div>
   );

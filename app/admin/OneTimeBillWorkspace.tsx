@@ -47,7 +47,7 @@ export default function OneTimeBillWorkspace({detail,onClose,onChanged}:{detail:
   }
   return <div className="order-workspace-mask customer-record-order-mask" onMouseDown={event=>{if(event.target===event.currentTarget)onClose()}}>
     <section className="order-workspace one-time-bill-workspace" onMouseDown={event=>event.stopPropagation()}>
-      <header className="order-workspace-head"><div><span>账单管理 / 一次性服务</span><h2>{productNames[order.product]||"一次性服务"}</h2><p>{order.id}</p></div><div><b className={`order-status ${request?.status==="rejected"?"refunded":request?.status==="cancelled"?"failed":order.status}`}>{displayedStatus}</b><button type="button" onClick={onClose}>×</button></div></header>
+      <header className="order-workspace-head"><div><span>账单管理 / 一次性服务</span><h2>{productNames[order.product]||"一次性服务"}</h2><p>{order.id}</p></div><div><b data-ui="status" className={`order-status ${request?.status==="rejected"?"refunded":request?.status==="cancelled"?"failed":order.status}`}>{displayedStatus}</b><button type="button" onClick={onClose}>×</button></div></header>
       {error&&<div className="live-error">{error}<button type="button" onClick={()=>setError("")}>×</button></div>}
       {success&&<div className="live-success">{success}</div>}
       <div className="one-time-bill-body">
@@ -61,7 +61,7 @@ export default function OneTimeBillWorkspace({detail,onClose,onChanged}:{detail:
           <header><div><h3>{replacement?"录入更换后的 IP":"执行服务任务"}</h3><p>{replacement?"确认后直接更新原资源，不会新增一条 IP，也不会进入交付流程。":"确认后执行对应售后任务并同步完成账单。"}</p></div></header>
           {replacement&&<div className="one-time-action-grid"><label>新 IP / 主机<input name="host" required placeholder="例如 66.17.66.108"/></label><label>端口<input name="port" required type="number" min="1" max="65535" placeholder="443"/></label><label>账号<input name="username" placeholder="可不填写"/></label><label>密码<input name="password" placeholder="不填写则保留原密码"/></label><label>WiFi 名称<input name="wifiName" placeholder="可不填写"/></label><label>协议<select name="protocol" defaultValue={context?.targetAllocation?.protocol||"HTTPS"}><option>HTTPS</option><option>HTTP</option><option>SOCKS5</option></select></label><LocationSelectFields key={`${request?.id||order.id}-location`} initialCountry={order.region?.match(/^[A-Z]{2}$/)?.[0]||"US"} initialCity={context?.targetAllocation?.city||""}/></div>}
           <label className="one-time-note">处理备注<textarea name="note" rows={3} placeholder="记录采购来源、处理结果或其他内部说明"/></label>
-          <footer><button type="button" onClick={onClose}>关闭</button><button className="primary" disabled={busy||!canProcess}>{busy?"正在处理…":request?.status==="completed"?"任务已完成":replacement?"确认更换 IP":"确认执行"}</button></footer>
+          <footer><button data-ui="action" data-ui-tone="secondary" type="button" onClick={onClose}>关闭</button><button data-ui="action" data-ui-tone="primary" className="primary" disabled={busy||!canProcess}>{busy?"正在处理…":request?.status==="completed"?"任务已完成":replacement?"确认更换 IP":"确认执行"}</button></footer>
         </form>
       </div>
     </section>

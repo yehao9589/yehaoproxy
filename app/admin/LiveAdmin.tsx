@@ -1,7 +1,12 @@
 "use client";
+
 import Link from "next/link";
-import {AdminRefreshProvider,AdminRefreshButton,useAdminRefresh} from "./AdminRefresh";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {useEffect, useMemo, useState} from "react";
+import {AdminRefreshProvider, AdminRefreshButton} from "./AdminRefresh";
+import ConsoleIcon, {type ConsoleIconName} from "../components/ConsoleIcon";
+import useConsoleMobileMenu from "../components/useConsoleMobileMenu";
+import ConsoleOverview from "./ConsoleOverview";
+import ConsoleAttentionSummary from "./ConsoleAttentionSummary";
 import ServicesClient from "./ServicesClient";
 import XPanelSettings from "./settings/XPanelSettings";
 import KomariSettings from "./settings/KomariSettings";
@@ -9,42 +14,143 @@ import VpsOperations from "./vps/VpsOperations";
 import CustomerPasswordTool from "./customers/CustomerPasswordTool";
 import FinancialDetails from "./FinancialDetails";
 import CreditManagement from "./CreditManagement";
-import"../credit-admin.css";
-import"../admin-pro.css";import"../site-management.css";import CustomersClient from"./customers/CustomersClient";import TicketsClient from"./tickets/TicketsClient";import CouponClient from"./coupons/CouponClient";import RequestsClient from"./service-requests/RequestsClient";import SettingsClient,{type SettingsTab}from"./settings/SettingsClient";import AdminAccounts from"./settings/AdminAccounts";import SiteManagement from"./settings/SiteManagement";import UpdateCenter from"./settings/UpdateCenter";import ScheduledTasks from"./ScheduledTasks";import AuditClient from"./audit/AuditClient";import{FinanceModule,SalesModule}from"./BusinessModules";import ProductsModule from"./ProductOffersModule";import OrderCenter from"./OrderCenter";import OrderManager from"./OrderManager";import RenewalOrders from"./RenewalOrders";
-type Tab="overview"|"orders"|"bills"|"product-orders"|"renewal-orders"|"services"|"vps"|"vps-overview"|"vps-monitor"|"vps-backups"|"vps-jobs"|"products"|"customers"|"finance"|"finance-ledger"|"finance-bills"|"finance-credit"|"sales"|"tickets"|"coupons"|"requests"|"automation"|"updates"|"settings-site"|"settings-general"|"settings-notifications"|"settings-suppliers"|"settings-payments"|"settings-security"|"settings-admins"|"audit";type Order={id:string;customerEmail:string;product:string;region:string;quantity:number;amount:number;status:string;createdAt:string};const titles:Record<Tab,string>={overview:"运营概览",orders:"订单管理",bills:"账单管理","product-orders":"产品订单","renewal-orders":"续费订单",services:"服务管理",vps:"面板与流量","vps-overview":"VPS 运行概览","vps-monitor":"服务器监控","vps-backups":"面板备份","vps-jobs":"运维记录",products:"商品管理",customers:"客户管理",finance:"财务中心","finance-ledger":"财务明细","finance-bills":"财务明细","finance-credit":"信用账期",sales:"销售业绩",tickets:"工单管理",coupons:"优惠券",requests:"售后申请",automation:"定时任务",updates:"在线更新","settings-site":"站务管理","settings-general":"基础设置","settings-notifications":"通知中心","settings-suppliers":"供应商","settings-payments":"支付渠道","settings-security":"安全策略","settings-admins":"管理员账户",audit:"审计日志"};
-type OverviewApiResponse={summary?:Record<string,number>;items?:Array<{status:string}>};
-type AdminBrand={siteName:string;logoText:string;logoUrl:string};
-const tabPermission:Record<Tab,string>={overview:"overview",orders:"orders",bills:"orders","product-orders":"orders","renewal-orders":"orders",services:"orders",vps:"settings","vps-overview":"settings","vps-monitor":"settings","vps-backups":"settings","vps-jobs":"settings",products:"products",customers:"customers",finance:"finance","finance-ledger":"finance","finance-bills":"finance","finance-credit":"finance",sales:"sales",tickets:"tickets",coupons:"coupons",requests:"requests",automation:"automation",updates:"settings","settings-site":"settings","settings-general":"settings","settings-notifications":"settings","settings-suppliers":"settings","settings-payments":"settings","settings-security":"settings","settings-admins":"admins",audit:"audit"};
-const adminGroups=[
-  {id:"workspace",label:"工作台",icon:"⌂",items:[["overview","运营概览","⌂"]]},
-  {id:"business",label:"业务管理",icon:"▦",items:[["bills","账单管理","▤"],["product-orders","产品订单","▥"],["renewal-orders","续费订单","↻"],["services","服务管理","◎"],["products","商品管理","▦"],["customers","客户管理","♙"]]},
-  {id:"vps",label:"VPS 运维",icon:"◉",items:[["vps-overview","运行概览","◈"],["vps","面板与流量","▥"],["vps-monitor","服务器监控","◎"],["vps-backups","面板备份","▣"],["vps-jobs","运维记录","◷"]]},
-  {id:"finance",label:"财务运营",icon:"¥",items:[["finance","财务中心","$"],["finance-ledger","财务明细","▤"],["finance-credit","信用账期","信"],["sales","销售业绩","↗"],["coupons","优惠券","%"]]},
-  {id:"support",label:"客户服务",icon:"◇",items:[["tickets","工单管理","◇"],["requests","售后申请","↺"]]},
-  {id:"system",label:"系统管理",icon:"⚙",items:[["settings-site","站务管理","•"],["settings-general","基础设置","•"],["settings-notifications","通知中心","•"],["settings-suppliers","供应商","•"],["settings-payments","支付渠道","•"],["settings-security","安全策略","•"],["settings-admins","管理员账户","•"],["updates","更新与备份","↻"],["automation","定时任务","◷"],["audit","审计日志","◎"]]},
-] as const;
-export default function LiveAdmin(props:{email:string;roleName:string;permissions:string[]}){return <AdminRefreshProvider><AdminContent {...props}/></AdminRefreshProvider>}
-function AdminContent({email,roleName,permissions}:{email:string;roleName:string;permissions:string[]}){
-  const availableGroups=useMemo(()=>adminGroups.map(group=>({...group,items:group.items.filter(item=>permissions.includes(tabPermission[item[0] as Tab]))})).filter(group=>group.items.length),[permissions]),firstTab=(availableGroups[0]?.items[0]?.[0]||"overview") as Tab;
-  const[tab,setTab]=useState<Tab>(firstTab),[openGroup,setOpenGroup]=useState<string>(availableGroups[0]?.id||""),[mobileMenuOpen,setMobileMenuOpen]=useState(false),[orders,setOrders]=useState<Order[]>([]),[loading,setLoading]=useState(false),[error,setError]=useState(""),[brand,setBrand]=useState<AdminBrand>({siteName:"YehaoProxy",logoText:"Y",logoUrl:""});
-  const load=useCallback(async()=>{if(!permissions.includes("orders"))return;setLoading(true);setError("");try{const o=await fetch("/api/admin/orders?size=50",{cache:"no-store"}),od=await o.json();if(!o.ok)throw new Error(od.error||"加载失败");setOrders(od.items)}catch(e){setError(e instanceof Error?e.message:"加载失败")}finally{setLoading(false)}},[permissions]);
-  useEffect(()=>{if(tab!=="overview")return;const timer=window.setTimeout(()=>void load(),120);return()=>window.clearTimeout(timer)},[load,tab]);
-  useEffect(()=>{void fetch("/api/site-config",{cache:"no-store"}).then(async response=>response.ok?setBrand(await response.json()):null).catch(()=>{});const update=(event:Event)=>setBrand((event as CustomEvent<AdminBrand>).detail);window.addEventListener("site-config-updated",update);return()=>window.removeEventListener("site-config-updated",update)},[]);
-  useAdminRefresh(load,tab==="overview");
-  useEffect(()=>{if(!mobileMenuOpen)return;const close=(event:KeyboardEvent)=>{if(event.key==="Escape")setMobileMenuOpen(false)};document.body.classList.add("admin-mobile-menu-active");window.addEventListener("keydown",close);return()=>{document.body.classList.remove("admin-mobile-menu-active");window.removeEventListener("keydown",close)}},[mobileMenuOpen]);
-  function choose(key:Tab,group:string){setTab(key);setOpenGroup(group);setMobileMenuOpen(false)}
-  if(!availableGroups.length)return <main className="admin-pro"><section className="admin-work"><div className="admin-content"><div className="live-error">当前管理员尚未分配任何功能权限，请联系超级管理员。</div></div></section></main>;
-  return <main className={`admin-pro${mobileMenuOpen?" mobile-nav-open":""}`}><aside id="admin-mobile-navigation"><div className="admin-mobile-nav-head"><span>后台菜单</span><button type="button" aria-label="关闭菜单" onClick={()=>setMobileMenuOpen(false)}>×</button></div><Link className="brand admin-live-brand" href="/"><span className={brand.logoUrl?"has-logo":""}>{brand.logoUrl?<img src={brand.logoUrl} alt=""/>:brand.logoText}</span><b>{brand.siteName}</b></Link><small className="admin-label">运营管理后台</small><nav className="admin-group-nav">{availableGroups.map(group=><section key={group.id} className={openGroup===group.id?"open":""}><button className="admin-group-title" onClick={()=>setOpenGroup(openGroup===group.id?"":group.id)}><i>{group.icon}</i><b>{group.label}</b><em>{openGroup===group.id?"−":"+"}</em></button><div>{group.items.map(item=><button data-tab={item[0]} key={item[0]} className={tab===item[0]?"on":""} onClick={()=>choose(item[0] as Tab,group.id)}><i>{item[2]}</i>{item[1]}</button>)}</div></section>)}</nav><div className="admin-user"><span className="admin-user-avatar">{roleName.slice(0,1)||"管"}</span><div><b>{roleName}</b><small>{email}</small></div></div></aside><button type="button" className="admin-mobile-backdrop" aria-label="关闭菜单" onClick={()=>setMobileMenuOpen(false)}/><section className="admin-work"><header><button type="button" className="admin-mobile-menu-button" aria-label="打开后台菜单" aria-controls="admin-mobile-navigation" aria-expanded={mobileMenuOpen} onClick={()=>setMobileMenuOpen(true)}><span>☰</span> 菜单</button><div className="admin-search">{brand.siteName} 统一运营工作台</div><AdminRefreshButton/></header><div className="admin-content"><div className="admin-head"><div><p>运营后台 / {titles[tab]}</p><h1>{titles[tab]}</h1></div><span className="system-ok"><i/>实时数据</span></div>{error&&<div className="live-error">{error}<button onClick={()=>load()}>重试</button></div>}{loading&&["overview","orders"].includes(tab)?<div className="live-loading">正在加载数据…</div>:<section key={tab} className="admin-tab-panel"><Content tab={tab} orders={orders} setTab={setTab}/></section>}</div></section></main>
+import CustomersClient from "./customers/CustomersClient";
+import TicketsClient from "./tickets/TicketsClient";
+import CouponClient from "./coupons/CouponClient";
+import RequestsClient from "./service-requests/RequestsClient";
+import SettingsClient, {type SettingsTab} from "./settings/SettingsClient";
+import AdminAccounts from "./settings/AdminAccounts";
+import SiteManagement from "./settings/SiteManagement";
+import UpdateCenter from "./settings/UpdateCenter";
+import ScheduledTasks from "./ScheduledTasks";
+import AuditClient from "./audit/AuditClient";
+import {FinanceModule, SalesModule} from "./BusinessModules";
+import ProductsModule from "./ProductOffersModule";
+import OrderCenter from "./OrderCenter";
+import OrderManager from "./OrderManager";
+import RenewalOrders from "./RenewalOrders";
+import "../credit-admin.css";
+import "../admin-pro.css";
+import "../site-management.css";
+
+export type AdminTab = "overview"|"orders"|"bills"|"product-orders"|"renewal-orders"|"services"|"vps"|"vps-overview"|"vps-monitor"|"vps-backups"|"vps-jobs"|"products"|"customers"|"finance"|"finance-ledger"|"finance-bills"|"finance-credit"|"sales"|"tickets"|"coupons"|"requests"|"automation"|"updates"|"settings-site"|"settings-general"|"settings-notifications"|"settings-suppliers"|"settings-payments"|"settings-security"|"settings-admins"|"audit";
+type AdminBrand = {siteName:string; logoText:string; logoUrl:string};
+type AdminProps = {email:string; roleName:string; permissions:string[]};
+const titles:Record<AdminTab,string> = {
+  overview:"运营概览", orders:"订单管理", bills:"账单管理", "product-orders":"产品订单", "renewal-orders":"续费订单", services:"服务管理", vps:"面板与流量", "vps-overview":"VPS 运行概览", "vps-monitor":"服务器监控", "vps-backups":"面板备份", "vps-jobs":"运维记录", products:"商品管理", customers:"客户管理", finance:"财务中心", "finance-ledger":"财务明细", "finance-bills":"财务明细", "finance-credit":"信用账期", sales:"销售业绩", tickets:"工单管理", coupons:"优惠券", requests:"售后申请", automation:"定时任务", updates:"在线更新", "settings-site":"站务管理", "settings-general":"基础设置", "settings-notifications":"通知中心", "settings-suppliers":"供应商", "settings-payments":"支付渠道", "settings-security":"安全策略", "settings-admins":"管理员账户", audit:"审计日志",
+};
+const tabPermission:Record<AdminTab,string> = {
+  overview:"overview", orders:"orders", bills:"orders", "product-orders":"orders", "renewal-orders":"orders", services:"orders", vps:"settings", "vps-overview":"settings", "vps-monitor":"settings", "vps-backups":"settings", "vps-jobs":"settings", products:"products", customers:"customers", finance:"finance", "finance-ledger":"finance", "finance-bills":"finance", "finance-credit":"finance", sales:"sales", tickets:"tickets", coupons:"coupons", requests:"requests", automation:"automation", updates:"settings", "settings-site":"settings", "settings-general":"settings", "settings-notifications":"settings", "settings-suppliers":"settings", "settings-payments":"settings", "settings-security":"settings", "settings-admins":"admins", audit:"audit",
+};
+const adminGroups:Array<{id:string; label:string; icon:ConsoleIconName; items:Array<[AdminTab,string,ConsoleIconName]>}> = [
+  {id:"workspace", label:"工作台", icon:"home", items:[["overview","运营概览","home"]]},
+  {id:"business", label:"业务管理", icon:"layers", items:[["bills","账单管理","orders"],["product-orders","产品订单","orders"],["renewal-orders","续费订单","renew"],["services","服务管理","layers"],["products","商品管理","layers"],["customers","客户管理","users"]]},
+  {id:"vps", label:"VPS 运维", icon:"server", items:[["vps-overview","运行概览","server"],["vps","面板与流量","network"],["vps-monitor","服务器监控","chart"],["vps-backups","面板备份","layers"],["vps-jobs","运维记录","clock"]]},
+  {id:"finance", label:"财务运营", icon:"wallet", items:[["finance","财务中心","wallet"],["finance-ledger","财务明细","orders"],["finance-credit","信用账期","calendar"],["sales","销售业绩","chart"],["coupons","优惠券","wallet"]]},
+  {id:"support", label:"客户服务", icon:"support", items:[["tickets","工单管理","support"],["requests","售后申请","renew"]]},
+  {id:"system", label:"系统管理", icon:"settings", items:[["settings-site","站务管理","settings"],["settings-general","基础设置","settings"],["settings-notifications","通知中心","bell"],["settings-suppliers","供应商","server"],["settings-payments","支付渠道","wallet"],["settings-security","安全策略","check"],["settings-admins","管理员账户","users"],["updates","更新与备份","renew"],["automation","定时任务","clock"],["audit","审计日志","orders"]]},
+];
+
+export default function LiveAdmin(props:AdminProps) {
+  return <AdminRefreshProvider><AdminContent {...props}/></AdminRefreshProvider>;
 }
-function Content({tab,orders,setTab}:{tab:Tab;orders:Order[];setTab:(t:Tab)=>void}){if(tab==="overview")return <Overview orders={orders} setTab={setTab}/>;if(tab==="bills")return <OrderManager kind="bills"/>;if(tab==="product-orders")return <OrderManager kind="products"/>;if(tab==="renewal-orders")return <RenewalOrders/>;if(tab==="orders")return <OrderCenter/>;if(tab==="services")return <ServicesClient/>;if(tab==="vps")return <XPanelSettings initialTab="xpanel" showProviderTabs={false}/>;if(tab==="vps-monitor")return <div className="vps-page business-page"><KomariSettings/></div>;if(tab==="vps-overview")return <VpsOperations view="overview"/>;if(tab==="vps-backups")return <VpsOperations view="backups"/>;if(tab==="vps-jobs")return <VpsOperations view="jobs"/>;if(tab==="products")return <ProductsModule/>;if(tab==="customers")return <><CustomerPasswordTool/><CustomersClient/></>;if(tab==="finance")return <FinanceModule/>;if(tab==="finance-ledger"||tab==="finance-bills")return <FinancialDetails/>;if(tab==="finance-credit")return <CreditManagement/>;if(tab==="sales")return <SalesModule/>;if(tab==="tickets")return <TicketsClient/>;if(tab==="coupons")return <CouponClient/>;if(tab==="requests")return <RequestsClient/>;if(tab==="automation")return <ScheduledTasks/>;if(tab==="updates")return <UpdateCenter/>;if(tab==="settings-site")return <SiteManagement/>;if(tab==="settings-admins")return <AdminAccounts/>;if(tab.startsWith("settings-"))return <SettingsClient initialTab={tab.replace("settings-","") as SettingsTab} standalone/>;return <AuditClient/>}
-function Overview({orders,setTab}:{orders:Order[];setTab:(t:Tab)=>void}){
- const[data,setData]=useState({customers:0,revenue:0,refunded:0,services:0,proxies:0,nodes:0,tickets:0,requests:0});
- const loadOverview=()=>{const read=(url:string)=>fetch(url,{cache:"no-store"}).then(async response=>response.ok?await response.json() as OverviewApiResponse:{});return Promise.all([read("/api/admin/insights"),read("/api/admin/services"),read("/api/admin/tickets"),read("/api/admin/service-requests")]).then(([insights,services,tickets,requests])=>{setData({customers:Number(insights.summary?.customers||0),revenue:Number(insights.summary?.revenue||0),refunded:Number(insights.summary?.refunded||0),services:Number(services.summary?.total||0),proxies:Number(services.summary?.proxies||0),nodes:Number(services.summary?.nodes||0),tickets:(tickets.items||[]).filter(x=>["open","waiting_staff"].includes(x.status)).length,requests:(requests.items||[]).filter(x=>x.status==="pending").length})});};
- useAdminRefresh(loadOverview);
- useEffect(()=>{void loadOverview().catch(()=>{})},[]);
- const serviceOrders=orders.filter(x=>x.product!=="wallet-topup"),pending=serviceOrders.filter(x=>x.status==="pending").length,provisioning=serviceOrders.filter(x=>["paid","provisioning"].includes(x.status)).length,activeOrders=serviceOrders.filter(x=>x.status==="active").length,refundedOrders=serviceOrders.filter(x=>x.status==="refunded").length,attention=pending+provisioning+data.tickets+data.requests;
- const statusLabel=(status:string)=>({pending:"待付款",paid:"等待开通",provisioning:"开通中",active:"已开通",completed:"已完成",refunded:"已退款",failed:"已取消"}[status]||status);
- return <div className="ops-overview"><section className="ops-hero"><div><span>OPERATIONS COMMAND CENTER</span><h2>运营数据总览</h2><p>订单、收入、客户、服务和待办事项集中呈现，快速掌握平台当前运行状态。</p></div><button onClick={()=>setTab("finance-ledger")}><small>已确认收入</small><b>${data.revenue.toFixed(2)}</b><em>查看交易流水 →</em></button></section><div className="ops-kpis"><button onClick={()=>setTab("bills")}><i className="blue">单</i><span><small>累计订单</small><b>{serviceOrders.length}</b><em>{pending} 笔等待付款</em></span></button><button onClick={()=>setTab("customers")}><i className="violet">客</i><span><small>客户总数</small><b>{data.customers}</b><em>查看客户档案</em></span></button><button onClick={()=>setTab("services")}><i className="green">服</i><span><small>有效服务</small><b>{data.services}</b><em>{data.proxies} 个 IP · {data.nodes} 个节点</em></span></button><button onClick={()=>setTab("finance-bills")}><i className="orange">收</i><span><small>累计退款</small><b>${data.refunded.toFixed(2)}</b><em>{refundedOrders} 张退款账单</em></span></button></div><div className="ops-main"><section className="module ops-orders"><header><div><h3>最近订单</h3><p>最新交易与开通状态</p></div><button onClick={()=>setTab("bills")}>查看全部</button></header><div className="ops-order-head"><span>订单与客户</span><span>商品</span><span>金额</span><span>状态</span><span>时间</span></div>{serviceOrders.slice(0,7).map(o=><button className="ops-order-row" key={o.id} onClick={()=>setTab("bills")}><span><b>{o.id}</b><small>{o.customerEmail}</small></span><span><b>{productNames[o.product]||o.product}</b><small>{regionName(o.region)} × {o.quantity}</small></span><strong>${o.amount.toFixed(2)}</strong><em className={`ops-status ${o.status}`}>{statusLabel(o.status)}</em><time>{new Date(o.createdAt).toLocaleDateString("zh-CN",{month:"2-digit",day:"2-digit"})}<small>{new Date(o.createdAt).toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit",hour12:false})}</small></time></button>)}{!serviceOrders.length&&<div className="financial-empty">暂无订单数据</div>}</section><aside className="ops-side"><section className="module ops-attention"><header><div><h3>待办中心</h3><p>需要管理员及时处理</p></div><b>{attention}</b></header><button onClick={()=>setTab("bills")}><i className="orange">付</i><span><b>待付款订单</b><small>等待客户完成付款</small></span><strong>{pending}</strong></button><button onClick={()=>setTab("product-orders")}><i className="blue">开</i><span><b>等待人工开通</b><small>已付款待交付服务</small></span><strong>{provisioning}</strong></button><button onClick={()=>setTab("tickets")}><i className="violet">工</i><span><b>待回复工单</b><small>客户支持待处理</small></span><strong>{data.tickets}</strong></button><button onClick={()=>setTab("requests")}><i className="red">售</i><span><b>待审售后</b><small>更换、重置及退款申请</small></span><strong>{data.requests}</strong></button></section><section className="module ops-health"><header><h3>业务状态</h3><span><i/>运行正常</span></header><div><span>已开通订单</span><b>{activeOrders}</b></div><div><span>有效代理 IP</span><b>{data.proxies}</b></div><div><span>有效节点服务</span><b>{data.nodes}</b></div></section></aside></div></div>
+
+function AdminContent({email,roleName,permissions}:AdminProps) {
+  const availableGroups = useMemo(()=>adminGroups.map(group=>({...group,items:group.items.filter(([key])=>permissions.includes(tabPermission[key]))})).filter(group=>group.items.length),[permissions]);
+  const firstTab = availableGroups[0]?.items[0]?.[0] || "overview";
+  const [tab,setTab] = useState<AdminTab>(firstTab);
+  const [openGroup,setOpenGroup] = useState(availableGroups[0]?.id || "");
+  const {mobileMenuOpen,setMobileMenuOpen,drawerRef,triggerRef,closeRef} = useConsoleMobileMenu("admin-mobile-menu-active");
+  const [menuQuery,setMenuQuery] = useState("");
+  const [brand,setBrand] = useState<AdminBrand>({siteName:"YehaoProxy",logoText:"Y",logoUrl:""});
+  const [logoFailed,setLogoFailed] = useState(false);
+  useEffect(()=>setLogoFailed(false),[brand.logoUrl]);
+  const logoUrl = useMemo(()=>{
+    if(!/^data:image\/png;base64,/i.test(brand.logoUrl))return brand.logoUrl;
+    // Older saved configurations can contain a truncated PNG: its dimensions
+    // still load, so the browser's error event alone cannot catch a blank logo.
+    try{return atob(brand.logoUrl.split(",")[1]).includes("\u0000\u0000\u0000\u0000IEND")?brand.logoUrl:"";}catch{return "";}
+  },[brand.logoUrl]);
+
+  useEffect(()=>{
+    void fetch("/api/site-config",{cache:"no-store"}).then(async response=>response.ok?setBrand(await response.json()):null).catch(()=>{});
+    const update = (event:Event)=>setBrand((event as CustomEvent<AdminBrand>).detail);
+    window.addEventListener("site-config-updated",update);
+    return ()=>window.removeEventListener("site-config-updated",update);
+  },[]);
+  function choose(key:AdminTab) {
+    if(!permissions.includes(tabPermission[key]))return;
+    setTab(key);
+    setOpenGroup(availableGroups.find(group=>group.items.some(item=>item[0]===key))?.id || "");
+    setMobileMenuOpen(false);
+  }
+  const query = menuQuery.trim().toLowerCase();
+  const permittedTab = permissions.includes(tabPermission[tab]) ? tab : firstTab;
+  if(!availableGroups.length)return <main className="admin-pro console-admin"><section className="admin-work"><div className="admin-content"><div className="live-error">当前管理员尚未分配任何功能权限，请联系超级管理员。</div></div></section></main>;
+
+  return <main className={`admin-pro console-admin${mobileMenuOpen?" mobile-nav-open":""}`}>
+    <aside ref={drawerRef} id="admin-mobile-navigation" className="console-sidebar" aria-label="后台导航" role={mobileMenuOpen?"dialog":undefined} aria-modal={mobileMenuOpen||undefined}>
+      <div className="admin-mobile-nav-head"><span>后台菜单</span><button ref={closeRef} type="button" aria-label="关闭菜单" onClick={()=>setMobileMenuOpen(false)}>×</button></div>
+      {/* eslint-disable-next-line @next/next/no-img-element -- Configured site logos may use arbitrary storage URLs, without an image optimizer. */}
+      <Link className="brand admin-live-brand" href="/"><span className={logoUrl&&!logoFailed?"has-logo":""}>{logoUrl&&!logoFailed?<img src={logoUrl} alt="" onError={()=>setLogoFailed(true)}/>:brand.logoText||"Y"}</span><b>{brand.siteName}</b></Link>
+      <small className="admin-label">运营管理后台</small>
+      <label className="console-search console-menu-search"><ConsoleIcon name="search"/><input aria-label="搜索后台菜单" placeholder="搜索菜单…" value={menuQuery} onChange={event=>setMenuQuery(event.target.value)}/></label>
+      <nav className="admin-group-nav" aria-label="后台功能菜单">
+        {availableGroups.map(group=>{
+          const expanded = group.id==="workspace" || Boolean(query) || openGroup===group.id;
+          const matchesGroup = group.label.toLowerCase().includes(query);
+          const hasMatch = matchesGroup || group.items.some(item=>item[1].toLowerCase().includes(query));
+          return <section key={group.id} hidden={!hasMatch} className={expanded?"open":""}>
+            {group.id!=="workspace"&&<button type="button" className="admin-group-title" aria-expanded={expanded} onClick={()=>setOpenGroup(openGroup===group.id?"":group.id)}><ConsoleIcon name={group.icon}/><b>{group.label}</b><ConsoleIcon name="chevron" className="console-group-chevron"/></button>}
+            <div hidden={!expanded}>{group.items.map(([key,label,icon])=><button type="button" data-tab={key} key={key} hidden={Boolean(query)&&!matchesGroup&&!label.toLowerCase().includes(query)} className={permittedTab===key?"on":""} aria-current={permittedTab===key?"page":undefined} onClick={()=>choose(key)}><ConsoleIcon name={icon}/><span>{label}</span></button>)}</div>
+          </section>;
+        })}
+      </nav>
+      <ConsoleAttentionSummary permissions={permissions} activeTab={permittedTab} onNavigate={choose}/>
+      <div className="admin-user"><span className="admin-user-avatar"><ConsoleIcon name="users"/></span><div><b>{roleName}</b><small>{email}</small></div></div>
+    </aside>
+    <button type="button" className="admin-mobile-backdrop" tabIndex={-1} aria-label="关闭菜单" onClick={()=>setMobileMenuOpen(false)}/>
+    <section className="admin-work" inert={mobileMenuOpen}>
+      <header className="console-header">
+        <button ref={triggerRef} type="button" className="admin-mobile-menu-button" aria-label="打开后台菜单" aria-controls="admin-mobile-navigation" aria-expanded={mobileMenuOpen} onClick={()=>setMobileMenuOpen(true)}><ConsoleIcon name="layers"/> 菜单</button>
+        <div className="console-header-title"><h1>{titles[permittedTab]}</h1></div>
+        <div className="console-header-actions">
+          <AdminRefreshButton className="console-refresh-button"/>
+          {permissions.includes("orders")&&<button type="button" className="console-utility-button" onClick={()=>choose("product-orders")}><ConsoleIcon name="orders"/><span>订单管理</span></button>}
+          {permissions.includes("tickets")&&<button type="button" className="console-utility-button" onClick={()=>choose("tickets")}><ConsoleIcon name="bell"/><span>工单管理</span></button>}
+          <span className="console-header-account"><ConsoleIcon name="users"/>{roleName}</span>
+        </div>
+      </header>
+      <div className="admin-content"><section key={permittedTab} className="admin-tab-panel"><Content tab={permittedTab} permissions={permissions} onNavigate={choose}/></section></div>
+    </section>
+  </main>;
 }
-const productNames:Record<string,string>={"static-isp":"静态住宅 IP","static-residential":"静态住宅 IP","dynamic-residential":"动态住宅代理","datacenter":"数据中心代理","soft-router":"软路由中转","computer-node":"电脑节点","node-traffic-reset":"节点流量重置","ip-replacement":"更换 IP 服务","wallet-topup":"余额充值"};
-const regionName=(region:string)=>region==="GLOBAL"?"全局服务":region;
+
+function Content({tab,permissions,onNavigate}:{tab:AdminTab; permissions:string[]; onNavigate:(tab:AdminTab)=>void}) {
+  if(tab==="overview")return <ConsoleOverview permissions={permissions} onNavigate={onNavigate}/>;
+  if(tab==="bills")return <OrderManager kind="bills"/>;
+  if(tab==="product-orders")return <OrderManager kind="products"/>;
+  if(tab==="renewal-orders")return <RenewalOrders/>;
+  if(tab==="orders")return <OrderCenter/>;
+  if(tab==="services")return <ServicesClient/>;
+  if(tab==="vps")return <XPanelSettings initialTab="xpanel" showProviderTabs={false}/>;
+  if(tab==="vps-monitor")return <div className="vps-page business-page"><KomariSettings/></div>;
+  if(tab==="vps-overview")return <VpsOperations view="overview"/>;
+  if(tab==="vps-backups")return <VpsOperations view="backups"/>;
+  if(tab==="vps-jobs")return <VpsOperations view="jobs"/>;
+  if(tab==="products")return <ProductsModule/>;
+  if(tab==="customers")return <><CustomerPasswordTool/><CustomersClient/></>;
+  if(tab==="finance")return <FinanceModule/>;
+  if(tab==="finance-ledger"||tab==="finance-bills")return <FinancialDetails/>;
+  if(tab==="finance-credit")return <CreditManagement/>;
+  if(tab==="sales")return <SalesModule/>;
+  if(tab==="tickets")return <TicketsClient/>;
+  if(tab==="coupons")return <CouponClient/>;
+  if(tab==="requests")return <RequestsClient/>;
+  if(tab==="automation")return <ScheduledTasks/>;
+  if(tab==="updates")return <UpdateCenter/>;
+  if(tab==="settings-site")return <SiteManagement/>;
+  if(tab==="settings-admins")return <AdminAccounts/>;
+  if(tab.startsWith("settings-"))return <SettingsClient initialTab={tab.replace("settings-","") as SettingsTab} standalone/>;
+  return <AuditClient/>;
+}

@@ -1,0 +1,99 @@
+/* Soft enterprise controls. Only explicit action/status opt-ins are normalized.
+   Navigation, switches, date cells, pagination, icon controls and card buttons
+   retain their own layout. No business labels or lifecycle values are replaced. */
+@layer soft-controls {
+:root{
+  --ui-blue:#1269e7;--ui-blue-hover:#0960cf;--ui-secondary:#eaf0fa;--ui-secondary-hover:#dfe8f7;
+  --ui-action-text:#344961;--ui-danger:#b42338;--ui-danger-bg:#ffedef;
+  --ui-neutral-bg:#f0f2f5;--ui-neutral-text:#5b6678;
+  --ui-success-bg:#e6f7ed;--ui-success-text:#087c4c;
+  --ui-warning-bg:#fff3dc;--ui-warning-text:#996000;
+  --ui-info-bg:#e9f2ff;--ui-info-text:#155fc1;
+  --ui-expiring-bg:#fff0df;--ui-expiring-text:#a64a08;
+  --ui-expired-bg:#ffeaed;--ui-expired-text:#ba263b;
+  --ui-refund-bg:#efedf7;--ui-refund-text:#605578;
+  --ui-status-clock:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 6v6l4 2'/%3E%3C/svg%3E");
+  --ui-status-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='m7 12 3 3 7-7'/%3E%3C/svg%3E");
+  --ui-status-close:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='m9 9 6 6m0-6-6 6'/%3E%3C/svg%3E");
+  --ui-status-refund:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10a8 8 0 1 1 2 8M4 4v6h6'/%3E%3C/svg%3E");
+  --ui-status-warning:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 3 10 18H2L12 3Z M12 9v5m0 3v.01'/%3E%3C/svg%3E");
+}
+
+/* Equal height, content-driven width: existing grids and full-width form CTAs
+   continue to decide width. Small, named action groups remain compact. */
+[data-ui="action"]{
+  box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  gap:6px;min-height:36px!important;height:auto!important;padding:7px 12px!important;
+  border:1px solid transparent!important;border-radius:8px!important;
+  background:var(--ui-secondary)!important;color:var(--ui-action-text)!important;
+  font-family:inherit;font-size:13px!important;font-weight:500!important;line-height:20px!important;
+  text-align:center;text-decoration:none!important;white-space:nowrap!important;vertical-align:middle;
+  box-shadow:none!important;filter:none!important;letter-spacing:normal;cursor:pointer;
+  transition:background-color .15s ease,color .15s ease,box-shadow .15s ease;
+}
+[data-ui="action"]:hover:not(:disabled):not([aria-disabled="true"]){background:var(--ui-secondary-hover)!important;color:#203b5c!important;box-shadow:none!important;transform:none!important}
+[data-ui="action"]:is([data-ui-tone="primary"],.primary,.business-hero-primary,.console-top-purchase){background:var(--ui-blue)!important;color:#fff!important}
+[data-ui="action"]:is([data-ui-tone="primary"],.primary,.business-hero-primary,.console-top-purchase):hover:not(:disabled){background:var(--ui-blue-hover)!important;color:#fff!important;box-shadow:0 2px 5px #1677ff1c!important}
+[data-ui="action"]:is([data-ui-tone="danger"],.danger,.danger-outline,.reject,.channel-delete){background:var(--ui-danger-bg)!important;color:var(--ui-danger)!important}
+[data-ui="action"]:is([data-ui-tone="danger"],.danger,.danger-outline,.reject,.channel-delete):hover:not(:disabled){background:#ffdde2!important;color:#9c1930!important;box-shadow:none!important}
+[data-ui="action"][data-ui-tone="text"]{background:transparent!important;color:#637287!important}
+[data-ui="action"][data-ui-tone="text"]:hover:not(:disabled){background:#f0f3f7!important;color:#344961!important}
+[data-ui="action"]:is(:disabled,[aria-disabled="true"]){background:#eef0f3!important;color:#8a93a1!important;border-color:transparent!important;opacity:1!important;box-shadow:none!important;filter:none!important;transform:none!important;cursor:not-allowed}
+[data-ui="action"]:focus-visible{outline:2px solid var(--ui-blue)!important;outline-offset:3px;box-shadow:0 0 0 4px #1677ff12!important}
+[data-ui="action"]>.console-icon{flex:0 0 16px;width:16px;height:16px}
+:is(.aftersales-row-actions,.verify-actions,.live-actions,.product-order-actions,.customer-actions,.node-service-actions,.proxy-row-actions,.vops-row-actions,.bkp-record-actions){gap:8px!important}
+:is(.aftersales-row-actions,.verify-actions,.live-actions,.product-order-actions,.customer-actions,.node-service-actions,.proxy-row-actions,.vops-row-actions,.bkp-record-actions) [data-ui="action"]{min-height:34px!important;padding:6px 11px!important;border-radius:7px!important}
+/* The customer order column already owns its responsive one/two-button grid. */
+.order-customer-page .customer-order-actions [data-ui="action"]{min-height:36px!important;white-space:normal!important}
+.auth-submit[data-ui="action"],.installer-body>[data-ui="action"]{min-height:44px!important}
+.primary.large[data-ui="action"]{min-height:46px!important;padding:11px 22px!important;font-size:15px!important}
+
+/* Explicit legacy badges inserted by enhancers share the same visual surface.
+   Their sizes remain owned by console-status-system.css, loaded after this file. */
+:is([data-ui="status"],.service-proxy-status,.addon-service-state,.ops-status,.bill-financial,.bill-progress){
+  --ui-status-bg:var(--ui-neutral-bg);--ui-status-fg:var(--ui-neutral-text);--ui-status-icon:var(--ui-status-clock);
+  background:var(--ui-status-bg)!important;color:var(--ui-status-fg)!important;
+  border:0!important;box-shadow:none!important;font-weight:500!important;text-shadow:none!important;
+}
+:is([data-ui="status"],.service-proxy-status,.addon-service-state,.ops-status,.bill-financial,.bill-progress)::before{
+  content:"";display:inline-block;flex:0 0 12px;width:12px;height:12px;
+  background:currentColor;
+  -webkit-mask:var(--ui-status-icon) center/contain no-repeat;
+  mask:var(--ui-status-icon) center/contain no-repeat;
+}
+:is([data-ui="status"],.service-proxy-status,.addon-service-state,.ops-status,.bill-financial,.bill-progress):is(.active,.completed,.approved,.success,.succeeded,.uploaded,.paid-in,.enabled,[data-state="enabled"],.on,.online,.ok,.healthy,.resolved){
+  --ui-status-bg:var(--ui-success-bg);--ui-status-fg:var(--ui-success-text);--ui-status-icon:var(--ui-status-check);
+}
+:is([data-ui="status"],.service-proxy-status,.addon-service-state,.ops-status,.bill-financial,.bill-progress):is(.pending,.unpaid,.partial,.waiting,.open,.waiting_staff,.verification){
+  --ui-status-bg:var(--ui-warning-bg);--ui-status-fg:var(--ui-warning-text);--ui-status-icon:var(--ui-status-clock);
+}
+:is([data-ui="status"],.service-proxy-status,.addon-service-state,.ops-status,.bill-financial,.bill-progress):is(.paid,.provisioning,.processing,.running,.uploading,.created,.delivery,.waiting_customer){
+  --ui-status-bg:var(--ui-info-bg);--ui-status-fg:var(--ui-info-text);--ui-status-icon:var(--ui-status-clock);
+}
+:is([data-ui="status"],.service-proxy-status,.addon-service-state,.ops-status,.bill-financial,.bill-progress).expiring{
+  --ui-status-bg:var(--ui-expiring-bg);--ui-status-fg:var(--ui-expiring-text);--ui-status-icon:var(--ui-status-warning);
+}
+:is([data-ui="status"],.service-proxy-status,.addon-service-state,.ops-status,.bill-financial,.bill-progress):is(.expired,.overdue,.rejected,.error,.bad,.offline,.suspended){
+  --ui-status-bg:var(--ui-expired-bg);--ui-status-fg:var(--ui-expired-text);--ui-status-icon:var(--ui-status-warning);
+}
+:is([data-ui="status"],.service-proxy-status,.addon-service-state,.ops-status,.bill-financial,.bill-progress).refunded{
+  --ui-status-bg:var(--ui-refund-bg);--ui-status-fg:var(--ui-refund-text);--ui-status-icon:var(--ui-status-refund);
+}
+:is([data-ui="status"],.service-proxy-status,.addon-service-state,.ops-status,.bill-financial,.bill-progress):is(.failed,.cancelled,.canceled,.closed,.disabled,[data-state="disabled"],.off,.stopped,.local){
+  --ui-status-bg:var(--ui-neutral-bg);--ui-status-fg:var(--ui-neutral-text);--ui-status-icon:var(--ui-status-close);
+}
+/* Domain distinctions: a paid renewal awaits verification, while a delivered
+   recharge is a financial success. Neither is relabelled as an active service. */
+.renewal-business-row .order-status:is(.paid,.provisioning),.renewal-status:is(.paid,.provisioning){--ui-status-bg:var(--ui-warning-bg);--ui-status-fg:var(--ui-warning-text);--ui-status-icon:var(--ui-status-clock)}
+.service-proxy-status.pending{--ui-status-bg:var(--ui-info-bg);--ui-status-fg:var(--ui-info-text);--ui-status-icon:var(--ui-status-clock)}
+.bill-financial:not(.unpaid):not(.partial):not(.overdue):not(.refunded):not(.cancelled){--ui-status-bg:var(--ui-success-bg);--ui-status-fg:var(--ui-success-text);--ui-status-icon:var(--ui-status-check)}
+:is(.bkp-copy-status,.update-history-status).failed{--ui-status-bg:var(--ui-expired-bg);--ui-status-fg:var(--ui-expired-text);--ui-status-icon:var(--ui-status-warning)}
+.expired-service-badge{--ui-status-bg:var(--ui-expired-bg);--ui-status-fg:var(--ui-expired-text);--ui-status-icon:var(--ui-status-warning)}
+.wifi-name-duplicate-badge{--ui-status-bg:var(--ui-warning-bg);--ui-status-fg:var(--ui-warning-text);--ui-status-icon:var(--ui-status-warning)}
+.script-state.missing{--ui-status-bg:var(--ui-warning-bg);--ui-status-fg:var(--ui-warning-text);--ui-status-icon:var(--ui-status-warning)}
+
+@media(max-width:600px),(pointer:coarse){
+  [data-ui="action"],:is(.aftersales-row-actions,.verify-actions,.live-actions,.product-order-actions,.customer-actions,.node-service-actions,.proxy-row-actions,.vops-row-actions,.bkp-record-actions) [data-ui="action"],.order-customer-page .customer-order-actions [data-ui="action"]{min-height:44px!important}
+}
+@media(prefers-reduced-motion:reduce){[data-ui="action"]{transition:none!important}}
+}

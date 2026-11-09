@@ -121,8 +121,8 @@ export default function SiteManagement() {
           <div className="site-upload-row">
             <div><b>上传品牌图片</b><small>PNG、JPG、WEBP，最大 2MB；推荐透明背景横版或方形 Logo。</small></div>
             <input ref={fileRef} type="file" hidden accept="image/png,image/jpeg,image/webp" disabled={uploading} onChange={event => { const file = event.target.files?.[0]; if (file) void uploadLogo(file); event.target.value = ""; }} />
-            <button type="button" className="primary" disabled={uploading} onClick={() => fileRef.current?.click()}>{uploading ? "处理中…" : data.logoUrl ? "更换图片" : "上传图片"}</button>
-            {data.logoUrl && <button type="button" className="danger-outline" disabled={uploading} onClick={deleteLogo}>删除</button>}
+            <button data-ui="action" data-ui-tone="primary" type="button" className="primary" disabled={uploading} onClick={() => fileRef.current?.click()}>{uploading ? "处理中…" : data.logoUrl ? "更换图片" : "上传图片"}</button>
+            {data.logoUrl && <button data-ui="action" data-ui-tone="danger" type="button" className="danger-outline" disabled={uploading} onClick={deleteLogo}>删除</button>}
           </div>
         </div>
       </div>
@@ -142,7 +142,7 @@ export default function SiteManagement() {
     <section className="setting-card site-section">
       <header className="site-section-head"><span>04</span><div><h2>全局列表显示</h2><p>统一设置客户面板与管理后台分页列表的默认显示数量。</p></div></header>
       <div className="setting-grid"><label>每页默认显示数量<select name="defaultPageSize" value={data.defaultPageSize ?? 20} onChange={event => setData({ ...data, defaultPageSize: Number(event.target.value) })}>{[10,20,50,100].map(size => <option key={size} value={size}>{size} 条 / 页</option>)}</select><small>保存后进入列表生效；列表中手动选择的数量仅用于当前页面。</small></label></div>
-      <footer><button className="primary" disabled={saving}>{saving ? "保存中…" : "保存全部站务设置"}</button></footer>
+      <footer><button data-ui="action" data-ui-tone="primary" className="primary" disabled={saving}>{saving ? "保存中…" : "保存全部站务设置"}</button></footer>
     </section>
   </form>;
 }

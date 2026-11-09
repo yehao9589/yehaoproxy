@@ -103,6 +103,27 @@
 }
 [data-globalized="1"]{display:none!important}
 .offer-toast[data-globalized="1"]{display:flex!important}
+/* Native dialogs live above ordinary z-index layers. Manual popovers keep
+   the existing toast appearance while joining that browser-managed top layer. */
+.offer-toast[data-global-toast="1"][popover]{
+  position:fixed;
+  inset:auto;
+  top:max(18px,env(safe-area-inset-top));
+  left:50%;
+  right:auto;
+  bottom:auto;
+  width:max-content;
+  min-width:min(300px,calc(100% - 32px));
+  max-width:min(560px,calc(100% - 32px));
+  box-sizing:border-box;
+  margin:0;
+  translate:-50% 0;
+  pointer-events:auto;
+  overflow:visible;
+}
+.offer-toast[data-global-toast="1"][popover]::backdrop{background:transparent;pointer-events:none}
+.offer-toast[data-global-toast="1"][popover]>button{display:grid;place-items:center;flex:0 0 26px;min-width:26px;width:26px;min-height:26px;height:26px;padding:0;border:0;border-radius:6px;background:transparent;color:inherit;font-size:18px}
+@media(max-width:640px){.offer-toast[data-global-toast="1"][popover]{top:max(10px,env(safe-area-inset-top));min-width:0;max-width:calc(100% - 20px)}}
 @keyframes global-toast-in{
   from{opacity:0;transform:translateY(-10px)}
   to{opacity:1;transform:translateY(0)}

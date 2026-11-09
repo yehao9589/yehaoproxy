@@ -145,7 +145,7 @@ export default function InstallPage() {
                 <article><i className={status.databaseBinding ? "ok" : "bad"}>{status.databaseBinding ? "✓" : "!"}</i><span><b>当前数据库</b><small>{status.databaseBinding ? `已连接 ${status.runtime === "mysql" ? "MySQL" : "SQLite / D1"}` : "等待在下一步配置"}</small></span><em>{status.databaseBinding ? "正常" : "待配置"}</em></article>
                 <article><i className="ok">✓</i><span><b>部署建议</b><small>开发与正式部署使用 MySQL，SQLite 保留为可选模式</small></span><em>推荐</em></article>
               </div>
-              <footer><button className="primary" onClick={() => setStep(2)}>下一步：配置数据库</button></footer>
+              <footer><button data-ui="action" data-ui-tone="primary" className="primary" onClick={() => setStep(2)}>下一步：配置数据库</button></footer>
             </div>
           )}
 
@@ -153,16 +153,16 @@ export default function InstallPage() {
             <div className="installer-body">
               <section className="installer-config-section">
                 <div className="installer-section-title"><i>1</i><span><b>数据库引擎</b><small>选择系统实际存储业务数据的位置</small></span></div>
-                <div className="installer-engine-options">
-                  <button className={databaseType === "mysql" ? "on" : ""} onClick={() => {setDatabaseType("mysql");setSuccess("");setMessage("")}}><i>MY</i><span><b>MySQL 8</b><small>开发、Docker 与正式部署推荐</small><em>推荐</em></span>{databaseType === "mysql" && <strong>✓</strong>}</button>
-                  <button className={databaseType === "sqlite" ? "on" : ""} onClick={() => {setDatabaseType("sqlite");setSuccess("");setMessage("")}}><i>SQ</i><span><b>SQLite / D1</b><small>适合单机轻量部署或 Cloudflare</small></span>{databaseType === "sqlite" && <strong>✓</strong>}</button>
+                <div className="installer-engine-options" role="group" aria-label="数据库引擎">
+                  <button type="button" aria-pressed={databaseType === "mysql"} className={databaseType === "mysql" ? "on" : ""} onClick={() => {setDatabaseType("mysql");setSuccess("");setMessage("")}}><i aria-hidden="true">MY</i><span><b>MySQL 8</b><small>开发、Docker 与正式部署推荐</small><em>推荐</em></span>{databaseType === "mysql" && <strong aria-hidden="true">✓</strong>}</button>
+                  <button type="button" aria-pressed={databaseType === "sqlite"} className={databaseType === "sqlite" ? "on" : ""} onClick={() => {setDatabaseType("sqlite");setSuccess("");setMessage("")}}><i aria-hidden="true">SQ</i><span><b>SQLite / D1</b><small>适合单机轻量部署或 Cloudflare</small></span>{databaseType === "sqlite" && <strong aria-hidden="true">✓</strong>}</button>
                 </div>
               </section>
               <section className="installer-config-section">
                 <div className="installer-section-title"><i>2</i><span><b>初始化方式</b><small>新部署请选择创建全新数据库</small></span></div>
-                <div className="installer-db-options compact">
-                  <button className={mode === "new" ? "on" : ""} onClick={() => setMode("new")}><i>＋</i><span><b>创建全新数据库</b><small>自动创建全部业务数据表</small></span>{mode === "new" && <strong>✓</strong>}</button>
-                  <button className={mode === "existing" ? "on" : ""} onClick={() => setMode("existing")}><i>↗</i><span><b>接入已有数据库</b><small>验证并使用现有数据结构</small></span>{mode === "existing" && <strong>✓</strong>}</button>
+                <div className="installer-db-options compact" role="group" aria-label="初始化方式">
+                  <button type="button" aria-pressed={mode === "new"} className={mode === "new" ? "on" : ""} onClick={() => setMode("new")}><i aria-hidden="true">＋</i><span><b>创建全新数据库</b><small>自动创建全部业务数据表</small></span>{mode === "new" && <strong aria-hidden="true">✓</strong>}</button>
+                  <button type="button" aria-pressed={mode === "existing"} className={mode === "existing" ? "on" : ""} onClick={() => setMode("existing")}><i aria-hidden="true">↗</i><span><b>接入已有数据库</b><small>验证并使用现有数据结构</small></span>{mode === "existing" && <strong aria-hidden="true">✓</strong>}</button>
                 </div>
               </section>
               <section className="installer-config-section connection">
@@ -181,7 +181,7 @@ export default function InstallPage() {
                   <div className="installer-note sqlite-note"><b>无需额外配置</b><span>本地自动使用持久化 SQLite；Cloudflare 部署时可绑定 D1。</span></div>
                 )}
               </section>
-              <footer><button onClick={() => setStep(1)}>上一步</button><button className="primary" onClick={() => setStep(3)}>下一步：创建管理员</button></footer>
+              <footer><button data-ui="action" data-ui-tone="secondary" onClick={() => setStep(1)}>上一步</button><button data-ui="action" data-ui-tone="primary" className="primary" onClick={() => setStep(3)}>下一步：创建管理员</button></footer>
             </div>
           )}
 
@@ -196,7 +196,7 @@ export default function InstallPage() {
                 <label>确认密码<input name="confirmPassword" required type="password" minLength={10} /></label>
                 <label className="wide installer-checkbox"><input name="registrationEnabled" type="checkbox" defaultChecked /><span><b>允许客户注册</b><small>安装后仍可在安全策略中修改</small></span></label>
               </div>
-              <footer><button type="button" onClick={() => setStep(2)}>上一步</button><button className="primary" disabled={busy}>{busy ? "正在初始化…" : "完成安装"}</button></footer>
+              <footer><button data-ui="action" data-ui-tone="secondary" type="button" onClick={() => setStep(2)}>上一步</button><button data-ui="action" data-ui-tone="primary" className="primary" disabled={busy}>{busy ? "正在初始化…" : "完成安装"}</button></footer>
             </form>
           )}
         </section>

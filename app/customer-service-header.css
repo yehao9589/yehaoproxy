@@ -22,11 +22,18 @@
 .unified-console .managed-node-table .orow:not(.head){grid-template-columns:minmax(180px,.9fr) minmax(150px,.8fr) minmax(240px,1.5fr) minmax(130px,.7fr)!important;grid-template-areas:"product info traffic expiry" "renew status actions actions"!important;column-gap:24px!important;row-gap:16px!important;align-items:center!important;min-height:142px!important;padding:22px!important}
 .unified-console .managed-node-table .node-product-cell{min-width:0!important}
 .unified-console .managed-node-table .node-product-cell>b{display:flex;align-items:center;gap:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px!important}
-.unified-console .managed-node-table .node-customer-note{display:flex!important;width:100%;max-width:100%;margin:0!important;padding:0;background:transparent;color:#657a90!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.unified-console .managed-node-table .node-customer-note:has(input){display:grid!important;grid-template-columns:minmax(0,1fr) 22px;align-items:center;gap:6px;overflow:visible}
+.unified-console .managed-node-table .node-customer-note{--node-note-control-size:30px;display:flex!important;flex-wrap:nowrap;width:100%;max-width:100%;margin:0!important;padding:0;background:transparent;color:#657a90!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.unified-console .managed-node-table .node-customer-note>button{flex:0 0 auto;width:var(--node-note-control-size)!important;min-width:var(--node-note-control-size)!important;height:var(--node-note-control-size)!important}
+.unified-console .managed-node-table .node-customer-note:has(input){display:grid!important;grid-template-columns:minmax(0,1fr) var(--node-note-control-size);align-items:center;gap:6px;overflow:visible}
 .unified-console .managed-node-table .node-customer-note:has(input) input{width:100%;max-width:none}
 .unified-console .managed-node-table .node-product-cell>small{display:none!important}
 .unified-console .managed-node-table .node-info-cell,.unified-console .managed-node-table .node-traffic-card,.unified-console .managed-node-table .node-expiry-column{min-width:0!important}
-.unified-console .managed-node-table .node-service-actions{display:grid!important;grid-template-columns:repeat(4,64px)!important;align-items:center!important;justify-content:flex-end!important;justify-self:end!important;grid-column:3/5!important;grid-row:2!important;width:277px!important;min-width:277px!important;gap:7px!important;white-space:nowrap!important;border-top:1px solid #edf1f5!important;padding:12px 0 0!important}
-.unified-console .managed-node-table .node-service-actions button,.unified-console .managed-node-table .node-service-actions a{width:auto!important;min-width:64px!important;flex:0 0 auto!important}
+.unified-console .managed-node-table .orow:not(.head)>span:has(>.node-order-status){grid-area:status!important;min-width:0}
+.unified-console .managed-node-table .node-service-actions{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(64px,1fr))!important;align-items:center!important;justify-self:end!important;grid-area:actions!important;width:min(100%,277px)!important;min-width:0!important;gap:7px!important;border-top:1px solid #edf1f5!important;padding:12px 0 0!important}
+.unified-console .managed-node-table .node-service-actions :is(button,a){width:100%!important;min-width:0!important;height:auto!important;min-height:34px!important;padding:4px 6px!important;font-size:12px!important;line-height:1.3!important;white-space:normal!important;text-align:center}
 @media(max-width:1050px){.unified-console .managed-node-table .orow:not(.head){grid-template-columns:1fr 1fr!important;grid-template-areas:"product info" "traffic expiry" "renew status" "actions actions"!important;row-gap:14px!important}}
+@media(max-width:480px){.unified-console .managed-node-table .orow:not(.head){grid-template-columns:minmax(0,1fr)!important;grid-template-areas:"product" "info" "traffic" "expiry" "renew" "status" "actions"!important;padding:16px!important}}
+@media(pointer:coarse){
+  .unified-console .managed-node-table .node-customer-note{--node-note-control-size:40px}
+  .unified-console .managed-node-table .node-service-actions :is(button,a){min-height:44px!important}
+}

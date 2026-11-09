@@ -1,0 +1,54 @@
+/* The service list distinguishes expiry from the renewal strategy. */
+@layer service-management {
+.service-admin-table{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:thin}
+.service-admin-table:focus-visible{outline:2px solid #1269e7;outline-offset:-2px}
+.service-admin-table .service-row{
+  box-sizing:border-box;grid-template-columns:30px minmax(140px,1.1fr) minmax(155px,1.1fr) minmax(125px,1fr) 84px minmax(118px,1fr) 104px 122px 100px 96px!important;
+  min-width:1300px!important;gap:10px!important;padding:16px!important;min-height:88px;align-items:center;
+}
+.service-admin-table .service-row.head{min-height:48px;padding-top:10px!important;padding-bottom:10px!important}
+/* Reserve a separate icon track; only the label can give up space. */
+.service-admin-table .service-identity{display:grid!important;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:10px;min-width:0}
+.service-admin-table .service-kind-icon{box-sizing:border-box;width:34px;height:34px;white-space:nowrap}
+.service-admin-table .service-identity-text{min-width:0}
+.service-admin-table .service-identity-text>small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.service-admin-table .service-row:not(.head){background:#fff!important}
+.service-admin-table .service-row:not(.head):hover{background:#f7faff!important}
+.service-admin-table .service-row.is-expired{background:#fff8f9!important;box-shadow:inset 3px 0 0 #dc5264!important}
+.service-admin-table .service-row.is-expired:hover{background:#fff0f3!important}
+.service-admin-table .service-row.is-expiring{background:#fffcf5!important;box-shadow:inset 3px 0 0 #e9a13a!important}
+.service-admin-table .service-row.is-expiring:hover{background:#fff7e8!important}
+.service-admin-table .service-expiry-cell b{color:#334961;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.service-admin-table .service-expiry-cell time{display:block;white-space:nowrap}
+.service-admin-table .service-expiry-cell small{margin-top:5px;font-variant-numeric:tabular-nums}
+.service-admin-table .is-expired .service-expiry-cell b{color:#ba263b!important;font-weight:600}
+.service-admin-table .is-expiring .service-expiry-cell b{color:#a64a08!important;font-weight:600}
+.service-admin-table .service-unset-expiry{color:#8b96a6!important;font-weight:400}
+.service-admin-table .service-state-column{position:sticky;right:106px;z-index:2;align-self:stretch;display:flex;justify-content:center;flex-direction:column;box-sizing:border-box;padding-left:8px;background:inherit;box-shadow:-8px 0 10px -10px #33415566}
+.service-admin-table .service-state-cell{align-items:flex-start;gap:6px}
+.service-admin-table .service-state-cell>small{margin:0;color:#8190a2;white-space:nowrap;font-size:11px!important}
+.service-admin-table .is-expired .service-state-cell>small{color:#bd5b6a!important}
+.service-admin-table .is-expiring .service-state-cell>small{color:#aa762d!important}
+.service-admin-table .service-billing-cell{display:grid;gap:5px;align-content:center}
+.service-admin-table .service-billing-cell>b{font-weight:500}
+.service-admin-table .service-billing-cell>small{margin:0;font-size:11px!important;color:#7b899c;white-space:nowrap}
+.service-admin-table .service-actions-cell{position:sticky;right:0;z-index:2;align-self:stretch;display:flex;align-items:center;box-sizing:border-box;padding-left:8px;background:inherit;box-shadow:-8px 0 10px -10px #33415566}
+.service-admin-table .service-row.head .service-actions-cell{z-index:3}
+.service-admin-kpis .service-metric-active b{color:#087c4c!important}
+.service-admin-kpis .service-metric-expiring b{color:#a66b08!important}
+.service-admin-kpis .service-metric-expired b{color:#ba263b!important}
+.service-admin-kpis .service-metric-expired>i{background:#ffeaed!important;color:#ba263b!important}
+.service-expiry-tabs{flex-wrap:wrap;gap:6px}
+.service-expiry-tabs button{font-size:12px!important;font-weight:500}
+.service-expiry-tabs button[data-filter="active"].on{background:#e6f7ed!important;border-color:#c2e9d4!important;color:#087c4c!important}
+.service-expiry-tabs button[data-filter="expiring"].on{background:#fff3dc!important;border-color:#f1dab2!important;color:#996000!important}
+.service-expiry-tabs button[data-filter="expired"].on{background:#ffeaed!important;border-color:#f3c6cd!important;color:#ba263b!important}
+.service-expiry-tabs button[data-filter="active"].on b{background:#087c4c!important;color:#fff!important}
+.service-expiry-tabs button[data-filter="expiring"].on b{background:#996000!important;color:#fff!important}
+.service-expiry-tabs button[data-filter="expired"].on b{background:#ba263b!important;color:#fff!important}
+@media(max-width:600px){
+  .service-admin-card>header{align-items:flex-start;gap:12px}
+  .service-expiry-tabs{overflow:visible}
+  .service-expiry-tabs button{min-height:44px;height:auto;padding:7px 10px}
+}
+}

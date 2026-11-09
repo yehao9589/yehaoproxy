@@ -25,5 +25,5 @@ export function useAdminRefresh(loader:()=>Promise<unknown>,enabled=true){
 export function AdminRefreshButton({className}:{className?:string}){
   const context=useContext(Context);
   if(!context?.available)return null;
-  return <button type="button" className={className} disabled={context.busy} aria-busy={context.busy} onClick={()=>void context.refresh()}>{context.busy?"刷新中…":"刷新数据"}</button>;
+  return <button data-ui="action" data-ui-tone="secondary" type="button" className={className} disabled={context.busy} aria-busy={context.busy} onClick={()=>void context.refresh()}>{context.busy?"刷新中…":"刷新数据"}</button>;
 }

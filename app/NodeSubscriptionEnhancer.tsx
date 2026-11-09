@@ -18,6 +18,8 @@ export default function NodeSubscriptionEnhancer() {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "subscription-delivery-button";
+      button.dataset.ui = "action";
+      button.dataset.uiTone = "primary";
       button.textContent = "发放订阅地址";
       button.onclick = async () => {
         const id = heading.textContent?.replace(/^.*?#/, "").trim() || "";
@@ -74,6 +76,6 @@ export default function NodeSubscriptionEnhancer() {
     {error && <div className="live-error">{error}</div>}
     <label>客户订阅地址<input name="subscriptionUrl" type="url" defaultValue={open.currentUrl} placeholder="https://example.com/subscription/..." required /></label>
     <p>发放后订单自动变为已开通，并从当前时间开始计算服务有效期。客户可以复制地址或扫码导入。</p>
-    <footer><button type="button" className="secondary" onClick={() => setOpen(null)}>取消</button><button type="submit" className="primary subscription-submit" disabled={saving}>{saving ? "正在发放…" : "确认发放"}</button></footer>
+    <footer><button data-ui="action" data-ui-tone="text" type="button" className="secondary" onClick={() => setOpen(null)}>取消</button><button data-ui="action" data-ui-tone="primary" type="submit" className="primary subscription-submit" disabled={saving}>{saving ? "正在发放…" : "确认发放"}</button></footer>
   </form></div>;
 }

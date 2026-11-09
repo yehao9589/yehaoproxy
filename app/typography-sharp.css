@@ -84,24 +84,3 @@ body {
 .auth-form label {
   font-weight: 400;
 }
-
-/* Keep task switches isolated from the global admin button sizing system. */
-.admin-pro .scheduled-master button,
-.admin-pro .task-switch {
-  box-sizing: border-box !important;
-  width: 44px !important;
-  min-width: 44px !important;
-  height: 24px !important;
-  min-height: 24px !important;
-  padding: 3px !important;
-  border: 0 !important;
-  border-radius: 20px !important;
-  background: #cbd5df;
-  line-height: 1 !important;
-  box-shadow: none !important;
-}
-
-.admin-pro .scheduled-master.on button,
-.admin-pro .task-switch.on {
-  background: #1bad78 !important;
-}

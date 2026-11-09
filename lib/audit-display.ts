@@ -11,6 +11,7 @@ export type AuditDisplayLog = {
 };
 
 const actions: Record<string, string> = {
+  "vps.operations.save-cloud-settings":"保存 R2 异地备份设置","vps.operations.test-cloud":"检测 R2 存储桶访问","vps.operations.upload-backup":"提交 R2 加密上传","vps.operations.export-recovery-key":"导出 R2 备份解密密钥",
   "vps.operations.save-plan":"保存 VPS 自动备份计划","vps.operations.check":"提交 VPS 连接检测","vps.operations.backup":"提交 VPS 备份","vps.operations.check-all":"批量检测 VPS","vps.operations.backup-all":"批量备份 VPS","vps.operations.delete-backup":"删除 VPS 备份","vps.operations.download":"下载 VPS 面板备份",
   "credit.risk_status.update":"信用风险状态自动更新","ticket.automation.close":"系统自动关闭超时工单","node.note.update":"修改节点备注","node.auto_renew.update":"修改节点自动续费",
   "auth.login.success":"登录成功","auth.login.failed":"登录失败","auth.logout":"退出登录",
@@ -34,6 +35,7 @@ const resources: Record<string, string> = {
 };
 
 const keys: Record<string, string> = {
+  keyId:"备份密钥标识",
   action:"操作",schedule:"备份计划",
   before:"修改前",after:"修改后",totalGb:"服务流量额度 GB",usedGb:"本期已用 GB",direction:"流量计量方向",deferOfflineReset:"离线时延后重置",
   originalProduct:"原商品",previousProduct:"原商品",previousRegion:"原地区",previousQuantity:"原数量",previousDurationDays:"原服务周期",regionName:"地区名称",paymentMethod:"付款方式",referenceConfigured:"已填写收款凭证",configured:"已配置",autoRenew:"自动续费",provider:"服务商",fromName:"发件名称",fromEmail:"发件邮箱",secretUpdated:"密钥已更新",keyMaterialUpdated:"密钥已更新",keyMaterialConfigured:"密钥已配置",configurationCount:"配置项数量",endpointConfigured:"接口地址已配置",senderId:"发送方标识",mode:"执行方式",targetGb:"校准流量",succeeded:"成功数量",failed:"失败数量",idleDays:"未回复天数",walletsUpdated:"钱包币种已同步",ordersUpdated:"订单币种已同步",
