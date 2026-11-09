@@ -1,6 +1,6 @@
 {
   "name": "yehaoproxy",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "private": true,
   "engines": {
     "node": ">=22.13.0"

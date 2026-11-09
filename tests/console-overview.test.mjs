@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { buildOverviewServices, overviewCounts, serviceStatus } from "../app/dashboard/console-overview-data.ts";
+import { isCustomerNodeService } from "../lib/customer-node-service.ts";
 
 const now = Date.parse("2026-11-05T00:00:00.000Z");
 const day = 86400000;
@@ -23,6 +24,14 @@ test("customer effective services include original active node services and excl
   assert.equal(services.some(row => /renewal|unpaid|refunded|topup/.test(row.key)), false);
 });
 
+test("customer node cards and overview classify only paid original node services",()=>{
+  const nodes=[order("active"),order("paid",{product:"soft-router",status:"paid"}),order("provisioning",{status:"provisioning"}),
+    order("refunded",{status:"refunded",expiresAt:null}),order("cancelled",{status:"failed"}),order("unpaid",{status:"pending"}),
+    order("renewal",{renewalOf:"active"}),order("bundle",{bundleRenewal:true}),order("reset",{product:"node-traffic-reset"})];
+  assert.deepEqual(nodes.filter(isCustomerNodeService).map(row=>row.id),["active","paid","provisioning"]);
+  assert.deepEqual(buildOverviewServices([],nodes,policy,now).map(row=>row.key),["node:active","node:paid","node:provisioning"]);
+});
+
 test("expiry is truthful immediately while grace and archive classifications match service management", () => {
   const services = buildOverviewServices([proxy("recent", -1), proxy("grace-edge", -7), proxy("old", -8), proxy("archive-edge", -30), proxy("archived", -31)], [order("old-node", { expiresAt: date(-8) }), order("archived-node", { expiresAt: date(-31) })], policy, now);
   assert.equal(services.find(row => row.key === "proxy:recent")?.status, "expired");
@@ -31,7 +40,13 @@ test("expiry is truthful immediately while grace and archive classifications mat
   assert.equal(services.find(row => row.key === "proxy:old")?.movedToExpired, true);
   assert.equal(services.find(row => row.key === "proxy:archive-edge")?.movedToExpired, true);
   assert.equal(services.find(row => row.key === "node:old-node")?.status, "expired");
-  assert.equal(services.some(row => row.key.includes("archived")), false);
+  assert.equal(services.find(row => row.key === "proxy:archive-edge")?.renewalClosed, false);
+  for(const key of ["proxy:archived","node:archived-node"]){
+    const service=services.find(row=>row.key===key);
+    assert.equal(service?.status,"expired");
+    assert.equal(service?.movedToExpired,true);
+    assert.equal(service?.renewalClosed,true);
+  }
   assert.equal(overviewCounts(services, []).active, 0);
 });
 

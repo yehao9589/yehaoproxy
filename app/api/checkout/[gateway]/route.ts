@@ -9,6 +9,8 @@ import {convertCurrency} from "../../../../lib/currency-conversion";
 import {assertGateway,gatewayRuntimeSupported} from "../../../../lib/payments";
 import {audit} from "../../../../lib/audit";
 import {withRequestLock} from "../../../../lib/request-lock";
+import {renewalPaymentBlocked} from "../../../../lib/customer-renewal-policy";
+import {RENEWAL_CUTOFF_MESSAGE} from "../../../../lib/customer-service-expiry";
 
 export async function POST(req:Request,{params}:{params:Promise<{gateway:string}>}){
   const user=await getCurrentCustomer();if(!user)return NextResponse.json({error:"请先登录"},{status:401});
@@ -20,6 +22,7 @@ export async function POST(req:Request,{params}:{params:Promise<{gateway:string}
   const db=getDb(),[order]=await db.select().from(orders).where(eq(orders.id,String(body.orderId))).limit(1),[config]=await db.select().from(paymentGateways).where(eq(paymentGateways.type,gateway)).limit(1);
   if(!order||order.customerEmail!==user.email)return NextResponse.json({error:"订单不存在"},{status:404});
   if(order.status!=="pending")return NextResponse.json({error:"当前订单不能重复支付"},{status:409});
+  if(await renewalPaymentBlocked(order))return NextResponse.json({error:RENEWAL_CUTOFF_MESSAGE},{status:409});
   if(!config?.enabled)return NextResponse.json({error:"该支付渠道暂未开通"},{status:409});
   const couponCode=String(body?.couponCode||"").trim().toUpperCase();
   const[existingRedemption]=await db.select().from(couponRedemptions).where(eq(couponRedemptions.orderId,order.id)).limit(1);

@@ -10,3 +10,11 @@ export function advanceTrafficCycle(previous:TrafficCycle,order:{orderId:string;
  if(reset){last=boundary;if(Date.parse(order.expiresAt)>Date.parse(boundary))boundary=order.expiresAt;}
  return {reset,boundOrderId:order.orderId,boundOrderExpiry:boundary,lastOrderExpiryReset:last};
 }
+
+/** Preview the next unprocessed boundary without applying a reset. */
+export function scheduledTrafficResetAt(previous:TrafficCycle,order:{orderId:string;expiresAt:string|null}){
+ if(!order.expiresAt||!Number.isFinite(Date.parse(order.expiresAt)))return null;
+ const cycle=advanceTrafficCycle(previous,{orderId:order.orderId,expiresAt:order.expiresAt},Number.NEGATIVE_INFINITY);
+ const boundary=Date.parse(cycle.boundOrderExpiry);
+ return Number.isFinite(boundary)&&cycle.boundOrderExpiry!==cycle.lastOrderExpiryReset?new Date(boundary).toISOString():null;
+}

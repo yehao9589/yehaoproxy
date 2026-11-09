@@ -77,6 +77,46 @@ test("node notes use the cross-database upsert path and reload uncached data",as
  assert.match(services,/备注保存失败（\$\{r.status\}）/);
 });
 
+test("expired history remains visible without permitting new customer renewal attempts",async()=>{
+ const [proxies,history,bulk,node,aftersales,wallet,checkout]=await Promise.all([
+   "app/api/proxies/route.ts","app/dashboard/proxies/ExpiredServices.tsx","app/api/proxies/bulk/route.ts","app/api/orders/[id]/node-service/route.ts",
+   "app/api/service-requests/route.ts","app/api/orders/[id]/pay-wallet/route.ts","app/api/checkout/[gateway]/route.ts",
+ ].map(read));
+ assert.match(proxies,/password: renewalClosed \? null : reveal/);
+ assert.doesNotMatch(proxies,/archiveCutoff|archiveDays.*return null/);
+ assert.match(history,/\{x\.renew\?<button[^>]+>续费<\/button>:<span[^>]+>已停止续费/);
+ for(const route of [bulk,node,aftersales])assert.match(route,/serviceBeyondExpiry\([^\n]+\)[^\n]*|RENEWAL_CUTOFF_MESSAGE/);
+ for(const route of [wallet,checkout])assert.match(route,/if\(await renewalPaymentBlocked\(order\)\)/);
+});
+
+test("customer wallet counts and pages only the owned date-filtered ledger",async()=>{
+ const [api,client]=await Promise.all(["app/api/wallet/route.ts","app/dashboard/wallet/WalletClient.tsx"].map(read));
+ assert.match(api,/eq\(walletTransactions\.customerId,user\.id\)/);
+ assert.match(api,/gte\(walletTransactions\.createdAt,query\.start\)/);
+ assert.match(api,/lt\(walletTransactions\.createdAt,query\.endExclusive\)/);
+ assert.match(api,/orderBy\(desc\(walletTransactions\.createdAt\),desc\(walletTransactions\.id\)\)\.limit\(size\)\.offset\(offset\)/);
+ assert.doesNotMatch(api,/limit\(100\)/);
+ assert.match(client,/usePageSize\(\)/);
+ assert.match(client,/pageSize=\{ledgerSize\}/);
+ assert.match(client,/view:"ledger"/);
+});
+
+test("customer node traffic shows only authorized service schedules from the shared ledger",async()=>{
+ const [services,traffic,route,actions,layout]=await Promise.all([
+   "app/dashboard/proxies/ProxiesClient.tsx","app/dashboard/proxies/NodeTraffic.tsx","app/api/orders/[id]/node-traffic/route.ts","app/api/orders/[id]/node-service/route.ts","app/layout.tsx",
+ ].map(read));
+ assert.match(services,/const nodeOrders=credits\.filter\(isCustomerNodeService\)/);
+ assert.match(services,/x\.status==="active"&&!serviceExpired\(x\.expiresAt\)&&<NodeTraffic/);
+ assert.match(traffic,/下次流量重置/);
+ assert.match(traffic,/<time dateTime=\{resetAt\} title="北京时间">/);
+ assert.match(traffic,/未安排/);
+ assert.match(route,/order\.customerEmail!==user\.email\|\|order\.status!=="active"\|\|!isBindableNodeOrder\(order\)/);
+ assert.match(route,/targets\.length!==1[^\n]+nextResetAt:null/);
+ assert.match(route,/scheduledTrafficResetAt\(service,\{orderId:id,expiresAt:/);
+ assert.ok(actions.indexOf("!isBindableNodeOrder(order)")<actions.indexOf('action === "note"'));
+ assert.doesNotMatch(layout,/NodeTrafficEnhancer/);
+});
+
 async function filesUnder(path) {
   const entries = await readdir(resolve(root, path), { withFileTypes: true });
   const output = [];
@@ -240,7 +280,7 @@ test("release metadata and workflow are pinned behind a quality gate", async () 
     read(".github/workflows/publish-images.yml"),
     read("lib/update-center.ts"),
   ]);
-  assert.equal(JSON.parse(pkg).version, "1.0.25");
+  assert.equal(JSON.parse(pkg).version, "1.0.26");
   assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
   assert.match(compose, /yehaoproxy:stable/);
   assert.match(compose, /UPDATE_CHANNEL: stable/);

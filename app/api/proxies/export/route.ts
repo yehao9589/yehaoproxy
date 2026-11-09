@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { getCurrentCustomer } from "../../../../lib/auth";
 import { audit } from "../../../../lib/audit";
 import { decryptCredential } from "../../../../lib/inventory-crypto";
@@ -6,6 +6,8 @@ import { getDb } from "../../../../db";
 import { orders, productOffers, proxyAllocations } from "../../../../db/schema";
 import { proxyNoteValue, visibleProxyNote } from "../../../../lib/proxy-note";
 import { countryName } from "../../../../lib/countries";
+import {getRenewalCutoffDays} from "../../../../lib/customer-renewal-policy";
+import {serviceBeyondExpiry} from "../../../../lib/customer-service-expiry";
 
 const csv = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
 const localTime = (value: Date | null) => value?.toLocaleString("sv-SE", {
@@ -17,7 +19,7 @@ export async function GET(request: Request) {
   const user = await getCurrentCustomer();
   if (!user) return new Response("Unauthorized", { status: 401 });
 
-  const rows = await getDb()
+  const [allRows,cutoff] = await Promise.all([getDb()
     .select({
       host: proxyAllocations.host,
       port: proxyAllocations.port,
@@ -32,7 +34,8 @@ export async function GET(request: Request) {
     .from(proxyAllocations)
     .innerJoin(orders, eq(proxyAllocations.orderId, orders.id))
     .leftJoin(productOffers, and(eq(productOffers.product, orders.product), eq(productOffers.region, orders.region)))
-    .where(and(eq(orders.customerEmail, user.email), eq(proxyAllocations.status, "active")));
+    .where(and(eq(orders.customerEmail, user.email), eq(proxyAllocations.status, "active"),ne(orders.status,"refunded"))),getRenewalCutoffDays()]);
+  const now=Date.now(),rows=allRows.filter(row=>!serviceBeyondExpiry(row.expiresAt,cutoff,now));
 
   const lines = ["代理地址,端口,账号,密码,协议,国家/地区,城市,备注,到期时间"];
   for (const row of rows) {

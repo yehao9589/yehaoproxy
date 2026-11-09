@@ -8,8 +8,10 @@ import { getCurrentCustomer } from "../../../../../lib/auth";
 import { billingCycleFromNote,periodLabel } from "../../../../../lib/billing-period";
 import {nextBusinessId} from "../../../../../lib/business-id";
 import {setSystemOption} from "../../../../../lib/db-upsert";
-
-const nodeProducts = new Set(["soft-router", "computer-node"]);
+import {isNodeServiceProduct} from "../../../../../lib/customer-node-service";
+import {isBindableNodeOrder} from "../../../../../lib/vps-binding-state";
+import {getRenewalCutoffDays} from "../../../../../lib/customer-renewal-policy";
+import {RENEWAL_CUTOFF_MESSAGE,serviceBeyondExpiry} from "../../../../../lib/customer-service-expiry";
 
 export async function PATCH(
   req: Request,
@@ -26,8 +28,11 @@ export async function PATCH(
     .from(orders)
     .where(and(eq(orders.id, id), eq(orders.customerEmail, user.email)))
     .limit(1);
-  if (!order || !nodeProducts.has(order.product)) {
+  if (!order || !isNodeServiceProduct(order.product)) {
     return NextResponse.json({ error: "节点服务不存在" }, { status: 404 });
+  }
+  if (!isBindableNodeOrder(order)) {
+    return NextResponse.json({ error: "当前服务状态不能进行此操作" }, { status: 409 });
   }
   if (action === "note") {
     if (typeof body.note !== "string" || body.note.length > 200) return NextResponse.json({error:"备注不能超过 200 个字符"},{status:400});
@@ -38,9 +43,6 @@ export async function PATCH(
   }
   const billingCycle = billingCycleFromNote(order.adminNote);
   const expired = Boolean(order.expiresAt && order.expiresAt.getTime() <= Date.now());
-  if (!["paid", "provisioning", "active"].includes(order.status)) {
-    return NextResponse.json({ error: "当前服务状态不能进行此操作" }, { status: 409 });
-  }
 
   if (action === "auto-renew") {
     if (expired) return NextResponse.json({ error: "节点服务已到期，请先手动续费" }, { status: 409 });
@@ -71,6 +73,9 @@ export async function PATCH(
   }
 
   if (action === "renew") {
+    if(serviceBeyondExpiry(order.expiresAt,await getRenewalCutoffDays(),Date.now())){
+      return NextResponse.json({error:RENEWAL_CUTOFF_MESSAGE},{status:409});
+    }
     const durationDays = Number(body?.durationDays);
     if (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 3650 || billingCycle === "calendar-month" && durationDays % 30 !== 0) {
       return NextResponse.json({ error: "续费周期无效" }, { status: 400 });

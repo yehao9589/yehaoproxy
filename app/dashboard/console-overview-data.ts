@@ -1,3 +1,6 @@
+import {isCustomerNodeService,isNodeServiceProduct} from "../../lib/customer-node-service.ts";
+import {serviceBeyondExpiry} from "../../lib/customer-service-expiry.ts";
+
 /** Customer-facing projections only: no infrastructure names, credentials, or traffic figures. */
 export type OverviewProxy = {
   id: string;
@@ -25,6 +28,7 @@ export type OverviewOrder = {
   expiresAt?: string | null;
   customerNote?: string | null;
   renewalOf?: string | null;
+  bundleRenewal?: boolean;
 };
 
 export type ExpiryPolicy = { graceDays: number; archiveDays: number };
@@ -42,10 +46,10 @@ export type OverviewService = {
   expiresAt: string | null;
   status: ServiceStatus;
   movedToExpired: boolean;
+  renewalClosed: boolean;
 };
 
 const DAY = 86_400_000;
-const nodeProducts = new Set(["soft-router", "computer-node"]);
 const nonServiceProducts = new Set(["wallet-topup", "node-traffic-reset", "ip-replacement"]);
 
 function expiry(value: string | null | undefined) {
@@ -62,16 +66,9 @@ export function serviceStatus(value: string | null | undefined, now: number): Se
 }
 
 export function buildOverviewServices(proxies: OverviewProxy[], entitlements: OverviewOrder[], policy: ExpiryPolicy, now: number): OverviewService[] {
-  const visible = (value: string | null | undefined) => {
-    const time = expiry(value);
-    return time === null || now - time <= policy.archiveDays * DAY;
-  };
-  const moved = (value: string | null | undefined) => {
-    const time = expiry(value);
-    return time !== null && now - time > policy.graceDays * DAY;
-  };
+  const moved = (value: string | null | undefined) => serviceBeyondExpiry(value,policy.graceDays,now);
   const rows: OverviewService[] = proxies
-    .filter(proxy => visible(proxy.expiresAt) && !nonServiceProducts.has(proxy.product || ""))
+    .filter(proxy => !nonServiceProducts.has(proxy.product || ""))
     .map(proxy => ({
       key: `proxy:${proxy.id}`,
       kind: "proxy",
@@ -85,15 +82,15 @@ export function buildOverviewServices(proxies: OverviewProxy[], entitlements: Ov
       expiresAt: proxy.expiresAt,
       status: serviceStatus(proxy.expiresAt, now),
       movedToExpired: moved(proxy.expiresAt),
+      renewalClosed: serviceBeyondExpiry(proxy.expiresAt,policy.archiveDays,now),
     }));
 
   const allocationsByOrder = new Map<string, number>();
   for (const proxy of proxies) allocationsByOrder.set(proxy.orderId, (allocationsByOrder.get(proxy.orderId) || 0) + 1);
 
   for (const order of entitlements) {
-    if (nonServiceProducts.has(order.product) || order.renewalOf || !["paid", "provisioning", "active"].includes(order.status)) continue;
-    if (nodeProducts.has(order.product)) {
-      if (order.status === "active" && !visible(order.expiresAt)) continue;
+    if (isNodeServiceProduct(order.product)) {
+      if (!isCustomerNodeService(order)) continue;
       const active = order.status === "active";
       rows.push({
         key: `node:${order.id}`,
@@ -108,10 +105,11 @@ export function buildOverviewServices(proxies: OverviewProxy[], entitlements: Ov
         expiresAt: active ? order.expiresAt || null : null,
         status: active ? serviceStatus(order.expiresAt, now) : "provisioning",
         movedToExpired: active && moved(order.expiresAt),
+        renewalClosed: active && serviceBeyondExpiry(order.expiresAt,policy.archiveDays,now),
       });
       continue;
     }
-    if (order.durationDays <= 0 || !["paid", "provisioning"].includes(order.status)) continue;
+    if (nonServiceProducts.has(order.product) || order.renewalOf || order.bundleRenewal || order.durationDays <= 0 || !["paid", "provisioning"].includes(order.status)) continue;
     const remaining = Math.max(0, order.quantity - (allocationsByOrder.get(order.id) || 0));
     for (let index = 0; index < remaining; index++) {
       rows.push({
@@ -127,6 +125,7 @@ export function buildOverviewServices(proxies: OverviewProxy[], entitlements: Ov
         expiresAt: null,
         status: "provisioning",
         movedToExpired: false,
+        renewalClosed: false,
       });
     }
   }

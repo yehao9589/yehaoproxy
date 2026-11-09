@@ -17,7 +17,7 @@ export async function GET(){
 export async function POST(req:Request){
   const admin=await requireAdminApi("settings");if(!admin)return NextResponse.json({error:"无系统设置权限"},{status:403});
   const body=await req.json().catch(()=>null),graceDays=Number(body?.graceDays),archiveDays=Number(body?.archiveDays);
-  if(!Number.isInteger(graceDays)||graceDays<0||graceDays>3650||!Number.isInteger(archiveDays)||archiveDays<1||archiveDays>3650||archiveDays<=graceDays)return NextResponse.json({error:"归档时间必须大于原列表保留时间"},{status:400});
+  if(!Number.isInteger(graceDays)||graceDays<0||graceDays>3650||!Number.isInteger(archiveDays)||archiveDays<1||archiveDays>3650||archiveDays<=graceDays)return NextResponse.json({error:"续费期限必须大于原列表保留时间"},{status:400});
   const db=getDb(),updatedAt=new Date();
   for(const[key,value]of Object.entries({expiredServiceGraceDays:graceDays,expiredServiceArchiveDays:archiveDays}))await setSystemOption(key,String(value),updatedAt);
   await audit(admin,"expiry.policy.update","settings","service-expiry",{graceDays,archiveDays},req);

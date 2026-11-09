@@ -32,7 +32,6 @@ import "./credit.css";
 import "./admin-button-system.css";
 import "./admin-services.css";
 import "./xpanel-integration.css";
-import NodeTrafficEnhancer from "./NodeTrafficEnhancer";
 import AddonServiceStatusEnhancer from "./AddonServiceStatusEnhancer";
 import "./addon-service-status.css";
 import "./order-resource.css";
@@ -118,5 +117,5 @@ export async function generateMetadata():Promise<Metadata>{
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="zh-CN"><body>{children}<CreditEnhancer/><AdjustmentEnhancer/><CurrencyEnhancer/><OrderResourceEnhancer/><CustomerRecordEnhancer/><DashboardExpiryEnhancer/><ProxyQrEnhancer/><ManualAllocationEnhancer/><ProxyOverviewCopyEnhancer/><AutoRenewSwitchEnhancer/><ResourceExpiryEnhancer/><OverviewLinkEnhancer/><ProxyBatchExportEnhancer/><OverviewStatusEnhancer/><OrderCenterLinkEnhancer/><ProxyReplaceEnhancer/><DashboardRecentOrdersEnhancer/><NodeSubscriptionEnhancer/><NodeTrafficEnhancer/><AddonServiceStatusEnhancer/><PaymentReturnEnhancer/><RenewalVerificationEnhancer/><CustomerIdFormatEnhancer/><ModalCloseEnhancer/><GlobalChineseUiEnhancer/><AdminSessionGuard/><GlobalToastLayer/><DatePickerLayer/></body></html>;
+  return <html lang="zh-CN"><body>{children}<CreditEnhancer/><AdjustmentEnhancer/><CurrencyEnhancer/><OrderResourceEnhancer/><CustomerRecordEnhancer/><DashboardExpiryEnhancer/><ProxyQrEnhancer/><ManualAllocationEnhancer/><ProxyOverviewCopyEnhancer/><AutoRenewSwitchEnhancer/><ResourceExpiryEnhancer/><OverviewLinkEnhancer/><ProxyBatchExportEnhancer/><OverviewStatusEnhancer/><OrderCenterLinkEnhancer/><ProxyReplaceEnhancer/><DashboardRecentOrdersEnhancer/><NodeSubscriptionEnhancer/><AddonServiceStatusEnhancer/><PaymentReturnEnhancer/><RenewalVerificationEnhancer/><CustomerIdFormatEnhancer/><ModalCloseEnhancer/><GlobalChineseUiEnhancer/><AdminSessionGuard/><GlobalToastLayer/><DatePickerLayer/></body></html>;
 }

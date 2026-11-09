@@ -6,6 +6,8 @@ import {audit} from "../../../lib/audit";
 import {getCurrentCustomer} from "../../../lib/auth";
 import {nextBusinessId} from "../../../lib/business-id";
 import {parseReplacementSnapshot,replacementSnapshotLines,stripReplacementSnapshot} from "../../../lib/replacement-snapshot";
+import {getRenewalCutoffDays} from "../../../lib/customer-renewal-policy";
+import {RENEWAL_CUTOFF_MESSAGE,serviceBeyondExpiry} from "../../../lib/customer-service-expiry";
 
 const DAY=86400000;
 const originalActivation=(allocation:{note:string|null},order:{createdAt:Date})=>{const marked=allocation.note?.match(/\[ACTIVATED_AT\]([^\n]+)/)?.[1],parsed=marked?new Date(marked):order.createdAt;return Number.isNaN(parsed.getTime())?order.createdAt:parsed};
@@ -134,6 +136,8 @@ export async function POST(req:Request){
     return NextResponse.json({id:orderId,orderId,status:"pending",amount:policy.amount,free:false},{status:201});
   }
   const durationDays=Number(body?.durationDays);
+  if(serviceBeyondExpiry(owned.allocation.expiresAt,await getRenewalCutoffDays(),now.getTime()))return NextResponse.json({error:RENEWAL_CUTOFF_MESSAGE},{status:409});
+  if(owned.order.status==="refunded")return NextResponse.json({error:"已退款服务不能续费"},{status:409});
   if(![7,30,90,180].includes(durationDays))return NextResponse.json({error:"续费时长无效"},{status:400});
   const multiplier=durationDays===7?.35:durationDays===30?1:2.55,basePrice=owned.order.renewalAmount??owned.order.amount/Math.max(1,owned.order.quantity),amount=Number((basePrice*multiplier).toFixed(2)),id=await nextBusinessId("RN",now);
   await db.insert(serviceRequests).values({id,customerId:user.id,allocationId,type:"renew",durationDays,reason:null,amount,status:"pending",createdAt:now,updatedAt:now});

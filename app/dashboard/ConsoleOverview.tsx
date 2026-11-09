@@ -58,7 +58,7 @@ export default function ConsoleOverview({ refreshKey, onLoading, setTab }: { ref
     setError("");
     try {
       const [wallet, proxies, orders, settings, tickets] = await Promise.all([
-        dashboardJson<ApiError & { wallet?: Wallet }>("/api/wallet", { force }),
+        dashboardJson<ApiError & { wallet?: Wallet }>("/api/wallet?view=summary", { force }),
         dashboardJson<ApiError & { items?: OverviewProxy[] }>("/api/proxies", { force }),
         dashboardJson<ApiError & { items?: OverviewOrder[]; entitlements?: OverviewOrder[] }>("/api/orders", { force }),
         dashboardJson<ApiError & { expiredServiceGraceDays?: number; expiredServiceArchiveDays?: number }>("/api/proxies/settings", { force }),
@@ -175,7 +175,7 @@ export default function ConsoleOverview({ refreshKey, onLoading, setTab }: { ref
           <label><span>状态</span><select aria-label="筛选服务状态" value={status} onChange={event => { setStatus(event.target.value as StatusFilter); setPage(1); }}><option value="all">全部</option>{(Object.entries(statusNames) as [ServiceStatus, string][]).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
           <button type="button" onClick={resetFilters}>重置</button>
         </div>
-        {serviceTab === "expired" && data && <p className="console-expiry-help">到期超过 {data.policy.graceDays} 天的服务移入此处，超过 {data.policy.archiveDays} 天后隐藏；续费后将重新分类。</p>}
+        {serviceTab === "expired" && data && <p className="console-expiry-help">到期超过 {data.policy.graceDays} 天的服务移入此处，超过 {data.policy.archiveDays} 天后仍保留记录，但不再支持续费。</p>}
         <div className="console-table-scroll console-service-table-wrap">
           <table className="console-table console-service-table">
             <caption className="console-visually-hidden">客户自己的代理 IP 与节点服务</caption>
@@ -189,7 +189,7 @@ export default function ConsoleOverview({ refreshKey, onLoading, setTab }: { ref
                 <td><span className="console-service-note" title={service.note || undefined}>{service.note || "—"}</span></td>
                 <td className="console-service-expiry">{expiryLabel(service)}</td>
                 <td><span data-ui="status" className={`console-status-badge console-service-status ${service.status}`}><i aria-hidden="true" />{statusNames[service.status]}</span></td>
-                <td><div className="console-row-actions"><button data-ui="action" data-ui-tone="secondary" type="button" onClick={() => setTab("proxies")}>查看</button>{service.status !== "provisioning" && <button data-ui="action" data-ui-tone="secondary" type="button" onClick={() => setTab("proxies")}>续费</button>}</div></td>
+                <td><div className="console-row-actions">{service.renewalClosed ? <span className="service-renewal-closed">已停止续费</span> : <><button data-ui="action" data-ui-tone="secondary" type="button" onClick={() => setTab("proxies")}>查看</button>{service.status !== "provisioning" && <button data-ui="action" data-ui-tone="secondary" type="button" onClick={() => setTab("proxies")}>续费</button>}</>}</div></td>
               </tr>)}
               {!pageRows.length && <tr><td colSpan={8}><div className="console-empty console-empty-state">{loading && !data ? "正在加载您的服务…" : !data ? "服务数据暂不可用，请点击重试。" : services.length ? "没有符合当前筛选条件的服务" : "暂无服务，购买并完成开通后将在这里显示。"}{data && !services.length && <a href="/#pricing">购买服务 <ConsoleIcon name="arrow" /></a>}</div></td></tr>}
             </tbody>

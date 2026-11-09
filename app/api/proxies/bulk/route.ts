@@ -9,6 +9,8 @@ import { billingCycleFromNote,periodLabel } from "../../../../lib/billing-period
 import { notifyAdmins } from "../../../../lib/admin-event-notifications";
 import {ensureProductOfferSchema} from "../../../../lib/product-offer-schema";
 import {nextBusinessId} from "../../../../lib/business-id";
+import {getRenewalCutoffDays} from "../../../../lib/customer-renewal-policy";
+import {RENEWAL_CUTOFF_MESSAGE,serviceBeyondExpiry} from "../../../../lib/customer-service-expiry";
 
 export async function POST(req: Request) {
   await ensureProductOfferSchema();
@@ -42,10 +44,13 @@ export async function POST(req: Request) {
   }
 
   if (action === "renew") {
+    const cutoff=await getRenewalCutoffDays(),now=new Date();
+    if(owned.some(row=>serviceBeyondExpiry(row.allocation.expiresAt,cutoff,now.getTime())))return NextResponse.json({error:RENEWAL_CUTOFF_MESSAGE},{status:409});
+    if(owned.some(row=>row.order.status==="refunded"))return NextResponse.json({error:"已退款服务不能续费"},{status:409});
     const durationDays = Number(body?.durationDays);
     if (!Number.isInteger(durationDays)||durationDays<1||durationDays>3650) return NextResponse.json({error:"续费周期无效"},{status:400});
     const offers = await db.select().from(productOffers).where(eq(productOffers.enabled,true));
-    const now = new Date(), bundleId=owned.length>1?await nextBusinessId("YH",now):null, created: Array<{id:string;amount:number;sourceOrderId:string;product:string;region:string}> = [];
+    const bundleId=owned.length>1?await nextBusinessId("YH",now):null, created: Array<{id:string;amount:number;sourceOrderId:string;product:string;region:string}> = [];
     for (const row of owned) {
       const cycle = billingCycleFromNote(row.order.adminNote);
       if (cycle === "calendar-month"&&durationDays%30!==0) return NextResponse.json({error:"按月续费必须填写完整月数"},{status:409});

@@ -1,20 +1,64 @@
 "use client";
 import {useEffect,useState} from "react";
 import {LedgerSummary,LedgerDetails,type LedgerContext} from "./LedgerServices";
+import Pagination from "../../Pagination";
+import {usePageSize} from "../../usePageSize";
 import "./ledger-services.css";
 type RelatedOrder={id:string;product:string;region:string;quantity:number;amount:number;currency:string;status:string;paymentMethod:string;paymentReference:string|null;createdAt:string};type Tx={id:string;type:string;amount:number;balanceBefore:number;balanceAfter:number;paymentMethod:string|null;paymentLabel:string;referenceType:string|null;referenceId:string|null;note:string|null;operatorId:string|null;createdAt:string;serviceContext?:LedgerContext|null;relatedOrder:RelatedOrder|null};type Gateway={id:string;name:string;type:string};type Wallet={balance:number;creditLimit:number;creditUsed:number;availableCredit:number;currency:string;currencySymbol:string;creditStatus:string;billDay:number;repaymentDay:number;graceDays:number};
 const names:Record<string,string>={deposit:"充值入账",purchase:"订单消费",refund:"退款入账",adjustment:"人工调账",freeze:"资金冻结",unfreeze:"资金解冻",credit_repayment:"信用账单还款"};
+const beijingTime=(value:string)=>new Date(value).toLocaleString("zh-CN",{timeZone:"Asia/Shanghai",hour12:false});
 export default function WalletClient(){
  const[wallet,setWallet]=useState<Wallet>({balance:0,creditLimit:0,creditUsed:0,availableCredit:0,currency:"CNY",currencySymbol:"¥",creditStatus:"active",billDay:1,repaymentDay:10,graceDays:2}),[tx,setTx]=useState<Tx[]>([]),[detail,setDetail]=useState<Tx|null>(null),[gateways,setGateways]=useState<Gateway[]>([]),[open,setOpen]=useState(false),[amount,setAmount]=useState("100"),[gateway,setGateway]=useState(""),[saving,setSaving]=useState(false),[message,setMessage]=useState("");
  const money=(v:number)=>`${wallet.currencySymbol}${Number(v||0).toFixed(2)}`;
- async function load(){const[w,g]=await Promise.all([fetch("/api/wallet",{cache:"no-store"}),fetch("/api/wallet/recharge")]),[wd,gd]=await Promise.all([w.json(),g.json()]);if(wd.wallet)setWallet(wd.wallet);setTx(wd.transactions||[]);setGateways(gd.gateways||[]);if(gd.gateways?.length)setGateway((x:string)=>x||gd.gateways[0].type)}
- useEffect(()=>{void load()},[]);
+ const[page,setPage]=useState(1),[pageSize,setPageSize]=usePageSize();
+ const[dates,setDates]=useState({from:"",to:""}),[filters,setFilters]=useState({from:"",to:""});
+ const[pagination,setPagination]=useState<{page:number;size:number;total:number}|null>(null);
+ const[loading,setLoading]=useState(true),[ledgerError,setLedgerError]=useState(""),[summaryError,setSummaryError]=useState(""),[refresh,setRefresh]=useState(0);
+ const ledgerPage=pagination?.page??1,ledgerSize=pagination?.size??pageSize;
+ useEffect(()=>{
+  const controller=new AbortController();
+  void fetch("/api/wallet?view=summary",{cache:"no-store",signal:controller.signal}).then(async response=>{
+   const data=await response.json();
+   if(!response.ok)throw new Error(data.error||"账户余额读取失败");
+   if(!controller.signal.aborted)setWallet(data.wallet);
+  }).catch(()=>{if(!controller.signal.aborted)setSummaryError("暂时无法读取账户余额，请刷新页面重试。")});
+  void fetch("/api/wallet/recharge",{signal:controller.signal}).then(async response=>{
+   const data=await response.json();
+   if(response.ok&&!controller.signal.aborted){setGateways(data.gateways||[]);setGateway(value=>value||data.gateways?.[0]?.type||"");}
+  }).catch(()=>{});
+  return()=>controller.abort();
+ },[]);
+ useEffect(()=>{
+  const controller=new AbortController();
+  const params=new URLSearchParams({view:"ledger",page:String(page),size:String(pageSize),from:filters.from,to:filters.to});
+  setLoading(true);setLedgerError("");
+  void fetch("/api/wallet?"+params,{cache:"no-store",signal:controller.signal}).then(async response=>{
+   const data=await response.json();
+   if(!response.ok)throw new Error(data.error||"资金流水读取失败");
+   if(!controller.signal.aborted){setTx(data.transactions);setPagination(data.pagination);}
+  }).catch(error=>{if(!controller.signal.aborted){setLedgerError(error.message||"资金流水读取失败");setTx([]);setPagination(null);}})
+   .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
+  return()=>controller.abort();
+ },[page,pageSize,filters,refresh]);
+
  async function recharge(e:React.FormEvent){e.preventDefault();setSaving(true);const r=await fetch("/api/wallet/recharge",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({amount:Number(amount),gateway})}),d=await r.json();setSaving(false);if(!r.ok)return setMessage(d.error||"充值订单创建失败");if(d.redirectUrl)return location.href=d.redirectUrl;setMessage(`充值订单 ${d.orderId} 已创建`);setOpen(false)}
  const status=({active:"正常",overdue:"已逾期",frozen:"已冻结"} as Record<string,string>)[wallet.creditStatus]||"正常";
- return <div className="customer-page wallet-page"><header><div><h1>余额与总交易流水</h1><p>全部充值、余额消费、信用消费、还款、退款及调账记录统一在此汇总</p></div><button data-ui="action" data-ui-tone="primary" className="primary" onClick={()=>setOpen(true)}>＋ 余额充值</button></header>{message&&<div className="auth-success">{message}</div>}
+ return <div className="customer-page wallet-page"><header><div><h1>余额与总交易流水</h1><p>全部充值、余额消费、信用消费、还款、退款及调账记录统一在此汇总</p></div><button data-ui="action" data-ui-tone="primary" className="primary" onClick={()=>setOpen(true)}>＋ 余额充值</button></header>{message&&<div className="auth-success">{message}</div>}{summaryError&&<div className="live-error" role="alert">{summaryError}</div>}
  <div className="wallet-cards"><article><span>账户余额</span><b>{money(wallet.balance)}</b><small>{wallet.currency}</small></article><article><span>信用额度</span><b>{money(wallet.creditLimit)}</b><small>每月 {wallet.billDay} 日出账 · {wallet.repaymentDay} 日还款</small></article><article><span>本期待还</span><b>{money(wallet.creditUsed)}</b><small>状态：{status}</small></article><article><span>可用信用</span><b>{money(wallet.availableCredit)}</b><small>{wallet.creditStatus==="active"?"可用于订单支付":"信用支付暂不可用"}</small></article></div>
  {wallet.creditLimit>0&&<div className="wallet-credit-entry"><div><b>信用账单已独立管理</b><small>按固定账期查看信用消费、待还金额和历史账单。</small></div><a href="/dashboard?tab=credit-bills">进入信用账单 →</a></div>}
- <div className="standalone-table wallet-ledger-table"><div className="wrow head"><span>序号</span><span>流水号</span><span>类型</span><span>支付方式</span><span>金额</span><span>变动后余额</span><span>关联服务</span><span>说明</span><span>时间</span></div>{tx.length?tx.map((x,index)=><div className="wrow" key={x.id}><span className="table-sequence">{index+1}</span><span><button className="wallet-transaction-link mono" onClick={()=>setDetail(x)}>{x.id}</button></span><span>{names[x.type]||"其他交易"}</span><span>{x.paymentLabel||"—"}</span><span className={x.amount>=0?"money-in":"money-out"}>{x.amount>=0?"+":""}{money(x.amount)}</span><span>{money(x.balanceAfter)}</span><span><LedgerSummary context={x.serviceContext}/></span><span>{x.note||"—"}</span><span>{new Date(x.createdAt).toLocaleString()}</span></div>):<div className="empty">暂无资金流水</div>}</div>
- {detail&&<div className="customer-payment-mask" onMouseDown={event=>{if(event.target===event.currentTarget)setDetail(null)}}><section className="customer-payment-modal wallet-transaction-modal"><header><div><small>TRANSACTION DETAIL</small><h2>交易流水详情</h2></div><button type="button" aria-label="关闭交易流水详情" onClick={()=>setDetail(null)}>×</button></header><dl><div><dt>完整流水号</dt><dd className="mono">{detail.id}</dd></div><div><dt>交易类型</dt><dd>{names[detail.type]||"其他交易"}</dd></div><div><dt>支付方式</dt><dd>{detail.paymentLabel||"—"}</dd></div><div><dt>交易金额</dt><dd className={detail.amount>=0?"money-in":"money-out"}>{detail.amount>=0?"+":""}{money(detail.amount)}</dd></div><div><dt>变动前余额</dt><dd>{money(detail.balanceBefore)}</dd></div><div><dt>变动后余额</dt><dd>{money(detail.balanceAfter)}</dd></div><div><dt>关联业务</dt><dd>{detail.referenceType||"—"}</dd></div><div><dt>关联订单</dt><dd>{detail.relatedOrder?.id||detail.referenceId||"—"}</dd></div>{detail.relatedOrder&&<><div><dt>商品 / 地区</dt><dd>{detail.relatedOrder.product} · {detail.relatedOrder.region} × {detail.relatedOrder.quantity}</dd></div><div><dt>订单状态</dt><dd>{detail.relatedOrder.status}</dd></div></>}<div><dt>交易说明</dt><dd>{detail.note||"—"}</dd></div><div><dt>交易时间</dt><dd>{new Date(detail.createdAt).toLocaleString("zh-CN")}</dd></div></dl><LedgerDetails context={detail.serviceContext} paid={detail.amount}/><footer><button data-ui="action" data-ui-tone="primary" className="primary" type="button" onClick={()=>setDetail(null)}>关闭详情</button></footer></section></div>}
+ <section className="wallet-ledger-panel" aria-label="资金流水">
+  <div className="wallet-ledger-toolbar">
+   <div><h2>资金流水</h2><p>按交易日期查找历史记录（北京时间）</p></div>
+   <form className="wallet-ledger-filters" onSubmit={event=>{event.preventDefault();setPage(1);setDetail(null);setFilters({...dates});}}>
+    <label><span>开始日期</span><input type="date" value={dates.from} max={dates.to||undefined} onChange={event=>setDates(current=>({...current,from:event.target.value}))}/></label>
+    <label><span>结束日期</span><input type="date" value={dates.to} min={dates.from||undefined} onChange={event=>setDates(current=>({...current,to:event.target.value}))}/></label>
+    <div className="wallet-ledger-filter-actions"><button data-ui="action" data-ui-tone="primary" type="submit">查询</button><button data-ui="action" data-ui-tone="secondary" type="button" onClick={()=>{setDates({from:"",to:""});setFilters({from:"",to:""});setPage(1);setDetail(null);}}>清除</button></div>
+   </form>
+  </div>
+  {ledgerError&&<div className="wallet-ledger-error live-error" role="alert">{ledgerError} <button data-ui="action" data-ui-tone="secondary" type="button" onClick={()=>setRefresh(value=>value+1)}>重试</button></div>}
+ <div className="standalone-table wallet-ledger-table" aria-busy={loading}><div className="wrow head"><span>序号</span><span>流水号</span><span>类型</span><span>支付方式</span><span>金额</span><span>变动后余额</span><span>关联服务</span><span>说明</span><span>时间</span></div>{tx.length?tx.map((x,index)=><div className="wrow" key={x.id}><span className="table-sequence">{(ledgerPage-1)*ledgerSize+index+1}</span><span><button className="wallet-transaction-link mono" onClick={()=>setDetail(x)}>{x.id}</button></span><span>{names[x.type]||"其他交易"}</span><span>{x.paymentLabel||"—"}</span><span className={x.amount>=0?"money-in":"money-out"}>{x.amount>=0?"+":""}{money(x.amount)}</span><span>{money(x.balanceAfter)}</span><span><LedgerSummary context={x.serviceContext}/></span><span>{x.note||"—"}</span><span>{beijingTime(x.createdAt)}</span></div>):<div className="empty">{loading?"正在加载流水…":ledgerError?"暂时无法读取流水":filters.from||filters.to?"所选日期内没有资金流水":"暂无资金流水"}</div>}</div>
+  {pagination&&<Pagination busy={loading} total={pagination.total} page={ledgerPage} pageSize={ledgerSize} onPage={value=>{setPage(value);setDetail(null);}} onPageSize={value=>{setPageSize(value);setPage(1);setDetail(null);}}/>}
+ </section>
+ {detail&&<div className="customer-payment-mask" onMouseDown={event=>{if(event.target===event.currentTarget)setDetail(null)}}><section className="customer-payment-modal wallet-transaction-modal"><header><div><small>TRANSACTION DETAIL</small><h2>交易流水详情</h2></div><button type="button" aria-label="关闭交易流水详情" onClick={()=>setDetail(null)}>×</button></header><dl><div><dt>完整流水号</dt><dd className="mono">{detail.id}</dd></div><div><dt>交易类型</dt><dd>{names[detail.type]||"其他交易"}</dd></div><div><dt>支付方式</dt><dd>{detail.paymentLabel||"—"}</dd></div><div><dt>交易金额</dt><dd className={detail.amount>=0?"money-in":"money-out"}>{detail.amount>=0?"+":""}{money(detail.amount)}</dd></div><div><dt>变动前余额</dt><dd>{money(detail.balanceBefore)}</dd></div><div><dt>变动后余额</dt><dd>{money(detail.balanceAfter)}</dd></div><div><dt>关联业务</dt><dd>{detail.referenceType||"—"}</dd></div><div><dt>关联订单</dt><dd>{detail.relatedOrder?.id||detail.referenceId||"—"}</dd></div>{detail.relatedOrder&&<><div><dt>商品 / 地区</dt><dd>{detail.relatedOrder.product} · {detail.relatedOrder.region} × {detail.relatedOrder.quantity}</dd></div><div><dt>订单状态</dt><dd>{detail.relatedOrder.status}</dd></div></>}<div><dt>交易说明</dt><dd>{detail.note||"—"}</dd></div><div><dt>交易时间</dt><dd>{beijingTime(detail.createdAt)}</dd></div></dl><LedgerDetails context={detail.serviceContext} paid={detail.amount}/><footer><button data-ui="action" data-ui-tone="primary" className="primary" type="button" onClick={()=>setDetail(null)}>关闭详情</button></footer></section></div>}
  {open&&<div className="customer-payment-mask" onMouseDown={e=>{if(e.target===e.currentTarget)setOpen(false)}}><form className="customer-payment-modal" onSubmit={recharge}><header><div><small>账户充值</small><h2>充值余额</h2></div><button type="button" onClick={()=>setOpen(false)}>×</button></header><label>充值金额<div className="recharge-amount"><span>{wallet.currency}</span><input type="number" min="10" max="100000" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)} required/></div></label><div className="recharge-presets">{[50,100,200,500,1000].map(x=><button type="button" className={amount===String(x)?"on":""} onClick={()=>setAmount(String(x))} key={x}>{money(x)}</button>)}</div>{gateways.length?<label>支付方式<select value={gateway} onChange={e=>setGateway(e.target.value)}>{gateways.map(x=><option value={x.type} key={x.id}>{x.name}</option>)}</select></label>:<div className="live-error">暂未开通在线支付渠道</div>}<p>支付成功后，充值金额将自动计入账户余额。</p><footer><button data-ui="action" data-ui-tone="text" type="button" onClick={()=>setOpen(false)}>取消</button><button data-ui="action" data-ui-tone="primary" className="primary" disabled={saving||!gateways.length}>{saving?"正在创建订单…":"立即充值"}</button></footer></form></div>}</div>
 }

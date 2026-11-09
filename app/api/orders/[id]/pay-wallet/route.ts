@@ -11,6 +11,8 @@ import { parseReplacementSnapshot, replacementSnapshotLines } from "../../../../
 import { withRequestLock } from "../../../../../lib/request-lock";
 import {creditCycleForDate,ensureCreditAccount,refreshCreditRisk} from "../../../../../lib/credit";
 import {nextBusinessId} from "../../../../../lib/business-id";
+import {renewalPaymentBlocked} from "../../../../../lib/customer-renewal-policy";
+import {RENEWAL_CUTOFF_MESSAGE} from "../../../../../lib/customer-service-expiry";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentCustomer();
@@ -27,6 +29,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (order.status !== "pending") return NextResponse.json({ error: "当前订单状态不能支付" }, { status: 409 });
 
     if(unpaidOrderExpired(order,await getUnpaidOrderPolicy()))return NextResponse.json({error:"订单已超过付款时限，请重新下单"},{status:409});
+    if(await renewalPaymentBlocked(order))return NextResponse.json({error:RENEWAL_CUTOFF_MESSAGE},{status:409});
     let discount = 0;
     let coupon: null | typeof coupons.$inferSelect = null;
     if (couponCode) {

@@ -1,8 +1,11 @@
+import type {ServiceTraffic} from "./service-traffic-state";
+import {isCustomerNodeService} from "./customer-node-service.ts";
+
 export type VpsTarget = {provider:"komari"|"xpanel";serverId:string;name:string;updatedAt:string};
 export type KomariNodeConfig = {uuid:string;orderId:string;total:number;direction:"sum"|"up"|"down";baselineUp:number;baselineDown:number;adjustment:number;startedAt:string;boundOrderId?:string;boundOrderExpiry?:string;deferOfflineReset?:boolean;lastOrderExpiryReset?:string};
 export type BindingState = {orders:Record<string,VpsTarget[]>;komari:Record<string,KomariNodeConfig>;services?:Record<string,ServiceTraffic>;resetRequests?:Record<string,string>};
 export function isBindableNodeOrder(order:{product:string;status:string;adminNote?:string|null}){
- return ["soft-router","computer-node"].includes(order.product)&&["paid","provisioning","active"].includes(order.status)&&!order.adminNote?.includes("[RENEWAL_OF]")&&!order.adminNote?.includes("[BUNDLE_RENEWAL]true");
+ return isCustomerNodeService(order)&&!order.adminNote?.includes("[RENEWAL_OF]")&&!order.adminNote?.includes("[BUNDLE_RENEWAL]true");
 }
 export class BindingSwitchRequired extends Error {
  confirmation:string;
@@ -21,4 +24,3 @@ export function replaceOrderBinding(state:BindingState,orderId:string,target:Vps
  if(target&&Object.entries(state.orders).some(([id,items])=>id!==orderId&&items.some(v=>v.provider===target.provider&&v.serverId===target.serverId)))throw new Error("所选 VPS 已绑定其他订单，请先处理该订单，不能直接抢占。");
  state.orders[orderId]=target?[target]:[];
 }
-import type {ServiceTraffic} from "./service-traffic-state";

@@ -68,9 +68,9 @@ export default function ServicePriceSettings(){
       </div>
     </div>
     <div className="policy-section">
-      <div className="policy-section-head"><i className="permission">期</i><div><h3>过期服务处理</h3><p>客户中心自动分类与归档，订单、账单及日志仍永久保留。</p></div></div>
-      <div className="policy-price-grid"><label><span>原列表保留时间<small>到期后仍显示在原服务列表，只允许续费</small></span><div><input type="number" min="0" max="3650" step="1" value={expiredGraceDays} onChange={e=>setExpiredGraceDays(e.target.value)}/><b>天</b></div></label><label><span>自动归档时间<small>超过此时间后从客户中心隐藏</small></span><div><input type="number" min="1" max="3650" step="1" value={expiredArchiveDays} onChange={e=>setExpiredArchiveDays(e.target.value)}/><b>天</b></div></label></div>
-      <div className="policy-tip"><b>当前规则</b><span>到期 {expiredGraceDays||0} 天内保留原处，之后移入“已到期服务”，{expiredArchiveDays||0} 天后自动归档。</span></div>
+      <div className="policy-section-head"><i className="permission">期</i><div><h3>过期服务处理</h3><p>客户中心保留过期服务记录，按到期天数限制续费。</p></div></div>
+      <div className="policy-price-grid"><label><span>原列表保留时间<small>到期后仍显示在原服务列表，只允许续费</small></span><div><input type="number" min="0" max="3650" step="1" value={expiredGraceDays} onChange={e=>setExpiredGraceDays(e.target.value)}/><b>天</b></div></label><label><span>到期后可续费期限<small>超过期限仍显示在已到期服务中，但客户不能续费</small></span><div><input type="number" min="1" max="3650" step="1" value={expiredArchiveDays} onChange={e=>setExpiredArchiveDays(e.target.value)}/><b>天</b></div></label></div>
+      <div className="policy-tip"><b>当前规则</b><span>到期 {expiredGraceDays||0} 天内保留原处，之后移入“已到期服务”。到期超过 {expiredArchiveDays||0} 天后停止客户续费，记录继续保留。</span></div>
     </div>
     <footer className="service-policy-footer"><button data-ui="action" data-ui-tone="primary" className="primary" type="button" disabled={saving} onClick={save}>{saving?"正在保存…":"保存默认配置"}</button></footer>
   </section>;

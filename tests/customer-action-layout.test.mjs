@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {serviceExpiryDisplay,serviceExpiryTime} from "../lib/service-expiry-display.ts";
+import {renewalCutoffDays,serviceBeyondExpiry,SERVICE_DAY_MS} from "../lib/customer-service-expiry.ts";
+import {walletLedgerQuery,walletPageBounds} from "../lib/wallet-ledger-query.ts";
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 const [orders, orderClient, ledger, proxy, node, expired, status, theme, support, adminColumns] = await Promise.all([
@@ -27,6 +29,33 @@ const statusWidth = Number(/\bwidth:\s*(\d+)px\s*!important/.exec(status)[1]);
 
 const serviceNow=Date.parse("2026-11-09T00:00:00Z");
 const serviceAt=delta=>new Date(serviceNow+delta).toISOString();
+test("customer renewal cutoff uses configured elapsed days and does not close on the boundary",()=>{
+  assert.equal(renewalCutoffDays(null),30);
+  assert.equal(renewalCutoffDays("14"),14);
+  assert.equal(renewalCutoffDays("1.5"),30);
+  assert.equal(serviceBeyondExpiry(serviceAt(-30*SERVICE_DAY_MS),30,serviceNow),false);
+  assert.equal(serviceBeyondExpiry(serviceAt(-30*SERVICE_DAY_MS-1),30,serviceNow),true);
+  assert.equal(serviceBeyondExpiry(null,30,serviceNow),false);
+  assert.equal(serviceBeyondExpiry(serviceAt(-15*SERVICE_DAY_MS),14,serviceNow),true);
+});
+
+test("wallet filters include the full Beijing day and handle calendar boundaries",()=>{
+  const query=walletLedgerQuery(new URLSearchParams("from=2026-11-09&to=2026-11-09"));
+  assert.equal(query.start.toISOString(),"2026-11-08T16:00:00.000Z");
+  assert.equal(query.endExclusive.toISOString(),"2026-11-09T16:00:00.000Z");
+  assert.equal(walletLedgerQuery(new URLSearchParams("to=2024-02-29")).endExclusive.toISOString(),"2024-02-29T16:00:00.000Z");
+  assert.equal(walletLedgerQuery(new URLSearchParams("from=2026-11-09")).endExclusive,null);
+  for(const params of ["from=2026-02-30","to=2026-11-31","from=2026-11-10&to=2026-11-09"]){
+    assert.throws(()=>walletLedgerQuery(new URLSearchParams(params)),/日期/);
+  }
+});
+
+test("wallet paging defaults to site size and can reach records beyond the former limit",()=>{
+  assert.deepEqual(walletLedgerQuery(new URLSearchParams("page=-1&size=999"),50),{page:1,size:50,start:null,endExclusive:null});
+  assert.deepEqual(walletPageBounds(6,20,123),{page:6,size:20,total:123,offset:100});
+  assert.deepEqual(walletPageBounds(1000,20,123),{page:7,size:20,total:123,offset:120});
+  assert.deepEqual(walletPageBounds(2,20,0),{page:1,size:20,total:0,offset:0});
+});
 test("service expiry presentation distinguishes real boundaries without changing the 48-hour policy",()=>{
   assert.equal(serviceExpiryDisplay(serviceAt(48*3600000+1),serviceNow).state,"active");
   assert.equal(serviceExpiryDisplay(serviceAt(48*3600000),serviceNow).state,"expiring");
