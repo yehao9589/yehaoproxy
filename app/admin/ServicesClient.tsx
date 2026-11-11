@@ -3,6 +3,7 @@ import { usePageSize } from "../usePageSize";
 import {AdminRefreshButton,useAdminRefresh} from "./AdminRefresh";
 
 import {countryName} from "../../lib/countries";
+import {CountryLabel} from "../components/CountryMark";
 import {normalizeWifiName} from "../../lib/wifi-name";
 import {serviceExpiryDisplay,serviceExpiryTime,type ServiceExpiryState} from "../../lib/service-expiry-display";
 import{useEffect,useMemo,useState}from"react";
@@ -52,11 +53,11 @@ export default function ServicesClient(){
       <span><button className="service-link" onClick={()=>openCustomer(item)}>{item.customerName||"未设置名称"}</button><small>{item.customerEmail}</small></span>
       <span><button className="service-resource-link mono" title={item.address||undefined} onClick={event=>void openResource(item,event.currentTarget.closest(".service-row") as HTMLElement)}>{item.kind==="proxy"?item.address:"订阅服务"}</button>{item.kind==="node"&&<small>节点服务</small>}</span>
       <span className="service-wifi-cell"><b>{item.wifiName||(item.kind==="proxy"?"未设置":"—")}</b>{wifiDuplicateKeys.has(wifiNameKey(item))&&<em data-ui="status" className="wifi-name-duplicate-badge" title="该客户有多个 IP 使用相同的 WiFi 名称，编辑资源时可查看关联记录">名称重复</em>}</span>
-      <span className="service-location-cell"><b>{[countryName(item.country||item.region),item.city].filter(Boolean).join(" / ")||"未设置地区"}</b><small>协议：{item.protocol||"—"}</small></span>
+      <span className="service-location-cell"><b><CountryLabel country={item.country||item.region}>{[countryName(item.country||item.region),item.city].filter(Boolean).join(" / ")||"未设置地区"}</CountryLabel></b><small>协议：{item.protocol||"—"}</small></span>
       <span className="service-billing-cell"><b>{period}</b><small title={`${item.billingCycle==="calendar-month"?"自然月计费":"固定天数计费"}，${item.autoRenew?"自动续费":"手动续费"}`}>{item.billingCycle==="calendar-month"?"自然月":"固定"} · {item.autoRenew?"自动续费":"手动续费"}</small></span>
       <span className="service-expiry-cell">{time?<time dateTime={item.expiresAt!} title="北京时间"><b>{time.date}</b><small>{time.time}</small></time>:<b className="service-unset-expiry">未设置</b>}</span>
       <span className="service-state-cell service-state-column"><em data-ui="status" className={`console-status-badge ${expiry.state}`}>{expiry.label}</em><small>{expiry.remaining}</small></span>
-      <span className="service-actions-cell"><button data-ui="action" data-ui-tone="secondary" className="service-manage" onClick={()=>void openOrder(item.orderId)}>编辑服务</button></span>
+      <span className="service-actions-cell" data-ui-density="row"><button data-ui="action" data-ui-tone="secondary" className="service-manage" onClick={()=>void openOrder(item.orderId)}>编辑服务</button></span>
      </div>;
     })}
     {!visible.length&&<div className="service-empty">没有符合条件的服务</div>}

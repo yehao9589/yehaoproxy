@@ -48,6 +48,17 @@
 .auth-submit[data-ui="action"],.installer-body>[data-ui="action"]{min-height:44px!important}
 .primary.large[data-ui="action"]{min-height:46px!important;padding:11px 22px!important;font-size:15px!important}
 
+/* A row is denser than a form or toolbar. Opt in at the action cell or on a
+   single inline action; leave columns, switches and modal controls alone. */
+[data-ui-density="row"]:not([data-ui]){gap:5px!important}
+:is([data-ui-density="row"]>[data-ui="action"],[data-ui="action"][data-ui-density="row"]){
+  gap:4px;min-height:28px!important;padding:4px 8px!important;border-radius:6px!important;
+  font-size:12px!important;line-height:18px!important;
+}
+:is([data-ui-density="row"]>[data-ui="action"],[data-ui="action"][data-ui-density="row"])>.console-icon{
+  flex:0 0 14px;width:14px;height:14px;
+}
+
 /* Explicit legacy badges inserted by enhancers share the same visual surface.
    Their sizes remain owned by console-status-system.css, loaded after this file. */
 :is([data-ui="status"],.service-proxy-status,.addon-service-state,.ops-status,.bill-financial,.bill-progress){
@@ -94,6 +105,7 @@
 
 @media(max-width:600px),(pointer:coarse){
   [data-ui="action"],:is(.aftersales-row-actions,.verify-actions,.live-actions,.product-order-actions,.customer-actions,.node-service-actions,.proxy-row-actions,.vops-row-actions,.bkp-record-actions) [data-ui="action"],.order-customer-page .customer-order-actions [data-ui="action"]{min-height:44px!important}
+  :is([data-ui-density="row"]>[data-ui="action"],[data-ui="action"][data-ui-density="row"]){min-height:44px!important}
 }
 @media(prefers-reduced-motion:reduce){[data-ui="action"]{transition:none!important}}
 }

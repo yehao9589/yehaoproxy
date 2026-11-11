@@ -34,7 +34,9 @@ export async function POST(request: Request) {
     defaultPageSize,
     siteName: text(body.siteName, 40) || defaultSiteConfig.siteName,
     logoText: text(body.logoText, 4) || "Y",
-    logoUrl: text(body.logoUrl, 500),
+    // The upload/delete endpoint owns the logo; a settings save must not
+    // truncate a database-backed data URL or restore a stale form value.
+    logoUrl: current.logoUrl,
     topAdEnabled: Boolean(body.topAdEnabled),
     topAdText: text(body.topAdText, 120),
     topAdLink: text(body.topAdLink, 500),
@@ -45,14 +47,8 @@ export async function POST(request: Request) {
     icpNumber: text(body.icpNumber, 80),
   };
 
-  for (const url of [value.logoUrl, value.topAdLink]) {
-    const isPreviewLogo = url === value.logoUrl && /^data:image\/(?:png|jpeg|webp);base64,/i.test(url);
-    if (url && !isPreviewLogo && !/^https?:\/\//i.test(url) && !url.startsWith("/")) {
-      return NextResponse.json(
-        { error: "图片或广告链接必须是完整网址或站内路径" },
-        { status: 400 },
-      );
-    }
+  if (value.topAdLink && !/^https?:\/\//i.test(value.topAdLink) && !value.topAdLink.startsWith("/")) {
+    return NextResponse.json({ error: "广告链接必须是完整网址或站内路径" }, { status: 400 });
   }
   await saveSiteConfig(value);
   await audit(

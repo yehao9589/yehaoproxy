@@ -69,10 +69,10 @@ export default function AddonServiceStatusEnhancer() {
         if (request && request.status !== "completed" && expiry) expiry.appendChild(createBadge(request));
       });
 
-      document.querySelectorAll<HTMLElement>(".managed-node-table .orow:not(.head)").forEach(row => {
+      document.querySelectorAll<HTMLElement>(".customer-node-card[data-order-id]").forEach(row => {
         const orderId = row.dataset.orderId;
         const request = orderId ? latest.get(orderId) : undefined;
-        const statusCell = row.querySelector<HTMLElement>(".node-service-actions")?.previousElementSibling as HTMLElement | undefined;
+        const statusCell = row.querySelector<HTMLElement>(".customer-node-status");
         if (request && request.status !== "completed" && statusCell) statusCell.appendChild(createBadge(request));
       });
     }
@@ -86,7 +86,7 @@ export default function AddonServiceStatusEnhancer() {
     }
 
     const renderObserver = new MutationObserver(() => {
-      const serviceRow = document.querySelector(".managed-proxy-table .orow:not(.head), .managed-node-table .orow:not(.head)");
+      const serviceRow = document.querySelector(".managed-proxy-table .orow:not(.head), .customer-node-card[data-order-id]");
       if (!serviceRow) return;
       renderObserver?.disconnect();
       void sync();

@@ -36,6 +36,22 @@ test("customer and admin shells keep navigation reachable on mobile", async () =
   assert.match(sharedCss, /overflow-x:auto/);
 });
 
+test("impersonation controls stay in the sticky customer header, out of pagination", async()=>{
+  const [page,dashboard,banner,style]=await Promise.all([
+    "app/dashboard/page.tsx","app/dashboard/LiveDashboard.tsx",
+    "app/dashboard/ImpersonationBanner.tsx","app/impersonation.css",
+  ].map(read));
+  assert.match(page,/cookies\(\)\)\.get\("yh_admin_session"\)/);
+  assert.match(page,/<LiveDashboard[^>]+impersonating=\{impersonating\}/);
+  assert.match(dashboard,/<header[^]*\{impersonating && <ImpersonationBanner \/>\}[^]*<\/header>/);
+  assert.match(banner,/href="\/api\/admin\/impersonation\/return"/);
+  assert.match(banner,/fetch\("\/api\/admin\/impersonation\/heartbeat",\{method:"POST"/);
+  assert.match(style,/\.console-top\.is-impersonating\{position:sticky;top:0/);
+  assert.doesNotMatch(style,/position:\s*fixed|bottom:\s*\d/);
+  assert.match(style,/body:has\(\.console-top\.is-impersonating\):not\(\.dashboard-mobile-menu-active\)\{overflow-x:clip/);
+  assert.match(style,/@media\(max-width:1080px\)[^]*\.impersonation-banner\{flex:0 0 100%/);
+});
+
 test("traffic reset resolves both binding providers and preserves Komari history",async()=>{
  const route=await read("app/api/admin/service-requests/[id]/route.ts");
  assert.match(route,/resetOrderVpsTraffic\(request.allocationId,id\)/);
@@ -105,8 +121,10 @@ test("customer node traffic shows only authorized service schedules from the sha
  const [services,traffic,route,actions,layout]=await Promise.all([
    "app/dashboard/proxies/ProxiesClient.tsx","app/dashboard/proxies/NodeTraffic.tsx","app/api/orders/[id]/node-traffic/route.ts","app/api/orders/[id]/node-service/route.ts","app/layout.tsx",
  ].map(read));
- assert.match(services,/const nodeOrders=credits\.filter\(isCustomerNodeService\)/);
- assert.match(services,/x\.status==="active"&&!serviceExpired\(x\.expiresAt\)&&<NodeTraffic/);
+ assert.match(services,/const nodeOrders=rawCredits\.filter\(isCustomerNodeService\)/);
+ assert.match(services,/const expired=x\.status==="active"&&serviceExpired\(x\.expiresAt\)/);
+ assert.match(services,/canUse=x\.status==="active"&&!expired/);
+ assert.match(services,/\{canUse\?<NodeTraffic/);
  assert.match(traffic,/下次流量重置/);
  assert.match(traffic,/<time dateTime=\{resetAt\} title="北京时间">/);
  assert.match(traffic,/未安排/);
@@ -280,7 +298,7 @@ test("release metadata and workflow are pinned behind a quality gate", async () 
     read(".github/workflows/publish-images.yml"),
     read("lib/update-center.ts"),
   ]);
-  assert.equal(JSON.parse(pkg).version, "1.0.26");
+  assert.equal(JSON.parse(pkg).version, "1.0.27");
   assert.match(pkg, /"check": "pnpm run lint && pnpm run typecheck && pnpm run test"/);
   assert.match(compose, /yehaoproxy:stable/);
   assert.match(compose, /UPDATE_CHANNEL: stable/);

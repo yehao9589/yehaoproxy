@@ -18,9 +18,18 @@ const shapes = {
   arrow: <path d="M4 12h16m-6-6 6 6-6 6"/>,
   chevron: <path d="m8 4 8 8-8 8"/>,
   logout: <><path d="M10 3H4v18h6M10 12h11m-5-5 5 5-5 5"/></>,
+  login: <path d="M14 3h6v18h-6M3 12h12m-5-5 5 5-5 5"/>,
   check: <path d="m4 12 5 5L20 6"/>,
   network: <><rect x="8" y="2" width="8" height="6" rx="1"/><path d="M12 8v5M4 16v-3h16v3M12 13v3"/><rect x="1" y="16" width="6" height="6" rx="1"/><rect x="9" y="16" width="6" height="6" rx="1"/><rect x="17" y="16" width="6" height="6" rx="1"/></>,
   calendar: <><rect x="3" y="5" width="18" height="17" rx="2"/><path d="M7 2v6M17 2v6M3 11h18M8 15h2M14 15h2M8 18h2"/></>,
+  globe: <><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></>,
+  receipt: <><path d="M5 3h14v18l-3.5-2-3.5 2-3.5-2L5 21V3ZM8 8h8m-8 4h8m-8 4h4"/></>,
+  "credit-card": <><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h3"/></>,
+  cart: <><path d="M2 4h3l2.5 11h11l2-8H6"/><circle cx="9" cy="19" r="1"/><circle cx="17" cy="19" r="1"/></>,
+  download: <><path d="M12 3v12m-4-4 4 4 4-4M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></>,
+  edit: <><path d="m14 5 5 5M4 20l4.7-1 11-11a2 2 0 0 0-3-3l-11 11L4 20Z"/></>,
+  "arrow-in": <path d="m18 6-12 12m0-8v8h8"/>,
+  "arrow-out": <path d="M6 18 18 6m-8 0h8v8"/>,
 } satisfies Record<string, React.ReactNode>;
 
 export type ConsoleIconName = keyof typeof shapes;

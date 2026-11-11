@@ -7,11 +7,11 @@ import {walletLedgerQuery,walletPageBounds} from "../lib/wallet-ledger-query.ts"
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 const [orders, orderClient, ledger, proxy, node, expired, status, theme, support, adminColumns] = await Promise.all([
-  "app/customer-orders.css",
+  "app/dashboard/orders/order-desk.css",
   "app/dashboard/orders/OrderClient.tsx",
   "app/dashboard/wallet/ledger-services.css",
   "app/proxy-search.css",
-  "app/customer-service-header.css",
+  "app/dashboard/proxies/node-services.css",
   "app/dashboard/proxies/expired-services.css",
   "app/console-status-system.css",
   "app/console-visual-system.css",
@@ -113,33 +113,25 @@ test("long order numbers yield space without shrinking the service type icons",a
   assert.match(client,/className="service-identity-text"[^\n]+<small title=\{item\.orderId\}>/);
 });
 
-test("order rows reserve room for the shared badge and complete payment labels", () => {
-  const [base, wide] = bodies(orders, ".order-customer-page .order-customer-table .orow");
-  const tracks = trackMinimums(prop(base, "grid-template-columns"));
-  assert.equal(tracks.length, 9, "ten columns including the responsive action track");
-  assert.ok(tracks.at(-1) >= statusWidth);
-  assert.doesNotMatch(ledger, /\.order-customer-table/, "wallet styles must not override the order tracks");
-  assert.match(orders, /@container customer-orders \(min-width:1384px\)/);
-  assert.equal(prop(base, "--order-actions-columns"), "1");
-  assert.equal(prop(wide, "--order-actions-columns"), "2");
-  const actionLayout = bodies(orders, ".order-customer-page .customer-order-actions").at(-1);
-  const button = bodies(orders, ".order-customer-page .customer-order-actions :is(a,button)")[0];
-  const busyLabel = orderClient.match(/paying===o\.id\?"([^"]+)":"立即支付"/)?.[1];
-  assert.ok(busyLabel);
-  const reservedTextWidth = [...busyLabel].length * px(prop(button, "font-size"));
-  const paddingAndBorder = 2 * (Number(prop(button, "padding").match(/ (\d+)px$/)[1]) + px(prop(button, "border")));
-  const [actionCell] = bodies(orders, ".order-customer-page .order-customer-table .orow>span:last-child");
-  const cellPadding = 2 * px(prop(actionCell, "padding-inline"));
-  for (const row of [base, wide]) {
-    const count = Number(prop(row, "--order-actions-columns"));
-    const width = px(prop(row, "--order-actions-width"));
-    assert.ok((width - cellPadding - (count - 1) * px(prop(actionLayout, "gap"))) / count >= reservedTextWidth + paddingAndBorder);
-  }
+test("order list reserves the fixed status width and keeps mobile actions in view", () => {
+  const [narrow] = bodies(orders, ".order-desk-row");
+  const [wide] = bodies(orders, ".order-desk-labels,\n  .order-desk-row");
+  const tracks = trackMinimums(prop(wide, "grid-template-columns"));
+  assert.equal(tracks.length, 6);
+  assert.ok(tracks[4] >= statusWidth);
+  assert.doesNotMatch(ledger, /\.order-desk/, "wallet styles must not override the order workspace");
+  const breakpoint = Number(orders.match(/@container order-desk \(min-width: (\d+)px\)/)?.[1]);
+  const minimum = tracks.reduce((sum, track) => sum + track, 0) + 5 * px(prop(wide, "column-gap")) + 2 * px(prop(wide, "padding-inline")) + 2;
+  assert.ok(breakpoint >= minimum && breakpoint <= 740, "keep an aligned list on ordinary desktop and tablet widths");
+  assert.match(prop(narrow, "grid-template-areas"), /"identity status"[\s\S]*"actions actions"/);
+  const [actions] = bodies(orders, ".order-desk-actions");
+  const [button] = bodies(orders, ".order-desk-actions :is(a,button)");
+  assert.equal(prop(actions, "flex-wrap"), "wrap");
   assert.equal(prop(button, "white-space"), "normal");
   assert.equal(prop(button, "overflow"), undefined);
 });
 
-test("order and after-sales headers keep their padding and a compact action", () => {
+test("after-sales header keeps its padding and a compact action", () => {
   const header = ".unified-console .customer-page>header.customer-order-page-header";
   const [desktop, mobile] = bodies(theme, header);
   const [action] = bodies(theme, `${header}>a.primary`);
@@ -151,12 +143,15 @@ test("order and after-sales headers keep their padding and a compact action", ()
   assert.equal(prop(action, "width"), "auto");
 });
 
-test("order actions stay at the visible edge and the table can be focused to scroll", () => {
-  const [cell] = bodies(orders, ".order-customer-page .order-customer-table .orow>span:last-child");
-  assert.equal(prop(cell, "position"), "sticky");
-  assert.equal(prop(cell, "inset-inline-end"), "0");
-  assert.equal(prop(cell, "background"), "inherit");
-  assert.match(orderClient, /className="standalone-table order-customer-table" role="region"[^>]*tabIndex=\{0\}/);
+test("order workspace exposes status filters, search, readable order numbers and the payment actions", () => {
+  assert.match(orderClient, /role="group" aria-label="按订单状态筛选"/);
+  assert.match(orderClient, /aria-pressed=\{statusFilter===id\}/);
+  assert.match(orderClient, /type="search" aria-label="搜索订单"/);
+  assert.match(orderClient, /visible\.slice\(offset,offset\+pageSize\)/);
+  assert.match(orderClient, /title=\{o\.id\} onClick=\{\(\)=>setDetail\(o\)\}/);
+  assert.match(orderClient, /paying===o\.id\?"正在创建支付…":"立即支付"/);
+  assert.match(orderClient, /onClick=\{\(\)=>void closeOrder\(o\)\}/);
+  assert.doesNotMatch(orderClient, /querySelectorAll|order-customer-table|order-desk-heading|购买服务/, "the dashboard header already supplies the order title and purchase action");
 });
 
 test("ticket creation scrolls fields independently of its action footer", () => {
@@ -169,6 +164,20 @@ test("ticket creation scrolls fields independently of its action footer", () => 
   assert.equal(prop(fields, "overflow-y"), "auto");
   assert.equal(prop(edges, "flex-shrink"), "0");
   assert.match(support, /<div className="customer-ticket-create-body">[\s\S]+?<\/div>\s*<footer>[\s\S]*?type="submit"/);
+});
+
+test("the order workspace note uses the available section width and only resizes vertically", async () => {
+  const [workspace, layout] = await Promise.all([
+    read("app/admin/OrderDetailWorkspace.tsx"),
+    read("app/admin-integrated.css"),
+  ]);
+  assert.match(workspace, /className="order-admin-note"[^]*?<div className="admin-note"><textarea name="adminNote"/);
+  const [field] = bodies(layout, ".order-form-grid input,.order-form-grid select,.admin-note textarea");
+  assert.equal(prop(field, "width"), "100%");
+  assert.equal(prop(field, "box-sizing"), "border-box");
+  const [note] = bodies(layout, ".order-workspace .order-admin-note textarea");
+  assert.equal(prop(note, "max-width"), "100%");
+  assert.equal(prop(note, "resize"), "vertical");
 });
 
 test("compact customer list keeps the real keyboard-accessible action buttons", () => {
@@ -191,10 +200,27 @@ test("customer proxy and node actions have room and usable targets", () => {
   assert.ok(px(prop(proxyActions[0], "min-height")) >= 32);
   assert.ok(px(prop(proxyActions[1], "min-height")) >= 44);
   assert.ok(px(prop(bodies(proxy, `${proxyTable} .proxy-note-cell>button`)[0], "width")) >= 30);
-  const [nodeActions] = bodies(node, ".unified-console .managed-node-table .node-service-actions");
-  assert.equal(prop(nodeActions, "grid-area"), "actions");
-  assert.match(prop(nodeActions, "grid-template-columns"), /auto-fit/);
+  const [nodeActions] = bodies(node, ".customer-node-auto,.customer-node-actions");
+  assert.equal(prop(nodeActions, "display"), "flex");
+  assert.equal(prop(nodeActions, "flex-wrap"), "wrap");
   assert.equal(prop(nodeActions, "min-width"), "0");
+  const [singleColumn] = bodies(node, ".customer-node-grid");
+  assert.equal(prop(singleColumn, "grid-template-columns"), "minmax(0,1fr)");
+  const cardLayouts = bodies(node, ".customer-node-card").map(body => prop(body, "grid-template-columns")).filter(Boolean);
+  assert.equal(cardLayouts[0], "minmax(0,1fr)");
+  assert.ok(cardLayouts.some(value => value.startsWith("minmax(155px,") && value.includes("minmax(294px,")));
+});
+
+test("proxy regions keep the country and city together and hide the decoration in narrow cells", async () => {
+  const [cell] = bodies(proxy, ".proxy-management-page .managed-proxy-table .proxy-region-cell");
+  assert.equal(prop(cell, "max-width"), "none");
+  assert.equal(prop(cell, "container"), "proxy-region / inline-size");
+  const [label] = bodies(proxy, ".managed-proxy-table .proxy-region-cell .country-label>span:last-child");
+  assert.equal(prop(label, "white-space"), "nowrap");
+  assert.equal(prop(label, "text-overflow"), "ellipsis");
+  assert.match(proxy, /@container proxy-region \(width < 108px\)\{\s*\.managed-proxy-table \.proxy-region-cell :is\(\.country-mark,\.country-mark-global\)\{display:none\}/);
+  const client = await read("app/dashboard/proxies/ProxiesClient.tsx");
+  assert.match(client, /<CountryLabel country=\{x\.region\}>\{\x60\$\{x\.countryName\|\|countryName\(x\.region\)\}\/\$\{cityName\(x\.city\)\}\x60\}<\/CountryLabel><\/b><small>\{x\.protocol\}<\/small>/);
 });
 
 test("expired services are horizontally scrollable whenever their own container is narrow", () => {

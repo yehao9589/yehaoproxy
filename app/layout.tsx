@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import {getSiteConfig} from "../lib/site-config";
 import "flag-icons/css/flag-icons.min.css";
+import "./country-marks.css";
 import "./globals.css";
 import "./portal.css";
 import "./admin.css";

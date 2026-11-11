@@ -1,0 +1,37 @@
+.country-mark.fi {
+  display:inline-block;
+  box-sizing:border-box;
+  flex:none;
+  width:18px;
+  height:13px;
+  border:1px solid #17283c21;
+  border-radius:3px;
+  vertical-align:-2px;
+  background-color:#fff;
+  background-size:cover;
+}
+.country-mark-global {
+  flex:none;
+  width:16px;
+  height:16px;
+  color:#65788e;
+  vertical-align:-3px;
+}
+.country-label {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+  max-width:100%;
+  vertical-align:middle;
+}
+.country-label>span:last-child {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.shared-action-icon {flex:none;width:15px;height:15px}
+.cart-product>.country-mark.fi {width:26px;height:18px}
+.store-category-tabs button>span>.console-icon,.horizontal-product-nav button>span>.console-icon,
+.node-global-notice>span>.console-icon {display:block}

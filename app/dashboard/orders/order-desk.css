@@ -1,0 +1,274 @@
+.order-desk {
+  --desk-ink: #233247;
+  --desk-muted: #5f7288;
+  --desk-line: #e4eaf0;
+  --desk-accent: #185eb1;
+  container: order-desk / inline-size;
+  min-width: 0;
+  color: var(--desk-ink);
+}
+
+.order-desk-actions svg,
+.order-desk-toolbar svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+
+.order-desk-panel {
+  border: 1px solid var(--desk-line);
+  border-radius: 11px;
+  background: #fff;
+}
+
+.order-desk-toolbar,
+.order-desk-filters,
+.order-desk-search {
+  display: flex;
+  align-items: center;
+}
+
+.order-desk-toolbar {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--desk-line);
+}
+
+.order-desk-filters {
+  flex-wrap: wrap;
+  gap: 2px 4px;
+}
+
+.order-desk-filters button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--desk-muted);
+  font-weight: 620;
+  white-space: nowrap;
+}
+
+.order-desk-filters button:hover,
+.order-desk-filters button[aria-pressed="true"] {
+  border-color: #e1eaf5;
+  background: #f1f6fc;
+  color: var(--desk-accent);
+}
+
+.order-desk-filters b {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+}
+
+.order-desk-search {
+  flex: 0 1 235px;
+  gap: 6px;
+  min-width: 0;
+  min-height: 35px;
+  padding: 0 8px;
+  border: 1px solid #dce4ed;
+  border-radius: 7px;
+  color: var(--desk-muted);
+}
+
+.order-desk-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--desk-ink);
+}
+
+.order-desk-search:focus-within,
+.order-desk :is(button,a):focus-visible {
+  outline: 2px solid #3278c8;
+  outline-offset: 2px;
+}
+
+.order-desk-search input:focus-visible { outline: none }
+.order-desk-labels { display: none }
+
+.order-desk-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "identity status"
+    "regions amount"
+    "service service"
+    "actions actions";
+  align-items: start;
+  gap: 8px 12px;
+  padding: 12px 15px;
+}
+
+.order-desk-row + .order-desk-row { border-top: 1px solid var(--desk-line) }
+.order-desk-row > * { min-width: 0 }
+
+.order-desk-identity {
+  grid-area: identity;
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr);
+  align-items: start;
+  gap: 7px;
+}
+
+.order-desk-identity > div {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.order-desk-sequence {
+  display: grid;
+  place-items: center;
+  min-width: 25px;
+  min-height: 25px;
+  padding: 0 2px;
+  border-radius: 5px;
+  background: #f0f4f8;
+  color: var(--desk-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-desk-number {
+  max-width: 100%;
+  min-height: 25px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--desk-accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.order-desk-number:hover { text-decoration: underline }
+.order-desk-identity b { font-size: 13px; overflow-wrap: anywhere }
+.order-desk :is(.order-desk-identity,.order-desk-service) small,
+.order-desk-identity time {
+  max-width: 100%;
+  color: var(--desk-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.order-desk-regions {
+  grid-area: regions;
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+}
+
+.desk-order-region {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.desk-order-region > :last-child { min-width: 0; overflow-wrap: anywhere }
+.desk-order-region small { color: var(--desk-muted); white-space: nowrap }
+
+.order-desk-service {
+  grid-area: service;
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 4px;
+  min-width: 0;
+  padding-top: 6px;
+  border-top: 1px solid #f0f3f6;
+}
+
+.order-desk-service .order-resource-summary { max-width: 100%; gap: 2px }
+.order-desk-service .order-resource-summary button { margin-inline-start: -8px }
+.order-desk-amount { grid-area: amount; justify-self: end; text-align: right; font-variant-numeric: tabular-nums }
+.order-desk-amount strong { font-size: 14px; overflow-wrap: anywhere }
+.order-desk-status { grid-area: status; justify-self: end }
+
+.order-desk-actions {
+  grid-area: actions;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.order-desk-actions :is(a,button) {
+  max-width: 100%;
+  gap: 3px;
+  white-space: normal;
+  text-align: center;
+}
+
+.order-desk-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 34px 15px;
+  color: var(--desk-muted);
+}
+
+.order-desk-panel > .unified-pagination {
+  margin: 0;
+  padding: 10px 15px;
+  border-top: 1px solid var(--desk-line);
+}
+
+@container order-desk (min-width: 720px) {
+  .order-desk-labels,
+  .order-desk-row {
+    display: grid;
+    grid-template-columns: minmax(162px, 1.5fr) minmax(84px, .8fr) minmax(106px, 1.25fr) minmax(64px, .62fr) 92px minmax(114px, .96fr);
+    grid-template-areas: "identity regions service amount status actions";
+    align-items: center;
+    column-gap: 10px;
+    padding-inline: 12px;
+  }
+
+  .order-desk-labels {
+    padding-block: 9px;
+    border-bottom: 1px solid var(--desk-line);
+    background: #f6f8fb;
+    color: var(--desk-muted);
+    font-size: 12px;
+    font-weight: 640;
+  }
+
+  .order-desk-labels > :nth-child(4) { text-align: right }
+  .order-desk-labels > :nth-child(5) { text-align: center }
+  .order-desk-labels > :last-child { text-align: right }
+  .order-desk-service { padding-top: 0; border-top: 0 }
+}
+
+@container order-desk (max-width: 560px) {
+  .order-desk-toolbar,
+  .order-desk-row,
+  .order-desk-panel > .unified-pagination { padding-inline: 10px }
+  .order-desk-search { flex-basis: 100% }
+  .order-desk-filters button { gap: 4px; padding-inline: 6px }
+  .order-desk-filters svg { display: none }
+}
+
+@media (pointer: coarse) {
+  .order-desk-search,
+  .order-desk-number,
+  .order-desk-filters button { min-height: 44px }
+}

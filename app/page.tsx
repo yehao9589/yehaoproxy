@@ -3,16 +3,17 @@
 import {useEffect, useMemo, useState} from "react";
 import "./storefront-products.css";
 import StoreCart, {addStoreCartItem} from "./StoreCart";
-import { countryFlag, countryName } from "../lib/countries";
-const flagClass=(code:string)=>/^[A-Z]{2}$/i.test(code)?`fi fi-${code.toLowerCase()}`:"";
+import { countryName } from "../lib/countries";
+import CountryMark from "./components/CountryMark";
+import ConsoleIcon from "./components/ConsoleIcon";
 
 const defaultRegions = [
-  {code: "US", flag: "🇺🇸", country: "美国", city: "", price: 3.8},
-  {code: "GB", flag: "🇬🇧", country: "英国", city: "", price: 4.2},
-  {code: "DE", flag: "🇩🇪", country: "德国", city: "", price: 4},
-  {code: "JP", flag: "🇯🇵", country: "日本", city: "", price: 4.8},
-  {code: "SG", flag: "🇸🇬", country: "新加坡", city: "", price: 4.6},
-  {code: "HK", flag: "🇭🇰", country: "中国香港", city: "", price: 4.5},
+  {code: "US", country: "美国", city: "", price: 3.8},
+  {code: "GB", country: "英国", city: "", price: 4.2},
+  {code: "DE", country: "德国", city: "", price: 4},
+  {code: "JP", country: "日本", city: "", price: 4.8},
+  {code: "SG", country: "新加坡", city: "", price: 4.6},
+  {code: "HK", country: "中国香港", city: "", price: 4.5},
 ];
 
 const defaultProducts = [
@@ -84,7 +85,6 @@ export default function Home() {
       const fallback = defaultRegions.find(item => item.code === code);
       return {
         code,
-        flag: countryFlag(code),
         country: countryName(code),
         city: "",
         price: fallback?.price || 4.5,
@@ -190,7 +190,7 @@ export default function Home() {
 
   return <main>
     {siteConfig.topAdEnabled && siteConfig.topAdText && <div className="notice">{siteConfig.topAdLink ? <a href={siteConfig.topAdLink}>{siteConfig.topAdText}</a> : siteConfig.topAdText}</div>}
-    <header><a className="brand" href="#">{siteConfig.logoUrl ? <span className="has-logo"><img src={siteConfig.logoUrl} alt="" /></span> : <span>{siteConfig.logoText}</span>} {siteConfig.siteName}</a><nav><a href="#products">产品</a><a href="#pricing">定价</a><a href="#why">解决方案</a><a href="#faq">帮助中心</a></nav>{currentUser?<div className="header-current-user"><span>{(currentUser.name||currentUser.email).slice(0,1).toUpperCase()}</span><div><small>{currentUser.role==="admin"?"超级管理员":"当前登录用户"}</small><b>{currentUser.name||currentUser.email}</b></div><a href={currentUser.role==="admin"?"/admin":"/dashboard"}>{currentUser.role==="admin"?"管理后台":"客户中心"}</a><button type="button" disabled={loggingOut} onClick={()=>void logout()}>{loggingOut?"退出中…":"退出账号"}</button></div>:<div className="header-actions"><a data-ui="action" data-ui-tone="secondary" className="ghost" href="/login">登录</a><a data-ui="action" data-ui-tone="primary" className="primary" href="/register">免费注册</a></div>}</header>
+    <header><a className="brand" href="#">{siteConfig.logoUrl ? <span className="has-logo"><img src={siteConfig.logoUrl} alt="" /></span> : <span>{siteConfig.logoText}</span>} {siteConfig.siteName}</a><nav><a href="#products">产品</a><a href="#pricing">定价</a><a href="#why">解决方案</a><a href="#faq">帮助中心</a></nav>{currentUser?<div className="header-current-user"><span>{(currentUser.name||currentUser.email).slice(0,1).toUpperCase()}</span><div><small>{currentUser.role==="admin"?"超级管理员":"当前登录用户"}</small><b>{currentUser.name||currentUser.email}</b></div><a href={currentUser.role==="admin"?"/admin":"/dashboard"}>{currentUser.role==="admin"?"管理后台":"客户中心"}</a><button type="button" disabled={loggingOut} onClick={()=>void logout()}>{loggingOut?"退出中…":"退出账号"}</button></div>:<div className="header-actions"><a data-ui="action" data-ui-tone="secondary" className="ghost" href="/login"><ConsoleIcon className="shared-action-icon" name="login"/>登录</a><a data-ui="action" data-ui-tone="primary" className="primary" href="/register"><ConsoleIcon className="shared-action-icon" name="users"/>免费注册</a></div>}</header>
 
     <section className="hero"><div className="hero-copy"><div className="eyebrow">全球企业级网络服务</div><h1>稳定、纯净、<em>即买即用</em>的网络资源</h1><p>为跨境电商、数据业务、远程办公和多设备运营提供可靠连接。</p><div className="hero-actions"><a data-ui="action" data-ui-tone="primary" className="primary large" href="#pricing">立即选购</a><a className="text-link" href="#products">查看产品 →</a></div><div className="metrics"><div><b>80M+</b><span>全球 IP 池</span></div><div><b>99.9%</b><span>网络可用率</span></div><div><b>7×24</b><span>售后支持</span></div></div></div><div className="network-card"><div className="globe">◎<i className="dot d1"/><i className="dot d2"/><i className="dot d3"/></div><div className="status"><i/> 全球网络运行正常 <b>99.99%</b></div></div></section>
 
@@ -201,24 +201,24 @@ export default function Home() {
       {!catalogLoaded&&<div className="store-catalog-skeleton" role="status"><div><i/><span><b>正在读取商品目录</b><small>正在同步后台商品、地区和价格…</small></span></div><section><i/><i/><i/></section><footer><i/><i/></footer></div>}
       {catalogEmpty&&<div className="store-catalog-empty"><b>暂无可售商品</b><span>商品目录暂时不可用，请稍后刷新或联系客服。</span></div>}
       <div className="store-category-tabs store-category-top">
-        <button className={category==="proxy"?"on":""} onClick={()=>chooseCategory("proxy")}><span>◫</span><b>代理 IP</b><small>静态住宅、动态住宅、数据中心</small></button>
-        <button className={category==="node"?"on":""} onClick={()=>chooseCategory("node")}><span>▣</span><b>节点服务</b><small>软路由中转、电脑节点</small></button>
+        <button className={category==="proxy"?"on":""} onClick={()=>chooseCategory("proxy")}><span><ConsoleIcon name="network"/></span><b>代理 IP</b><small>静态住宅、动态住宅、数据中心</small></button>
+        <button className={category==="node"?"on":""} onClick={()=>chooseCategory("node")}><span><ConsoleIcon name="server"/></span><b>节点服务</b><small>软路由中转、电脑节点</small></button>
       </div>
       <div className="horizontal-product-nav">
         <div className="horizontal-product-label"><span>商品列表</span><b>{category==="proxy"?"代理 IP":"节点服务"}</b></div>
-        {visibleProducts.map(item=>{const enabled=productEnabled(item.id);return <button key={item.id} disabled={!enabled} className={`${product===item.id?"active":""} ${!enabled?"unavailable":""}`} onClick={()=>setProduct(item.id)}><span>{item.category==="node"?"▣":"◫"}</span><div><b>{item.name}</b><small>{enabled?item.desc:"后台已关闭售卖"}</small></div><i>{!enabled?"停售":product===item.id?"✓":"›"}</i></button>})}
+        {visibleProducts.map(item=>{const enabled=productEnabled(item.id);return <button key={item.id} disabled={!enabled} className={`${product===item.id?"active":""} ${!enabled?"unavailable":""}`} onClick={()=>setProduct(item.id)}><span><ConsoleIcon name={item.category==="node"?"server":"network"}/></span><div><b>{item.name}</b><small>{enabled?item.desc:"后台已关闭售卖"}</small></div><i>{!enabled?"停售":product===item.id?"✓":"›"}</i></button>})}
       </div>
       <div className="store-commerce-grid">
       <div className="unified-store config-only">
         <div className="unified-config-panel">
           <header><div><span>{isNode?"节点服务":"代理 IP"}</span><h3>{currentProduct.name}</h3><p>{currentProduct.desc}</p></div><em>{isNode?"人工开通":"人工开通"}</em></header>
-          {!isNode&&<div className="config-block"><div className="config-title"><b>1. 选择地区</b><span className="selected-region"><i className={flagClass(selectedRegion.code)} title={`${selectedRegion.country}国旗`}/>{selectedRegion.country}</span></div><div className="compact-regions">{regions.map((region,index)=>{const offer=saleOffers?.find(item=>item.product===product&&item.region===region.code);const enabled=saleOffers===null||Boolean(offer);const price=offer?(duration===7?offer.price7:duration===90?offer.price90:duration===180?offer.price180:offer.price30):region.price*(duration===7?.35:duration===30?1:duration===90?2.55:5.1);return <button key={region.code} disabled={!enabled} className={`${selected===index?"selected":""} ${!enabled?"unavailable":""}`} onClick={()=>setSelected(index)}><span className="country-flag"><i className={flagClass(region.code)} title={`${region.country}国旗`}/></span><b>{region.country}</b><small>{enabled?region.code:"暂停销售"}</small><em>{enabled?`$${price.toFixed(2)}`:"停售"}</em></button>})}</div></div>}
-          {isNode&&<div className="node-global-notice"><span>▣</span><div><b>无需选择地区</b><small>{currentProduct.name} 为全局节点商品，付款后由管理员完成开通。</small></div></div>}
+          {!isNode&&<div className="config-block"><div className="config-title"><b>1. 选择地区</b><span className="selected-region"><CountryMark country={selectedRegion.code}/>{selectedRegion.country}</span></div><div className="compact-regions">{regions.map((region,index)=>{const offer=saleOffers?.find(item=>item.product===product&&item.region===region.code);const enabled=saleOffers===null||Boolean(offer);const price=offer?(duration===7?offer.price7:duration===90?offer.price90:duration===180?offer.price180:offer.price30):region.price*(duration===7?.35:duration===30?1:duration===90?2.55:5.1);return <button key={region.code} disabled={!enabled} className={`${selected===index?"selected":""} ${!enabled?"unavailable":""}`} onClick={()=>setSelected(index)}><span className="country-flag"><CountryMark country={region.code}/></span><b>{region.country}</b><small>{enabled?region.code:"暂停销售"}</small><em>{enabled?`$${price.toFixed(2)}`:"停售"}</em></button>})}</div></div>}
+          {isNode&&<div className="node-global-notice"><span><ConsoleIcon name="globe"/></span><div><b>无需选择地区</b><small>{currentProduct.name} 为全局节点商品，付款后由管理员完成开通。</small></div></div>}
           <div className="config-row">
             <div className="config-block"><div className="config-title"><b>{isNode?"1":"2"}. 选择周期</b><span>{billingCycle==="calendar-month"?"按日历月份计算":"按固定天数计算"}</span></div><div className="duration-options">{(billingCycle==="calendar-month"?[30,90,180]:[7,30,90]).map(day=>{const available=durationAvailable(day);return <button key={day} disabled={!available} className={`${duration===day?"selected":""} ${!available?"unavailable":""}`} onClick={()=>setDuration(day)}><b>{periodText(day)}</b><small>{available?(day===30?"常用":"按需选择"):"暂不出售"}</small></button>})}</div></div>
             <div className="config-block quantity-config"><div className="config-title"><b>{isNode?"2":"3"}. 购买数量</b></div><div><button onClick={()=>setQuantity(Math.max(1,quantity-1))}>−</button><input value={quantity} onChange={event=>setQuantity(Math.min(500,Math.max(1,Number(event.target.value)||1)))}/><button onClick={()=>setQuantity(Math.min(500,quantity+1))}>＋</button></div></div>
           </div>
-          <footer className="unified-checkout-bar"><div><span>当前配置</span><b>{currentProduct.name}{!isNode&&` · ${selectedRegion.country}`} · {periodText(duration)} × {quantity}</b></div><div className="unified-price"><span>参考金额</span><b>${total.toFixed(2)}</b></div>{currentEnabled?<button data-ui="action" data-ui-tone="primary" className="primary add-cart-button" onClick={addToCart}>＋ 加入购物车</button>:<button data-ui="action" data-ui-tone="secondary" className="store-disabled-buy" disabled>暂停销售</button>}</footer>
+          <footer className="unified-checkout-bar"><div><span>当前配置</span><b>{currentProduct.name}{!isNode&&` · ${selectedRegion.country}`} · {periodText(duration)} × {quantity}</b></div><div className="unified-price"><span>参考金额</span><b>${total.toFixed(2)}</b></div>{currentEnabled?<button data-ui="action" data-ui-tone="primary" className="primary add-cart-button" onClick={addToCart}><ConsoleIcon className="shared-action-icon" name="cart"/>加入购物车</button>:<button data-ui="action" data-ui-tone="secondary" className="store-disabled-buy" disabled>暂停销售</button>}</footer>
         </div>
       </div>
       <StoreCart inline/>

@@ -166,7 +166,7 @@ export default function RequestsClient() {
         <span className="aftersales-service-cell"><b className="mono">{item.assetAddress||"未找到关联资源"}</b><small>资源记录 {item.allocationId.slice(0,8)}</small></span>
         <span className="aftersales-request-copy"><b>{typeLabel(item.type)}</b><small>{item.reason||`${item.durationDays||0} 天`}</small><em>{date(item.createdAt)}</em></span>
         <span><b data-ui="status" className={`aftersales-status ${item.status}`}>{statusLabels[item.status]||"未知状态"}</b></span>
-        <span className="aftersales-row-actions"><button data-ui="action" data-ui-tone="secondary" onClick={()=>void open(item)}>详情</button>{item.status==="pending"&&<><button data-ui="action" data-ui-tone="primary" className="primary" onClick={()=>askAction(item.id,"approve")}>{item.type==="replace"?"交付":"处理"}</button><button data-ui="action" data-ui-tone="danger" className="danger-outline" onClick={()=>askAction(item.id,"reject")}>拒绝</button></>}</span>
+        <span className="aftersales-row-actions" data-ui-density="row"><button data-ui="action" data-ui-tone="secondary" onClick={()=>void open(item)}>详情</button>{item.status==="pending"&&<><button data-ui="action" data-ui-tone="primary" className="primary" onClick={()=>askAction(item.id,"approve")}>{item.type==="replace"?"交付":"处理"}</button><button data-ui="action" data-ui-tone="danger" className="danger-outline" onClick={()=>askAction(item.id,"reject")}>拒绝</button></>}</span>
       </article>)}</div>
     </section>
     {loading && <div className="customer-drawer-mask"><div className="customer-drawer loading">正在加载售后详情…</div></div>}

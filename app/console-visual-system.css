@@ -35,9 +35,10 @@
   border:0;border-right:1px solid #e0e2e6;box-shadow:3px 0 13px #20252d05;
 }
 .admin-pro>aside .brand,.unified-console .console-side>.brand{display:flex;align-items:center;gap:9px;min-height:42px;margin:0 12px 12px;color:#202329!important;font-size:20px;font-weight:650;white-space:nowrap}
-:is(.admin-pro,.unified-console) .brand>span:not(.has-logo){display:grid;place-items:center;flex:0 0 26px;width:26px;height:30px;padding:0;border-radius:0;background:var(--cv-blue);color:white;font-size:23px;font-weight:800;clip-path:polygon(0 0,31% 0,53% 34%,75% 0,100% 0,66% 56%,66% 100%,39% 100%,39% 56%)}
-:is(.admin-pro,.unified-console) .brand>span.has-logo{width:31px;height:31px;background:transparent;clip-path:none}
-:is(.admin-pro,.unified-console) .brand img{max-width:100%;max-height:100%;object-fit:contain}
+:is(.admin-pro,.unified-console) .console-brand>.console-brand-mark{display:flex;align-items:center;justify-content:center;box-sizing:border-box;flex:0 0 38px;width:38px;height:38px;border-radius:9px;background:#eaf3ff;color:var(--cv-blue);font-size:14px;font-weight:800;overflow:visible}
+:is(.admin-pro,.unified-console) .console-brand>.console-brand-mark.has-logo{padding:3px;background:#fff;border:1px solid #dce5f0}
+:is(.admin-pro,.unified-console) .console-brand-mark>img{display:block;width:100%;height:100%;min-width:0;min-height:0;object-fit:contain;object-position:center}
+:is(.admin-pro,.unified-console) .console-brand>b{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .admin-pro .admin-label{margin:0 13px 14px;color:#8a8d94;font-size:11px;letter-spacing:0}
 .console-sidebar-search{display:flex;align-items:center;gap:9px;flex:0 0 auto;height:40px;margin:0 1px 12px;padding:0 10px;border:1px solid #e0e2e6;border-radius:8px;background:#f5f5f6;color:#8c9097}
 .console-sidebar-search .console-icon{width:17px;height:17px}
@@ -105,6 +106,7 @@
 .console-header-user{display:flex;align-items:center;gap:8px;padding-left:15px;border-left:1px solid #d0d3db;color:#575d67;font-size:12px}
 .console-header-user .console-icon{width:19px;height:19px}
 .unified-console .dashboard-context b{color:#262a31;font-size:16px;font-weight:550}
+.unified-console .dashboard-context--orders h1{margin:0;color:#262a31;font-size:16px;font-weight:600;line-height:1.25;white-space:nowrap}
 .unified-console .top-actions{display:flex;align-items:center;gap:10px}
 .unified-console .top-actions>.avatar{width:31px;height:31px;border-radius:50%;background:#c7cdd6!important;color:#fff;box-shadow:none}
 .unified-console .dashboard-account b{color:#424954;font-size:12px;font-weight:550}
@@ -346,6 +348,10 @@
   .unified-console .top-actions>.console-refresh{font-size:0!important;width:34px;min-width:34px;padding:0}
   .unified-console .top-actions>.console-top-purchase{width:32px;min-width:32px;padding:0}
   .unified-console .top-actions>.console-top-purchase span{display:none}
+  .unified-console .dashboard-context.dashboard-context--orders{display:flex}
+  .unified-console .dashboard-context--orders h1{font-size:13px}
+  .unified-console .console-top:has(.dashboard-context--orders) .console-top-purchase{width:auto;padding-inline:8px}
+  .unified-console .console-top:has(.dashboard-context--orders) .console-top-purchase span{display:inline}
   .unified-console .dashboard-context b{font-size:12px}.unified-console .top-actions{gap:6px}
   .unified-console .dashboard-logout{padding-left:7px;min-width:48px;font-size:11px!important}
   .unified-console .top-actions>.avatar{width:28px;height:28px;font-size:12px}

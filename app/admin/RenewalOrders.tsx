@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import Pagination from "../Pagination";
 import "./renewal-controls.css";
 import { countryName } from "../../lib/countries";
+import {CountryLabel} from "../components/CountryMark";
 import {billingCycleFromNote,periodLabel} from "../../lib/billing-period";
 
 const states: Record<string, string> = {
@@ -138,11 +139,11 @@ export default function RenewalOrders() {
           <span><b>{row.customerName || "未设置名称"}</b><small>{row.customerEmail}</small></span>
           <span><b className={row.service?.kind==="proxy"?"mono renewal-service-ip":""}>{row.service?.label||"未找到关联服务"}</b><small>{products[row.product] || row.product}</small></span>
           <span><b>{row.service?.kind==="node"?"—":row.service?.wifiName||"未设置"}</b></span>
-          <span><b>{countryName(row.service?.country||row.region)}</b><small>{row.service?.city||row.service?.country||row.region}</small></span>
+          <span><b><CountryLabel country={row.service?.country||row.region}>{countryName(row.service?.country||row.region)}</CountryLabel></b><small>{row.service?.city||row.service?.country||row.region}</small></span>
           <span>{periodLabel(row.durationDays,billingCycleFromNote(row.adminNote))}</span><strong>¥{Number(row.amount).toFixed(2)}</strong>
           <span>{new Date(row.createdAt).toLocaleString("zh-CN", { hour12: false })}</span>
           <span><em data-ui="status" className={`order-status ${row.status==="active"&&!row.adminNote?.includes("[RENEWAL_VERIFIED_AT]")?"provisioning":row.status}`}>{row.status==="active"&&!row.adminNote?.includes("[RENEWAL_VERIFIED_AT]")?"待核验":states[row.status] || row.status}</em></span>
-          <span>{["paid", "provisioning"].includes(row.status)||(row.status==="active"&&!row.adminNote?.includes("[RENEWAL_VERIFIED_AT]")) ? <span className="verify-actions"><button data-ui="action" data-ui-tone="primary" className="primary" disabled={!!busy} aria-busy={busy === `${row.id}:approve`} onClick={() => setPendingVerify({id:row.id,action:"approve"})}>{busy === `${row.id}:approve` ? "处理中…" : "核验通过"}</button><button data-ui="action" data-ui-tone="danger" className="reject" disabled={!!busy} aria-busy={busy === `${row.id}:reject`} onClick={() => setPendingVerify({id:row.id,action:"reject"})}>{busy === `${row.id}:reject` ? "处理中…" : "不通过"}</button></span> : <button disabled>{row.status === "pending" ? "等待付款" : "已核验"}</button>}</span>
+          <span data-ui-density="row">{canVerify(row) ? <span className="verify-actions" data-ui-density="row"><button type="button" data-ui="action" data-ui-tone="primary" className="primary" disabled={!!busy} aria-busy={busy === `${row.id}:approve`} onClick={() => setPendingVerify({id:row.id,action:"approve"})}>{busy === `${row.id}:approve` ? "处理中…" : "核验通过"}</button><button type="button" data-ui="action" data-ui-tone="danger" className="reject" disabled={!!busy} aria-busy={busy === `${row.id}:reject`} onClick={() => setPendingVerify({id:row.id,action:"reject"})}>{busy === `${row.id}:reject` ? "处理中…" : "不通过"}</button></span> : <button type="button" data-ui="action" disabled>{row.status === "pending" ? "等待付款" : "已核验"}</button>}</span>
         </div>)}
         {!loading && !visible.length && <div className="empty">暂无续费订单</div>}
         {loading && <div className="empty">正在加载续费订单…</div>}

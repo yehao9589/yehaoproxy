@@ -3,7 +3,9 @@ import {AdminRefreshButton,useAdminRefresh} from "./AdminRefresh";
 
 
 import {useEffect, useMemo, useState} from "react";
-import { countries, countryFlag, countryName } from "../../lib/countries";
+import { countries, countryName } from "../../lib/countries";
+import CountryMark, {CountryLabel} from "../components/CountryMark";
+import ConsoleIcon from "../components/ConsoleIcon";
 import ServicePriceSettings from "./settings/ServicePriceSettings";
 
 type Offer = {
@@ -26,9 +28,9 @@ type Category = "all" | "proxy" | "node";
 type ProductType = {id:string;name:string;category:"proxy"|"node";description:string;enabled:boolean;sortOrder:number};
 
 function CountryPicker({defaultValue}:{defaultValue:string}) {
-  const initial=countries.find(item=>item.code===defaultValue)||{code:defaultValue,name:countryName(defaultValue),flag:countryFlag(defaultValue)};
+  const initial=countries.find(item=>item.code===defaultValue)||{code:defaultValue,name:countryName(defaultValue)};
   const [selected,setSelected]=useState(initial);
-  const [query,setQuery]=useState(`${initial.flag} ${initial.name}（${initial.code}）`);
+  const [query,setQuery]=useState(`${initial.name}（${initial.code}）`);
   const [open,setOpen]=useState(false);
   const searchText=query.trim();
   const normalized=searchText.toLocaleLowerCase("zh-CN");
@@ -39,19 +41,19 @@ function CountryPicker({defaultValue}:{defaultValue:string}) {
     国家 / 地区
     <input type="hidden" name="region" value={selected.code}/>
     <div className={`country-combobox ${open?"open":""}`}>
-      <span className="country-search-icon">⌕</span>
+      <span className="country-search-icon">{open?<ConsoleIcon name="search" width={15} height={15}/>:<CountryMark country={selected.code}/>}</span>
       <input role="combobox" aria-expanded={open} aria-autocomplete="list" value={query}
         onFocus={()=>{setOpen(true);setQuery("")}}
         onChange={event=>{setQuery(event.target.value);setOpen(true)}}
-        onBlur={()=>window.setTimeout(()=>{setOpen(false);setQuery(`${selected.flag} ${selected.name}（${selected.code}）`)},150)}
+        onBlur={()=>window.setTimeout(()=>{setOpen(false);setQuery(`${selected.name}（${selected.code}）`)},150)}
         placeholder="输入国家名称或代码，例如：美国 / US"/>
       <button type="button" className="country-arrow" aria-label="展开国家列表" onMouseDown={event=>event.preventDefault()} onClick={()=>setOpen(value=>{if(!value)setQuery("");return !value})}><span/></button>
       {open&&<div className="country-options" role="listbox">
         <small>{filtered.length ? `找到 ${filtered.length} 个国家或地区` : "没有匹配的国家或地区"}</small>
         {filtered.slice(0,80).map(item=><button type="button" role="option" aria-selected={item.code===selected.code} key={item.code}
           onMouseDown={event=>event.preventDefault()}
-          onClick={()=>{setSelected(item);setQuery(`${item.flag} ${item.name}（${item.code}）`);setOpen(false)}}>
-          <span>{item.flag}</span><b>{item.name}</b><em>{item.code}</em>
+          onClick={()=>{setSelected(item);setQuery(`${item.name}（${item.code}）`);setOpen(false)}}>
+          <CountryMark country={item.code}/><b>{item.name}</b><em>{item.code}</em>
         </button>)}
         {filtered.length>80&&<small>请继续输入名称或代码缩小范围</small>}
       </div>}
@@ -228,12 +230,12 @@ export default function ProductOffersModule() {
                 <em>{typeCategory(item.product) === "node" ? "节点服务" : "代理 IP"}</em>
                 <b>{typeName(item.product)}</b><small>{item.billingCycle==="calendar-month"?"自然月计费":"固定天数计费"}</small>
               </span>
-              <span><b>{item.regionName}</b><small>{item.region}</small></span>
+              <span><b><CountryLabel country={item.region}>{item.regionName}</CountryLabel></b><small>{item.region}</small></span>
               <span className="offer-price">{item.billingCycle==="calendar-month"?(item.price30 < 0 ? "不出售" : <><b>¥{item.price30.toFixed(2)}</b><small>1 个自然月</small></>):item.price7 < 0 ? "不出售" : <><b>¥{item.price7.toFixed(2)}</b><small>7 天</small></>}</span>
               <span className="offer-price">{item.billingCycle==="calendar-month"?(item.price90 < 0 ? "不出售" : <><b>¥{item.price90.toFixed(2)}</b><small>3 个自然月</small></>):item.price30 < 0 ? "不出售" : <><b>¥{item.price30.toFixed(2)}</b><small>30 天</small></>}</span>
               <span className="offer-price">{item.billingCycle==="calendar-month"?(item.price180 < 0 ? "不出售" : <><b>¥{item.price180.toFixed(2)}</b><small>6 个自然月</small></>):item.price90 < 0 ? "不出售" : <><b>¥{item.price90.toFixed(2)}</b><small>90 天</small></>}</span>
               <span><b>{item.saleStock < 0 ? "不限量" : item.saleStock}</b><small>{item.saleStock < 0 ? `已售 ${item.sold}` : `剩余 ${Math.max(0, item.saleStock - item.sold)}`}</small></span>
-              <span className="offer-row-actions">
+              <span className="offer-row-actions" data-ui-density="row">
                 <button data-ui="action" data-ui-tone="secondary" className="offer-edit" onClick={() => openOfferEditor(item)}>编辑商品</button>
                 <button type="button" role="switch" aria-checked={item.enabled} title={item.enabled ? "点击暂停销售" : "点击恢复销售"} className={`sale-toggle ${item.enabled ? "on" : "off"}`} onClick={() => void toggle(item)}>
                   <span/><b>{item.enabled ? "正在售卖" : "暂停销售"}</b><i/>

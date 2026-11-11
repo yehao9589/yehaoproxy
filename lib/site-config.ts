@@ -54,3 +54,10 @@ export async function saveSiteConfig(value: SiteConfig) {
   const json = JSON.stringify(value);
   await setSystemOption(KEY, json, now);
 }
+
+export type ConsoleBrandConfig = Pick<SiteConfig, "siteName" | "logoText" | "logoUrl">;
+
+export async function getConsoleBrand(): Promise<ConsoleBrandConfig> {
+  const { siteName, logoText, logoUrl } = await getSiteConfig().catch(() => defaultSiteConfig);
+  return { siteName, logoText, logoUrl };
+}

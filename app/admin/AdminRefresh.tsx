@@ -1,5 +1,6 @@
 "use client";
 import {createContext,useCallback,useContext,useEffect,useLayoutEffect,useRef,useState,type ReactNode} from "react";
+import ConsoleIcon from "../components/ConsoleIcon";
 import "./admin-refresh.css";
 
 type RefreshContextValue={register:(loader:()=>Promise<unknown>)=>()=>void;refresh:()=>Promise<void>;busy:boolean;available:boolean};
@@ -25,5 +26,5 @@ export function useAdminRefresh(loader:()=>Promise<unknown>,enabled=true){
 export function AdminRefreshButton({className}:{className?:string}){
   const context=useContext(Context);
   if(!context?.available)return null;
-  return <button data-ui="action" data-ui-tone="secondary" type="button" className={className} disabled={context.busy} aria-busy={context.busy} onClick={()=>void context.refresh()}>{context.busy?"刷新中…":"刷新数据"}</button>;
+  return <button data-ui="action" data-ui-tone="secondary" type="button" className={className} disabled={context.busy} aria-busy={context.busy} onClick={()=>void context.refresh()}><ConsoleIcon className="shared-action-icon" name="renew"/>{context.busy?"刷新中…":"刷新数据"}</button>;
 }

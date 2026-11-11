@@ -116,7 +116,6 @@ export default function SiteManagement() {
           <div className="setting-grid">
             <label>站点名称<input name="siteName" value={data.siteName} onChange={e => setData({ ...data, siteName: e.target.value })} required /></label>
             <label>文字标识<input name="logoText" maxLength={4} value={data.logoText} onChange={e => setData({ ...data, logoText: e.target.value })} /></label>
-            <input name="logoUrl" type="hidden" value={data.logoUrl} readOnly />
           </div>
           <div className="site-upload-row">
             <div><b>上传品牌图片</b><small>PNG、JPG、WEBP，最大 2MB；推荐透明背景横版或方形 Logo。</small></div>

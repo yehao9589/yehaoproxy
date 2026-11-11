@@ -30,6 +30,22 @@
   .proxy-management-page .managed-proxy-table .proxy-note-cell>button{width:40px!important;min-width:40px!important;height:40px!important}
 }
 .managed-proxy-table .proxy-region-cell b{font-weight:400!important}
+.proxy-management-page .managed-proxy-table .proxy-region-cell{
+  width:100%;
+  max-width:none;
+  container:proxy-region / inline-size;
+}
+.managed-proxy-table .proxy-region-cell>b{min-width:0;max-width:100%}
+.managed-proxy-table .proxy-region-cell .country-label{gap:4px;white-space:nowrap}
+.managed-proxy-table .proxy-region-cell .country-label>span:last-child{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.managed-proxy-table .proxy-region-cell .country-mark.fi{width:14px;height:10px}
+.managed-proxy-table .proxy-region-cell .country-mark-global{width:14px;height:14px}
+/* The optional flag gives way to the country and city in compact columns. */
+@container proxy-region (width < 108px){
+  .managed-proxy-table .proxy-region-cell :is(.country-mark,.country-mark-global){display:none}
+}
 .managed-proxy-table .proxy-note-cell.has-note>span{max-width:100%;padding:0;background:transparent;color:#475569;font-weight:700;box-shadow:none}
 .managed-proxy-table .proxy-note-cell.has-note>button{color:#94a3b8!important}
 @media(max-width:760px){.proxy-list-tools{width:100%;align-items:stretch;flex-direction:column}.proxy-search{width:100%;box-sizing:border-box}}

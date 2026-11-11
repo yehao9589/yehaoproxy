@@ -2,6 +2,7 @@
 import {AdminRefreshButton,useAdminRefresh} from "../AdminRefresh";
 
 import {countryName} from "../../../lib/countries";
+import {CountryLabel} from "../../components/CountryMark";
 import { useEffect, useState } from "react";
 import OrderDetailWorkspace from "../OrderDetailWorkspace";
 import NotificationPreferences from "../../NotificationPreferences";
@@ -180,7 +181,7 @@ export default function CustomersClient({
               </em>
             </span>
             <span
-              className="customer-actions"
+              className="customer-actions" data-ui-density="row"
               onClick={(e) => e.stopPropagation()}
             >
               <button data-ui="action" data-ui-tone="secondary" onClick={() => open(x.id)}>客户档案</button>
@@ -1261,7 +1262,7 @@ function CustomerOrderDetail({
                       {x.host}:{x.port}
                     </span>
                     <span className="resource-region">
-                      <b>{countryName(x.country || o.region)}</b>
+                      <b><CountryLabel country={x.country || o.region}>{countryName(x.country || o.region)}</CountryLabel></b>
                       <small>{x.city || "未设置城市"}</small>
                     </span>
                     <span>{x.protocol}</span>

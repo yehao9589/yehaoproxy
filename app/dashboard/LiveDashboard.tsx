@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import "../console.css";
+import type { ConsoleBrandConfig } from "../../lib/site-config";
+import ConsoleBrand from "../components/ConsoleBrand";
 import ConsoleIcon, { type ConsoleIconName } from "../components/ConsoleIcon";
 import useConsoleMobileMenu from "../components/useConsoleMobileMenu";
 import ConsoleOverview from "./ConsoleOverview";
@@ -14,6 +16,7 @@ import CreditBillsClient from "./credit-bills/CreditBillsClient";
 import WhitelistClient from "./whitelist/WhitelistClient";
 import SupportClient from "./support/SupportClient";
 import NotificationClient from "./notifications/NotificationClient";
+import ImpersonationBanner from "./ImpersonationBanner";
 
 export type DashboardTab =
   | "overview"
@@ -38,7 +41,7 @@ const navigation: { id: DashboardTab; label: string; icon: ConsoleIconName }[] =
   { id: "whitelist", label: "IP 白名单", icon: "network" },
 ];
 
-export default function LiveDashboard({ name }: { name: string }) {
+export default function LiveDashboard({ name, impersonating, brand }: { name: string; impersonating: boolean; brand: ConsoleBrandConfig }) {
   const router = useRouter();
   const params = useSearchParams();
   const requested = params.get("tab") || "overview";
@@ -79,7 +82,7 @@ export default function LiveDashboard({ name }: { name: string }) {
           <span>客户中心菜单</span>
           <button ref={closeRef} type="button" aria-label="关闭菜单" onClick={() => setMobileMenuOpen(false)}>×</button>
         </div>
-        <a className="brand" href="/"><span>Y</span> YehaoProxy</a>
+        <ConsoleBrand brand={brand} />
         <label className="console-sidebar-search">
           <ConsoleIcon name="search" />
           <input aria-label="搜索客户中心菜单" placeholder="搜索菜单…" value={menuQuery} onChange={event => setMenuQuery(event.target.value)} />
@@ -99,11 +102,13 @@ export default function LiveDashboard({ name }: { name: string }) {
       </aside>
       <button type="button" className="dashboard-mobile-backdrop" tabIndex={-1} aria-label="关闭菜单" onClick={() => setMobileMenuOpen(false)} />
       <section className="console-body" inert={mobileMenuOpen}>
-        <header className="console-top console-header">
+        <header className={`console-top console-header${impersonating ? " is-impersonating" : ""}`}>
           <button ref={triggerRef} type="button" className="dashboard-mobile-menu-button" aria-label="打开客户中心菜单" aria-controls="dashboard-mobile-navigation" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(true)}>
             <ConsoleIcon name="layers" /> 菜单
           </button>
-          <div className="dashboard-context"><div><b>{current.label}</b><small>客户中心</small></div></div>
+          <div className={`dashboard-context${tab==="orders"?" dashboard-context--orders":""}`}>
+            <div>{tab==="orders"?<h1>{current.label}</h1>:<b>{current.label}</b>}<small>客户中心</small></div>
+          </div>
           <div className="top-actions">
             {tab === "overview" && <button data-ui="action" data-ui-tone="secondary" type="button" className="outline console-refresh" disabled={overviewLoading} onClick={() => setRefreshKey(value => value + 1)}><ConsoleIcon name="renew" />{overviewLoading ? "正在刷新" : "刷新数据"}</button>}
             <a data-ui="action" data-ui-tone="primary" className="console-top-purchase" href="/#pricing" aria-label="购买服务"><ConsoleIcon name="plus" /><span>购买服务</span></a>
@@ -111,6 +116,7 @@ export default function LiveDashboard({ name }: { name: string }) {
             <span className="avatar">{name.trim().slice(0, 1).toUpperCase() || "Y"}</span>
             <div className="dashboard-account"><b>{name}</b><small>客户账户</small></div>
           </div>
+          {impersonating && <ImpersonationBanner />}
         </header>
         <div className="console-content">
           {logoutError && <div className="live-error" role="alert">{logoutError}</div>}

@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import {useEffect, useMemo, useState} from "react";
+import {useMemo, useState} from "react";
+import type {ConsoleBrandConfig} from "../../lib/site-config";
+import ConsoleBrand from "../components/ConsoleBrand";
 import {AdminRefreshProvider, AdminRefreshButton} from "./AdminRefresh";
 import ConsoleIcon, {type ConsoleIconName} from "../components/ConsoleIcon";
 import useConsoleMobileMenu from "../components/useConsoleMobileMenu";
@@ -34,8 +35,7 @@ import "../admin-pro.css";
 import "../site-management.css";
 
 export type AdminTab = "overview"|"orders"|"bills"|"product-orders"|"renewal-orders"|"services"|"vps"|"vps-overview"|"vps-monitor"|"vps-backups"|"vps-jobs"|"products"|"customers"|"finance"|"finance-ledger"|"finance-bills"|"finance-credit"|"sales"|"tickets"|"coupons"|"requests"|"automation"|"updates"|"settings-site"|"settings-general"|"settings-notifications"|"settings-suppliers"|"settings-payments"|"settings-security"|"settings-admins"|"audit";
-type AdminBrand = {siteName:string; logoText:string; logoUrl:string};
-type AdminProps = {email:string; roleName:string; permissions:string[]};
+type AdminProps = {email:string; roleName:string; permissions:string[]; brand:ConsoleBrandConfig};
 const titles:Record<AdminTab,string> = {
   overview:"运营概览", orders:"订单管理", bills:"账单管理", "product-orders":"产品订单", "renewal-orders":"续费订单", services:"服务管理", vps:"面板与流量", "vps-overview":"VPS 运行概览", "vps-monitor":"服务器监控", "vps-backups":"面板备份", "vps-jobs":"运维记录", products:"商品管理", customers:"客户管理", finance:"财务中心", "finance-ledger":"财务明细", "finance-bills":"财务明细", "finance-credit":"信用账期", sales:"销售业绩", tickets:"工单管理", coupons:"优惠券", requests:"售后申请", automation:"定时任务", updates:"在线更新", "settings-site":"站务管理", "settings-general":"基础设置", "settings-notifications":"通知中心", "settings-suppliers":"供应商", "settings-payments":"支付渠道", "settings-security":"安全策略", "settings-admins":"管理员账户", audit:"审计日志",
 };
@@ -55,29 +55,13 @@ export default function LiveAdmin(props:AdminProps) {
   return <AdminRefreshProvider><AdminContent {...props}/></AdminRefreshProvider>;
 }
 
-function AdminContent({email,roleName,permissions}:AdminProps) {
+function AdminContent({email,roleName,permissions,brand}:AdminProps) {
   const availableGroups = useMemo(()=>adminGroups.map(group=>({...group,items:group.items.filter(([key])=>permissions.includes(tabPermission[key]))})).filter(group=>group.items.length),[permissions]);
   const firstTab = availableGroups[0]?.items[0]?.[0] || "overview";
   const [tab,setTab] = useState<AdminTab>(firstTab);
   const [openGroup,setOpenGroup] = useState(availableGroups[0]?.id || "");
   const {mobileMenuOpen,setMobileMenuOpen,drawerRef,triggerRef,closeRef} = useConsoleMobileMenu("admin-mobile-menu-active");
   const [menuQuery,setMenuQuery] = useState("");
-  const [brand,setBrand] = useState<AdminBrand>({siteName:"YehaoProxy",logoText:"Y",logoUrl:""});
-  const [logoFailed,setLogoFailed] = useState(false);
-  useEffect(()=>setLogoFailed(false),[brand.logoUrl]);
-  const logoUrl = useMemo(()=>{
-    if(!/^data:image\/png;base64,/i.test(brand.logoUrl))return brand.logoUrl;
-    // Older saved configurations can contain a truncated PNG: its dimensions
-    // still load, so the browser's error event alone cannot catch a blank logo.
-    try{return atob(brand.logoUrl.split(",")[1]).includes("\u0000\u0000\u0000\u0000IEND")?brand.logoUrl:"";}catch{return "";}
-  },[brand.logoUrl]);
-
-  useEffect(()=>{
-    void fetch("/api/site-config",{cache:"no-store"}).then(async response=>response.ok?setBrand(await response.json()):null).catch(()=>{});
-    const update = (event:Event)=>setBrand((event as CustomEvent<AdminBrand>).detail);
-    window.addEventListener("site-config-updated",update);
-    return ()=>window.removeEventListener("site-config-updated",update);
-  },[]);
   function choose(key:AdminTab) {
     if(!permissions.includes(tabPermission[key]))return;
     setTab(key);
@@ -91,8 +75,7 @@ function AdminContent({email,roleName,permissions}:AdminProps) {
   return <main className={`admin-pro console-admin${mobileMenuOpen?" mobile-nav-open":""}`}>
     <aside ref={drawerRef} id="admin-mobile-navigation" className="console-sidebar" aria-label="后台导航" role={mobileMenuOpen?"dialog":undefined} aria-modal={mobileMenuOpen||undefined}>
       <div className="admin-mobile-nav-head"><span>后台菜单</span><button ref={closeRef} type="button" aria-label="关闭菜单" onClick={()=>setMobileMenuOpen(false)}>×</button></div>
-      {/* eslint-disable-next-line @next/next/no-img-element -- Configured site logos may use arbitrary storage URLs, without an image optimizer. */}
-      <Link className="brand admin-live-brand" href="/"><span className={logoUrl&&!logoFailed?"has-logo":""}>{logoUrl&&!logoFailed?<img src={logoUrl} alt="" onError={()=>setLogoFailed(true)}/>:brand.logoText||"Y"}</span><b>{brand.siteName}</b></Link>
+      <ConsoleBrand brand={brand}/>
       <small className="admin-label">运营管理后台</small>
       <label className="console-search console-menu-search"><ConsoleIcon name="search"/><input aria-label="搜索后台菜单" placeholder="搜索菜单…" value={menuQuery} onChange={event=>setMenuQuery(event.target.value)}/></label>
       <nav className="admin-group-nav" aria-label="后台功能菜单">

@@ -22,3 +22,17 @@ export function countryFlag(code: string) {
 }
 
 export const countries = countryCodes.map(code => ({ code, name: countryName(code), flag: countryFlag(code) }));
+
+const countryCodeSet = new Set(countryCodes);
+const codesByDisplayName = new Map(countries.map(({code,name}) => [name,code]));
+const displayAliases: Record<string,string> = {
+  UK:"GB", "中国香港":"HK", "中国澳门":"MO", "中国台湾":"TW", "韩国":"KR",
+};
+
+/** Only recognized region codes or unambiguous country names can become flag classes. */
+export function countryMarkCode(value?: string | null): string | undefined {
+  const name = value?.trim() || "";
+  const code = name.toUpperCase();
+  if (countryCodeSet.has(code)) return code;
+  return (Object.hasOwn(displayAliases,code) ? displayAliases[code] : undefined) || codesByDisplayName.get(name);
+}

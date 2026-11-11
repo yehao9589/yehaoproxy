@@ -15,5 +15,16 @@ export default function ImpersonationBanner(){
     renew();
     return()=>events.forEach(([name,listener])=>window.removeEventListener(name,listener));
   },[]);
-  return <div className="impersonation-banner"><span><b>管理员模拟登录</b> · 当前正在查看客户面板</span><a href="/api/admin/impersonation/return">返回管理后台</a></div>;
+  return (
+    <div className="impersonation-banner">
+      <span className="impersonation-label">
+        <span className="impersonation-label-desktop">管理员模拟登录</span>
+        <span className="impersonation-label-compact">正在查看客户面板</span>
+      </span>
+      <a href="/api/admin/impersonation/return" aria-label="返回管理后台">
+        <span className="impersonation-label-desktop">返回管理后台</span>
+        <span className="impersonation-label-compact">返回后台</span>
+      </a>
+    </div>
+  );
 }

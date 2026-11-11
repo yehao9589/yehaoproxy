@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ConsoleIcon from "../components/ConsoleIcon";
+import {CountryLabel} from "../components/CountryMark";
 import Pagination from "../Pagination";
 import { usePageSize } from "../usePageSize";
-import { countryFlag, countryName } from "../../lib/countries";
+import { countryName } from "../../lib/countries";
 import { normalizeCityName } from "../../lib/cities";
 import { dashboardJson } from "./data-cache";
 import type { DashboardTab } from "./LiveDashboard";
@@ -184,12 +185,12 @@ export default function ConsoleOverview({ refreshKey, onLoading, setTab }: { ref
               {pageRows.map((service, index) => <tr key={service.key}>
                 <td className="console-service-sequence">{(currentPage - 1) * pageSize + index + 1}</td>
                 <td><div className="console-service-cell"><b className={service.address ? "mono" : ""}>{service.address || (service.kind === "proxy" ? "等待分配" : productNames[service.product] || "节点服务")}</b><small className="console-service-kind">{service.kind === "proxy" ? productNames[service.product] || "代理 IP" : "节点服务"}</small></div></td>
-                <td><span className="console-service-region"><span aria-hidden="true">{countryFlag(service.region)}</span>{regionLabel(service)}</span></td>
+                <td><CountryLabel country={service.region}>{regionLabel(service)}</CountryLabel></td>
                 <td>{service.wifiName || "—"}</td>
                 <td><span className="console-service-note" title={service.note || undefined}>{service.note || "—"}</span></td>
                 <td className="console-service-expiry">{expiryLabel(service)}</td>
                 <td><span data-ui="status" className={`console-status-badge console-service-status ${service.status}`}><i aria-hidden="true" />{statusNames[service.status]}</span></td>
-                <td><div className="console-row-actions">{service.renewalClosed ? <span className="service-renewal-closed">已停止续费</span> : <><button data-ui="action" data-ui-tone="secondary" type="button" onClick={() => setTab("proxies")}>查看</button>{service.status !== "provisioning" && <button data-ui="action" data-ui-tone="secondary" type="button" onClick={() => setTab("proxies")}>续费</button>}</>}</div></td>
+                <td><div className="console-row-actions" data-ui-density="row">{service.renewalClosed ? <span className="service-renewal-closed">已停止续费</span> : <><button data-ui="action" data-ui-tone="secondary" type="button" onClick={() => setTab("proxies")}>查看</button>{service.status !== "provisioning" && <button data-ui="action" data-ui-tone="secondary" type="button" onClick={() => setTab("proxies")}>续费</button>}</>}</div></td>
               </tr>)}
               {!pageRows.length && <tr><td colSpan={8}><div className="console-empty console-empty-state">{loading && !data ? "正在加载您的服务…" : !data ? "服务数据暂不可用，请点击重试。" : services.length ? "没有符合当前筛选条件的服务" : "暂无服务，购买并完成开通后将在这里显示。"}{data && !services.length && <a href="/#pricing">购买服务 <ConsoleIcon name="arrow" /></a>}</div></td></tr>}
             </tbody>

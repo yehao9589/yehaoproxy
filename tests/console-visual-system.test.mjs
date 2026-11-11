@@ -33,6 +33,24 @@ test('柔色操作层只作用于明确标记的控件，不给所有按钮或�
   assert.match(controls,/aria-disabled="true"/);
 });
 
+test('列表操作使用显式紧凑尺寸，核验弹窗保持标准尺寸，触屏仍为 44px', async()=>{
+  const sizing=/\[data-ui-density="row"\]>\[data-ui="action"\],\[data-ui="action"\]\[data-ui-density="row"\]\)\{([^}]+)\}/g;
+  const [desktop,touch]=[...controls.matchAll(sizing)].map(match=>match[1]);
+  assert.match(desktop,/min-height:28px!important/);
+  assert.match(desktop,/padding:4px 8px!important/);
+  assert.match(desktop,/font-size:12px!important/);
+  assert.match(touch,/min-height:44px!important/);
+  const renewal=await readFile(new URL('../app/admin/RenewalOrders.tsx',import.meta.url),'utf8');
+  assert.match(renewal,/className="verify-actions" data-ui-density="row"/);
+  assert.doesNotMatch(renewal.split('{pendingVerify&&')[1],/data-ui-density/);
+  assert.match(customerShell,/<a data-ui="action" data-ui-tone="primary" className="console-top-purchase"/);
+  for (const [path,group] of [
+    ['../app/admin/service-requests/RequestsClient.tsx','aftersales-row-actions'],
+    ['../app/admin/vps/VpsBackupWorkspace.tsx','bkp-record-actions'],
+    ['../app/dashboard/orders/OrderClient.tsx','order-desk-actions'],
+  ]) assert.ok((await readFile(new URL(path,import.meta.url),'utf8')).includes(`className="${group}" data-ui-density="row"`));
+});
+
 test('操作按钮显式标记覆盖两端和公共页面，开关、分页、密码眼睛仍是专用控件',async()=>{
   async function sources(dir){return (await Promise.all((await readdir(dir,{withFileTypes:true})).map(async entry=>{
     const url=new URL(`${entry.name}${entry.isDirectory()?'/':''}`,dir);
@@ -188,6 +206,50 @@ test('两个控制台保留各自作用域，共用线性图标并在新概览�
   assert.match(iconSource,/stroke=["']currentColor["']/);
   assert.match(iconSource,/aria-hidden=["']true["']/);
   assert.match(iconSource,/focusable=["']false["']/);
+});
+
+test('两个控制台共用站务 Logo，图框不压缩、不裁切', async () => {
+  for (const [shell, pagePath] of [[adminShell,'../app/admin/page.tsx'],[customerShell,'../app/dashboard/page.tsx']]) {
+    assert.match(shell, /<ConsoleBrand brand=\{brand\}/);
+    assert.match(await readFile(new URL(pagePath, import.meta.url), 'utf8'), /await[^;]*getConsoleBrand\(/);
+  }
+  const mark=themeRule(':is(.admin-pro,.unified-console) .console-brand>.console-brand-mark');
+  assert.equal(declaration(mark.body,'flex'),'0 0 38px');
+  assert.equal(declaration(mark.body,'overflow'),'visible');
+  const image=themeRule(':is(.admin-pro,.unified-console) .console-brand-mark>img');
+  assert.equal(declaration(image.body,'object-fit'),'contain');
+  assert.equal(declaration(image.body,'object-position'),'center');
+});
+
+test('保存站务设置不覆盖已上传的 Logo', async () => {
+  const route=await readFile(new URL('../app/api/admin/site-config/route.ts', import.meta.url), 'utf8');
+  const form=await readFile(new URL('../app/admin/settings/SiteManagement.tsx', import.meta.url), 'utf8');
+  assert.match(route,/logoUrl:\s*current\.logoUrl/);
+  assert.doesNotMatch(route,/body\.logoUrl/);
+  assert.doesNotMatch(form,/name="logoUrl"/);
+});
+
+test('地区标识只使用有效国家代码，账务与多地区标识不会伪装成国旗', async () => {
+  const {countryMarkCode}=await import('../lib/countries.ts');
+  for (const [value,code] of [['jp','JP'],[' 德国 ','DE'],['UK','GB'],['中国香港','HK']]) {
+    assert.equal(countryMarkCode(value),code);
+  }
+  for (const value of ['GLOBAL','MULTI','BALANCE','XX','../jp','',null]) {
+    assert.equal(countryMarkCode(value),undefined);
+  }
+  const component=await readFile(new URL('../app/components/CountryMark.tsx',import.meta.url),'utf8');
+  assert.match(component,/country-mark fi fi-/);
+  assert.match(component,/name="globe"/);
+  assert.match(component,/aria-hidden="true"/);
+  const markStyles=await readFile(new URL('../app/country-marks.css',import.meta.url),'utf8');
+  assert.match(markStyles,/\.country-label>span:last-child\s*\{[^}]*text-overflow:ellipsis;[^}]*white-space:nowrap/);
+});
+
+test('订单管理复用顶部栏标题和购买入口，并在手机上保留可见文字', () => {
+  assert.match(customerShell,/tab==="orders"\?<h1>\{current\.label\}<\/h1>/);
+  assert.equal([...customerShell.matchAll(/aria-label="购买服务"/g)].length,1);
+  assert.match(theme,/\.dashboard-context\.dashboard-context--orders\{display:flex\}/);
+  assert.match(theme,/\.console-top:has\(\.dashboard-context--orders\) \.console-top-purchase span\{display:inline\}/);
 });
 
 test('共享主题保持白色侧栏与中性 #e6e7eb 工作区，不重新引入有色侧栏',()=>{
